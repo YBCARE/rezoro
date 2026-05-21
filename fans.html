@@ -1,0 +1,464 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Rezoro — Fan Cards</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400;1,600&family=Montserrat:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --black:  #000000;
+      --bg:     #07070A;
+      --bg2:    #0E0E13;
+      --bg3:    #141419;
+      --gold:   #C9A84C;
+      --gold-l: #E4C870;
+      --gold-glow:   rgba(201,168,76,.22);
+      --gold-border: rgba(201,168,76,.28);
+      --gold-bg:     rgba(201,168,76,.08);
+      --silver:  #A8B8C4;
+      --bronze:  #C07848;
+      --t1: #F0ECE4;
+      --t2: #9A9490;
+      --t3: #5C5852;
+      --border: rgba(255,255,255,.07);
+      --border2: rgba(255,255,255,.14);
+      --font-d: 'Cormorant', Georgia, serif;
+      --font-s: 'Montserrat', system-ui, sans-serif;
+      --r-xs:6px; --r-sm:10px; --r-md:16px; --r-lg:22px; --r-xl:30px;
+    }
+    *, *::before, *::after { box-sizing:border-box; margin:0; padding:0; }
+    html { scroll-behavior:smooth; }
+    body { background:var(--black); color:var(--t1); font-family:var(--font-s); font-size:16px; line-height:1.6; overflow-x:hidden; -webkit-font-smoothing:antialiased; }
+    a { color:inherit; text-decoration:none; }
+    button { cursor:pointer; font-family:var(--font-s); }
+
+    /* NAV */
+    nav { position:sticky; top:0; z-index:50; padding:1.1rem 5%; display:flex; align-items:center; justify-content:space-between; background:rgba(0,0,0,.92); backdrop-filter:blur(24px); border-bottom:1px solid var(--border); }
+    .logo { font-family:var(--font-d); font-size:1.6rem; font-weight:600; letter-spacing:.04em; }
+    .logo span { color:var(--gold); }
+    .nav-back { font-size:.66rem; font-weight:600; letter-spacing:.12em; text-transform:uppercase; color:var(--t3); padding:.5rem 1rem; border:1px solid var(--border); border-radius:var(--r-xs); transition:color .2s,border-color .2s; }
+    .nav-back:hover { color:var(--t1); border-color:var(--border2); }
+
+    /* PAGE HERO */
+    .page-hero { padding:5rem 6% 4rem; text-align:center; background:radial-gradient(ellipse 80% 60% at 50% 0%, rgba(201,168,76,.07) 0%, transparent 70%); border-bottom:1px solid var(--border); }
+    .ph-eyebrow { font-size:.62rem; font-weight:700; letter-spacing:.22em; text-transform:uppercase; color:var(--gold); margin-bottom:1rem; }
+    .page-hero h1 { font-family:var(--font-d); font-size:clamp(2.4rem,5vw,4.4rem); font-weight:500; line-height:1.1; color:var(--t1); margin-bottom:.9rem; }
+    .page-hero h1 em { font-style:italic; color:var(--gold); }
+    .page-hero p { font-size:.9rem; color:var(--t2); max-width:520px; margin:0 auto; line-height:1.8; }
+
+    /* LAYOUT */
+    .page-wrap { display:grid; grid-template-columns:1fr 340px; gap:2rem; padding:3rem 6% 5rem; align-items:start; }
+
+    /* STEP LABELS */
+    .step-label { font-size:.62rem; font-weight:700; letter-spacing:.18em; text-transform:uppercase; color:var(--gold); margin-bottom:1rem; display:flex; align-items:center; gap:.6rem; }
+    .step-label::before { content:''; width:20px; height:1px; background:var(--gold); }
+
+    /* TIER CARDS */
+    .tier-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:.9rem; margin-bottom:2.5rem; }
+    .tier-card { background:var(--bg2); border:2px solid var(--border); border-radius:var(--r-lg); padding:1.6rem 1.2rem; cursor:pointer; text-align:center; transition:border-color .25s,transform .25s,box-shadow .25s; }
+    .tier-card:hover { transform:translateY(-3px); }
+    .tier-card.active-gold   { border-color:var(--gold-border); box-shadow:0 0 40px var(--gold-glow); background:rgba(201,168,76,.04); }
+    .tier-card.active-silver { border-color:rgba(168,184,196,.4); box-shadow:0 0 40px rgba(168,184,196,.12); background:rgba(168,184,196,.03); }
+    .tier-card.active-bronze { border-color:rgba(192,120,72,.4); box-shadow:0 0 40px rgba(192,120,72,.14); background:rgba(192,120,72,.03); }
+    .tier-icon { font-size:2.2rem; margin-bottom:.7rem; }
+    .tier-name { font-family:var(--font-d); font-size:1.2rem; font-weight:600; color:var(--t1); margin-bottom:.3rem; }
+    .tier-price { font-size:1.05rem; font-weight:700; margin-bottom:.75rem; }
+    .tier-price.gold { color:var(--gold); }
+    .tier-price.silver { color:var(--silver); }
+    .tier-price.bronze { color:var(--bronze); }
+    .tier-features { text-align:left; }
+    .tier-feat { font-size:.72rem; color:var(--t2); padding:.28rem 0; border-bottom:1px solid var(--border); line-height:1.5; }
+    .tier-feat:last-child { border:none; }
+    .tier-feat::before { content:'✦ '; color:var(--gold); font-size:.6rem; }
+    .tier-select-badge { display:inline-block; font-size:.6rem; font-weight:700; letter-spacing:.1em; text-transform:uppercase; padding:.3rem .7rem; border-radius:4px; margin-top:.9rem; background:var(--bg3); color:var(--t3); border:1px solid var(--border); transition:all .2s; }
+    .tier-card.active-gold   .tier-select-badge { background:var(--gold-bg); color:var(--gold); border-color:var(--gold-border); }
+    .tier-card.active-silver .tier-select-badge { background:rgba(168,184,196,.1); color:var(--silver); border-color:rgba(168,184,196,.3); }
+    .tier-card.active-bronze .tier-select-badge { background:rgba(192,120,72,.1); color:var(--bronze); border-color:rgba(192,120,72,.3); }
+
+    /* CELEB PICKER */
+    .celeb-picker { margin-bottom:2.5rem; }
+    .pick-search { width:100%; background:var(--bg2); border:1px solid var(--border); border-radius:var(--r-sm); color:var(--t1); font-family:var(--font-s); font-size:.82rem; padding:.65rem 1rem; outline:none; transition:border-color .2s; margin-bottom:1rem; }
+    .pick-search:focus { border-color:var(--gold-border); }
+    .pick-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(118px,1fr)); gap:.7rem; }
+    .pick-card { background:var(--bg2); border:1px solid var(--border); border-radius:var(--r-md); padding:1rem .8rem; display:flex; flex-direction:column; align-items:center; gap:.4rem; cursor:pointer; text-align:center; transition:border-color .2s,transform .2s; }
+    .pick-card:hover { border-color:rgba(255,255,255,.2); transform:translateY(-2px); }
+    .pick-card.selected { border-color:var(--gold-border); background:var(--gold-bg); }
+    .pick-av { font-size:1.8rem; }
+    .pick-name { font-family:var(--font-d); font-size:.82rem; font-weight:600; color:var(--t1); line-height:1.2; }
+    .pick-genre { font-size:.56rem; font-weight:600; letter-spacing:.08em; text-transform:uppercase; color:var(--t3); }
+    .pick-empty { grid-column:1/-1; text-align:center; padding:3rem; color:var(--t3); font-size:.85rem; }
+
+    /* FAN NAME */
+    .fan-name-wrap { margin-bottom:2.5rem; }
+    .f-lbl { font-size:.65rem; font-weight:700; letter-spacing:.1em; text-transform:uppercase; color:var(--t3); display:block; margin-bottom:.5rem; }
+    .f-inp { width:100%; background:var(--bg2); border:1px solid var(--border); border-radius:var(--r-sm); color:var(--t1); font-family:var(--font-s); font-size:.875rem; padding:.75rem 1rem; outline:none; transition:border-color .2s; }
+    .f-inp:focus { border-color:var(--gold-border); }
+
+    /* BUY BUTTON */
+    .buy-btn { width:100%; padding:1rem; border:none; border-radius:var(--r-sm); font-family:var(--font-s); font-size:.75rem; font-weight:700; letter-spacing:.14em; text-transform:uppercase; color:#000; background:var(--gold); transition:background .2s,transform .15s; }
+    .buy-btn:hover { background:var(--gold-l); transform:translateY(-2px); }
+
+    /* FAN CARD PREVIEW */
+    .preview-wrap { border-radius:var(--r-xl); overflow:hidden; position:relative; aspect-ratio:2.5/3.5; display:flex; flex-direction:column; }
+    .fc-gold   { background:linear-gradient(145deg,#1a1200 0%,#2d1f00 30%,#1a1200 60%,#0d0900 100%); border:1px solid rgba(201,168,76,.5); box-shadow:0 0 60px rgba(201,168,76,.18),inset 0 1px 0 rgba(201,168,76,.3); }
+    .fc-silver { background:linear-gradient(145deg,#0e1014 0%,#1a1e24 30%,#0e1014 60%,#080a0d 100%); border:1px solid rgba(168,184,196,.5); box-shadow:0 0 60px rgba(168,184,196,.1),inset 0 1px 0 rgba(168,184,196,.3); }
+    .fc-bronze { background:linear-gradient(145deg,#140a04 0%,#241408 30%,#140a04 60%,#0a0602 100%); border:1px solid rgba(192,120,72,.5); box-shadow:0 0 60px rgba(192,120,72,.14),inset 0 1px 0 rgba(192,120,72,.3); }
+    .fc-gold::before, .fc-silver::before, .fc-bronze::before { content:''; position:absolute; inset:0; z-index:1; background:linear-gradient(135deg,transparent 30%,rgba(255,255,255,.06) 50%,transparent 70%); animation:shimmer 3s ease-in-out infinite; }
+    @keyframes shimmer { 0%,100%{opacity:.4;transform:translateX(-20%)} 50%{opacity:1;transform:translateX(20%)} }
+    .fc-inner { position:relative; z-index:2; display:flex; flex-direction:column; height:100%; padding:1.6rem 1.4rem; }
+    .fc-head { display:flex; justify-content:space-between; align-items:flex-start; }
+    .fc-logo { font-family:var(--font-d); font-size:1.1rem; font-weight:600; letter-spacing:.04em; }
+    .fc-logo span { opacity:.6; }
+    .fc-badge { font-size:.55rem; font-weight:800; letter-spacing:.14em; text-transform:uppercase; padding:.28rem .65rem; border-radius:4px; }
+    .fc-badge.gold   { background:rgba(201,168,76,.2);  color:var(--gold);   border:1px solid var(--gold-border); }
+    .fc-badge.silver { background:rgba(168,184,196,.15);color:var(--silver); border:1px solid rgba(168,184,196,.3); }
+    .fc-badge.bronze { background:rgba(192,120,72,.15); color:var(--bronze); border:1px solid rgba(192,120,72,.3); }
+    .fc-body { flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:.5rem 0; }
+    .fc-avatar { font-size:4rem; margin-bottom:.5rem; }
+    .fc-celeb { font-family:var(--font-d); font-size:1.4rem; font-weight:600; line-height:1.2; text-align:center; }
+    .fc-celeb.gold   { color:var(--gold-l); }
+    .fc-celeb.silver { color:var(--silver); }
+    .fc-celeb.bronze { color:var(--bronze); }
+    .fc-foot { border-top:1px solid rgba(255,255,255,.08); padding-top:.9rem; }
+    .fc-fan-lbl { font-size:.56rem; font-weight:700; letter-spacing:.14em; text-transform:uppercase; color:rgba(255,255,255,.25); margin-bottom:.2rem; }
+    .fc-fan-name { font-family:var(--font-d); font-size:1rem; font-style:italic; color:rgba(255,255,255,.5); }
+    .fc-serial { font-size:.58rem; font-weight:600; letter-spacing:.1em; color:rgba(255,255,255,.2); margin-top:.5rem; }
+    .fc-placeholder { display:flex; flex-direction:column; align-items:center; justify-content:center; height:100%; min-height:320px; gap:1rem; padding:2rem; text-align:center; background:var(--bg2); border:1px solid var(--border); border-radius:var(--r-xl); }
+    .fc-ph-icon { font-size:3rem; opacity:.2; }
+    .fc-ph-text { font-size:.82rem; color:var(--t3); line-height:1.6; }
+
+    /* PREVIEW SUMMARY */
+    .preview-summary { background:var(--bg2); border:1px solid var(--border); border-radius:var(--r-lg); padding:1.4rem 1.5rem; margin-top:1rem; }
+    .ps-row { display:flex; justify-content:space-between; align-items:center; padding:.5rem 0; border-bottom:1px solid var(--border); }
+    .ps-row:last-child { border:none; }
+    .ps-lbl { font-size:.68rem; font-weight:600; letter-spacing:.08em; text-transform:uppercase; color:var(--t3); }
+    .ps-val { font-family:var(--font-d); font-size:.95rem; font-weight:600; color:var(--t1); }
+    .ps-price { font-family:var(--font-d); font-size:1.4rem; font-weight:700; color:var(--gold); }
+
+    /* STICKY BUY */
+    .col-preview { position:sticky; top:90px; display:flex; flex-direction:column; gap:.9rem; }
+
+    /* MODAL */
+    .overlay { position:fixed; inset:0; z-index:100; background:rgba(0,0,0,.9); backdrop-filter:blur(16px); display:flex; align-items:center; justify-content:center; padding:1.5rem; opacity:0; pointer-events:none; transition:opacity .3s; }
+    .overlay.open { opacity:1; pointer-events:all; }
+    .modal-box { background:var(--bg2); border:1px solid var(--border); border-radius:var(--r-xl); padding:3rem 2.5rem; width:100%; max-width:440px; text-align:center; position:relative; transform:translateY(20px); transition:transform .3s; }
+    .overlay.open .modal-box { transform:translateY(0); }
+    .modal-icon { font-size:3rem; margin-bottom:1rem; }
+    .modal-title { font-family:var(--font-d); font-size:2rem; font-weight:600; color:var(--t1); margin-bottom:.6rem; }
+    .modal-sub { font-size:.85rem; color:var(--t2); line-height:1.7; margin-bottom:2rem; }
+    .modal-btn { font-size:.72rem; font-weight:700; letter-spacing:.12em; text-transform:uppercase; color:#000; padding:.9rem 2.5rem; background:var(--gold); border:none; border-radius:var(--r-sm); cursor:pointer; transition:background .2s; }
+    .modal-btn:hover { background:var(--gold-l); }
+
+    /* RESPONSIVE */
+    @media(max-width:900px){ .page-wrap{grid-template-columns:1fr;} .col-preview{position:static;} }
+    @media(max-width:600px){ .tier-grid{grid-template-columns:1fr;} }
+    @media(prefers-reduced-motion:reduce){ *,*::before,*::after{animation:none!important;transition:none!important;} }
+  </style>
+</head>
+<body>
+
+<nav>
+  <a href="index.html" class="logo">Rez<span>oro</span></a>
+  <a href="index.html" class="nav-back">← Back to Site</a>
+</nav>
+
+<div class="page-hero">
+  <div class="ph-eyebrow">Fan Experience</div>
+  <h1>Your <em>Celebrity</em> Fan Card</h1>
+  <p>Choose your tier, pick your favourite star, and receive a premium collectible fan card — personalised with your name and digitally authenticated.</p>
+</div>
+
+<div class="page-wrap">
+  <div class="col-main">
+
+    <!-- STEP 1 -->
+    <div class="step-label">Step 1 — Choose Your Tier</div>
+    <div class="tier-grid">
+      <div class="tier-card" id="tier-gold" onclick="selectTier('gold')">
+        <div class="tier-icon">🥇</div>
+        <div class="tier-name">Gold</div>
+        <div class="tier-price gold">$5,000</div>
+        <div class="tier-features">
+          <div class="tier-feat">Top 10 A-list celebrities</div>
+          <div class="tier-feat">Holographic gold-foil card</div>
+          <div class="tier-feat">Digital & physical edition</div>
+          <div class="tier-feat">Numbered collector's certificate</div>
+          <div class="tier-feat">Priority concierge support</div>
+        </div>
+        <span class="tier-select-badge" id="badge-gold">Select Gold</span>
+      </div>
+      <div class="tier-card" id="tier-silver" onclick="selectTier('silver')">
+        <div class="tier-icon">🥈</div>
+        <div class="tier-name">Silver</div>
+        <div class="tier-price silver">$4,100</div>
+        <div class="tier-features">
+          <div class="tier-feat">10 international stars</div>
+          <div class="tier-feat">Chrome-finish silver card</div>
+          <div class="tier-feat">Digital & physical edition</div>
+          <div class="tier-feat">Numbered limited edition</div>
+          <div class="tier-feat">Standard support</div>
+        </div>
+        <span class="tier-select-badge" id="badge-silver">Select Silver</span>
+      </div>
+      <div class="tier-card" id="tier-bronze" onclick="selectTier('bronze')">
+        <div class="tier-icon">🥉</div>
+        <div class="tier-name">Bronze</div>
+        <div class="tier-price bronze">$2,500</div>
+        <div class="tier-features">
+          <div class="tier-feat">6 rising stars</div>
+          <div class="tier-feat">Copper-metallic finish card</div>
+          <div class="tier-feat">Digital edition</div>
+          <div class="tier-feat">Standard edition</div>
+          <div class="tier-feat">Email support</div>
+        </div>
+        <span class="tier-select-badge" id="badge-bronze">Select Bronze</span>
+      </div>
+    </div>
+
+    <!-- STEP 2 -->
+    <div class="celeb-picker">
+      <div class="step-label">Step 2 — Choose Your Celebrity</div>
+      <input type="text" class="pick-search" placeholder="Search celebrities..." oninput="filterCelebs(this.value)">
+      <div class="pick-grid" id="pickGrid">
+        <div class="pick-empty">Select a tier above to see available celebrities.</div>
+      </div>
+    </div>
+
+    <!-- STEP 3 -->
+    <div class="fan-name-wrap">
+      <div class="step-label">Step 3 — Personalise Your Card</div>
+      <label class="f-lbl">Your Name (appears on the card)</label>
+      <input type="text" class="f-inp" id="fanNameInput" placeholder="Enter your name..." oninput="updatePreview()" maxlength="40">
+      <label class="f-lbl" style="margin-top:1rem;">Your Email (we'll send the card here)</label>
+      <input type="email" class="f-inp" id="fanEmailInput" placeholder="you@example.com">
+      <label class="f-lbl" style="margin-top:1rem;">Your Country</label>
+      <input type="text" class="f-inp" id="fanCountryInput" placeholder="e.g. United States, United Kingdom…" maxlength="60">
+      <label class="f-lbl" style="margin-top:1rem;">Your Photo <span style="color:var(--t3);font-weight:400;">(optional — appears on card)</span></label>
+      <input type="file" class="f-inp" id="fanPhotoInput" accept="image/*" style="padding:.5rem .8rem;cursor:pointer;">
+    </div>
+
+    <button class="buy-btn" id="purchaseBtn" onclick="purchaseCard()">Purchase Fan Card →</button>
+  </div>
+
+  <!-- PREVIEW COLUMN -->
+  <div class="col-preview">
+    <div class="step-label" style="justify-content:center;">Live Preview</div>
+    <div id="fanCardWrap">
+      <div class="fc-placeholder">
+        <div class="fc-ph-icon">🎴</div>
+        <div class="fc-ph-text">Select a tier and celebrity<br>to preview your fan card.</div>
+      </div>
+    </div>
+    <div class="preview-summary" id="previewSummary" style="display:none">
+      <div class="ps-row"><span class="ps-lbl">Celebrity</span><span class="ps-val" id="sum-celeb">—</span></div>
+      <div class="ps-row"><span class="ps-lbl">Tier</span><span class="ps-val" id="sum-tier">—</span></div>
+      <div class="ps-row"><span class="ps-lbl">Fan Name</span><span class="ps-val" id="sum-fan">—</span></div>
+      <div class="ps-row"><span class="ps-lbl">Total</span><span class="ps-price" id="sum-price">—</span></div>
+    </div>
+    <button class="buy-btn" onclick="purchaseCard()">Purchase Fan Card →</button>
+  </div>
+</div>
+
+<!-- SUCCESS MODAL -->
+<div class="overlay" id="successOverlay" onclick="closeSuccess(event)">
+  <div class="modal-box">
+    <div class="modal-icon">🎉</div>
+    <div class="modal-title">Fan Card Sent!</div>
+    <p class="modal-sub">Your <strong id="suc-tier"></strong> fan card featuring <strong id="suc-celeb"></strong> has been generated and emailed to <strong id="suc-email"></strong>.<br><br>Reference: <strong id="suc-ref" style="color:var(--gold);letter-spacing:.05em;"></strong></p>
+    <button class="modal-btn" onclick="closeSuccess()">Done</button>
+  </div>
+</div>
+
+<script>
+const DEFAULT_CELEBS = [
+  {id:'dicaprio', name:'Leonardo DiCaprio', tier:'gold',   emoji:'🎬', genre:'Film · Drama'},
+  {id:'zendaya',  name:'Zendaya',           tier:'gold',   emoji:'⭐', genre:'Film · Fashion'},
+  {id:'cruise',   name:'Tom Cruise',        tier:'gold',   emoji:'🏆', genre:'Film · Action'},
+  {id:'johnson',  name:'Dwayne Johnson',    tier:'gold',   emoji:'💪', genre:'Film · Action'},
+  {id:'johansson',name:'Scarlett Johansson',tier:'gold',   emoji:'🎭', genre:'Film · Action'},
+  {id:'rdj',      name:'Robert Downey Jr',  tier:'gold',   emoji:'🦸', genre:'Film · Marvel'},
+  {id:'pitt',     name:'Brad Pitt',         tier:'gold',   emoji:'🎬', genre:'Film · Drama'},
+  {id:'wsmith',   name:'Will Smith',        tier:'gold',   emoji:'🎤', genre:'Film · Comedy'},
+  {id:'washington',name:'Denzel Washington',tier:'gold',   emoji:'🎬', genre:'Film · Drama'},
+  {id:'freeman',  name:'Morgan Freeman',    tier:'gold',   emoji:'🎙', genre:'Film · Drama'},
+  {id:'depp',     name:'Johnny Depp',       tier:'silver', emoji:'🎩', genre:'Film · Drama'},
+  {id:'momoa',    name:'Jason Momoa',       tier:'silver', emoji:'🌊', genre:'Film · Action'},
+  {id:'reynolds', name:'Ryan Reynolds',     tier:'silver', emoji:'😄', genre:'Film · Comedy'},
+  {id:'hemsworth',name:'Chris Hemsworth',   tier:'silver', emoji:'⚡', genre:'Film · Action'},
+  {id:'robbie',   name:'Margot Robbie',     tier:'silver', emoji:'✨', genre:'Film · Drama'},
+  {id:'evans',    name:'Chris Evans',       tier:'silver', emoji:'🛡', genre:'Film · Action'},
+  {id:'cavill',   name:'Henry Cavill',      tier:'silver', emoji:'🦸', genre:'Film · Action'},
+  {id:'theron',   name:'Charlize Theron',   tier:'silver', emoji:'👑', genre:'Film · Action'},
+  {id:'costner',  name:'Kevin Costner',     tier:'silver', emoji:'🤠', genre:'Film · Drama'},
+  {id:'yaman',    name:'Can Yaman',         tier:'silver', emoji:'🌟', genre:'TV · Drama'},
+  {id:'murphy',   name:'Cillian Murphy',    tier:'bronze', emoji:'🎬', genre:'Film · Drama'},
+  {id:'pascal',   name:'Pedro Pascal',      tier:'bronze', emoji:'🎭', genre:'Film · Drama'},
+  {id:'mescal',   name:'Paul Mescal',       tier:'bronze', emoji:'🎭', genre:'Film · Drama'},
+  {id:'elba',     name:'Idris Elba',        tier:'bronze', emoji:'🎬', genre:'Film · Drama'},
+  {id:'hardy',    name:'Tom Hardy',         tier:'bronze', emoji:'💪', genre:'Film · Action'},
+  {id:'jordan',   name:'Michael B Jordan',  tier:'bronze', emoji:'🥊', genre:'Film · Drama'},
+];
+const TIER_PRICES = {gold:'$5,000', silver:'$4,100', bronze:'$2,500'};
+let currentTier=null, currentCeleb=null, allCelebs=[], searchQ='';
+
+function loadAllCelebs(){
+  allCelebs = DEFAULT_CELEBS.map(c=>({...c}));
+  try {
+    const edits = JSON.parse(localStorage.getItem('rezoro_celeb_data')||'[]');
+    edits.forEach(ov => {
+      const idx = allCelebs.findIndex(c=>c.id===ov.id);
+      if(idx>-1){ if(ov.name) allCelebs[idx].name=ov.name; if(ov.tier) allCelebs[idx].tier=ov.tier; }
+    });
+  } catch(e){}
+  try {
+    const custom = JSON.parse(localStorage.getItem('rezoro_fan_celebs')||'[]');
+    custom.filter(c=>c.visible!==false).forEach(c=>{
+      allCelebs.push({id:c.id||'custom_'+c.name.replace(/\s/g,'_'), name:c.name, tier:c.tier, emoji:c.emoji||'🎬', genre:c.knownFor||''});
+    });
+  } catch(e){}
+}
+
+function selectTier(tier){
+  currentTier=tier; currentCeleb=null;
+  ['gold','silver','bronze'].forEach(t=>{
+    const card=document.getElementById('tier-'+t), badge=document.getElementById('badge-'+t);
+    if(t===tier){ card.classList.add('active-'+t); badge.textContent='✓ Selected'; }
+    else { card.classList.remove('active-gold','active-silver','active-bronze'); badge.textContent='Select '+t.charAt(0).toUpperCase()+t.slice(1); }
+  });
+  renderPickGrid(); updatePreview();
+}
+
+function renderPickGrid(){
+  const grid=document.getElementById('pickGrid');
+  const q=searchQ.toLowerCase();
+  const filtered=allCelebs.filter(c=>c.tier===currentTier&&(q===''||c.name.toLowerCase().includes(q)));
+  if(!currentTier){ grid.innerHTML='<div class="pick-empty">Select a tier above to see available celebrities.</div>'; return; }
+  if(!filtered.length){ grid.innerHTML='<div class="pick-empty">No celebrities found.</div>'; return; }
+  grid.innerHTML=filtered.map(c=>`
+    <div class="pick-card ${currentCeleb?.id===c.id?'selected':''}" onclick="selectCeleb('${c.id}')">
+      <div class="pick-av">${c.emoji}</div>
+      <div class="pick-name">${c.name}</div>
+      <div class="pick-genre">${c.genre}</div>
+    </div>`).join('');
+}
+
+function filterCelebs(q){ searchQ=q; renderPickGrid(); }
+
+function selectCeleb(id){ currentCeleb=allCelebs.find(c=>c.id===id)||null; renderPickGrid(); updatePreview(); }
+
+function updatePreview(){
+  const wrap=document.getElementById('fanCardWrap');
+  const summary=document.getElementById('previewSummary');
+  const fanName=document.getElementById('fanNameInput').value.trim()||'Your Name';
+  if(!currentTier||!currentCeleb){
+    wrap.innerHTML='<div class="fc-placeholder"><div class="fc-ph-icon">🎴</div><div class="fc-ph-text">Select a tier and celebrity<br>to preview your fan card.</div></div>';
+    summary.style.display='none'; return;
+  }
+  const t=currentTier, c=currentCeleb;
+  const serial=Math.floor(Math.random()*9000+1000);
+  wrap.innerHTML=`
+    <div class="preview-wrap fc-${t}">
+      <div class="fc-inner">
+        <div class="fc-head">
+          <div class="fc-logo">Rez<span>oro</span></div>
+          <div class="fc-badge ${t}">${t.charAt(0).toUpperCase()+t.slice(1)} Tier</div>
+        </div>
+        <div class="fc-body">
+          <div class="fc-avatar">${c.emoji}</div>
+          <div class="fc-celeb ${t}">${c.name}</div>
+        </div>
+        <div class="fc-foot">
+          <div class="fc-fan-lbl">Collector</div>
+          <div class="fc-fan-name">${fanName}</div>
+          <div class="fc-serial">#RZ-${serial} · Limited Edition</div>
+        </div>
+      </div>
+    </div>`;
+  summary.style.display='block';
+  document.getElementById('sum-celeb').textContent=c.name;
+  document.getElementById('sum-tier').textContent=t.charAt(0).toUpperCase()+t.slice(1);
+  document.getElementById('sum-fan').textContent=fanName!=='Your Name'?fanName:'—';
+  document.getElementById('sum-price').textContent=TIER_PRICES[t];
+}
+
+async function purchaseCard(){
+  if(!currentTier){ showFanToast('Please select a tier first.','warn'); return; }
+  if(!currentCeleb){ showFanToast('Please choose a celebrity.','warn'); return; }
+  const fanName = document.getElementById('fanNameInput').value.trim();
+  const email   = document.getElementById('fanEmailInput').value.trim();
+  const country = document.getElementById('fanCountryInput').value.trim();
+  if(!fanName){ showFanToast('Please enter your name for the card.','warn'); return; }
+  if(!email || !email.includes('@')){ showFanToast('Please enter a valid email address.','warn'); return; }
+  if(!country){ showFanToast('Please enter your country.','warn'); return; }
+
+  const btn = document.getElementById('purchaseBtn');
+  btn.disabled = true;
+  btn.textContent = 'Generating your card…';
+
+  try {
+    const fd = new FormData();
+    fd.append('fanName',    fanName);
+    fd.append('country',    country);
+    fd.append('celebName',  currentCeleb.name);
+    fd.append('celebEmoji', currentCeleb.emoji || '🎬');
+    fd.append('tier',       currentTier);
+    fd.append('email',      email);
+    const photo = document.getElementById('fanPhotoInput').files[0];
+    if(photo) fd.append('photo', photo);
+
+    const res  = await fetch('http://localhost:3001/api/fancard', { method:'POST', body:fd });
+    const data = await res.json();
+
+    if(!res.ok) throw new Error(data.error || 'Server error');
+
+    // Show success modal
+    document.getElementById('suc-tier').textContent  = currentTier.charAt(0).toUpperCase()+currentTier.slice(1);
+    document.getElementById('suc-celeb').textContent = currentCeleb.name;
+    document.getElementById('suc-email').textContent = email;
+    document.getElementById('suc-ref').textContent   = data.ref;
+    document.getElementById('successOverlay').classList.add('open');
+    document.body.style.overflow='hidden';
+
+  } catch(err) {
+    showFanToast('Something went wrong: ' + err.message, 'error');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Purchase Fan Card →';
+  }
+}
+
+function closeSuccess(e){
+  if(e&&e.target!==document.getElementById('successOverlay')) return;
+  document.getElementById('successOverlay').classList.remove('open');
+  document.body.style.overflow='';
+}
+
+function showFanToast(msg, type='info'){
+  let t = document.getElementById('fan-toast');
+  if(!t){
+    t = document.createElement('div'); t.id='fan-toast';
+    t.style.cssText='position:fixed;bottom:2rem;left:50%;transform:translateX(-50%) translateY(20px);z-index:200;padding:.9rem 1.6rem;border-radius:10px;font-size:.82rem;font-weight:600;opacity:0;transition:opacity .3s,transform .3s;pointer-events:none;white-space:nowrap;';
+    document.body.appendChild(t);
+  }
+  t.style.background = type==='error'?'rgba(248,113,113,.15)':type==='warn'?'rgba(201,168,76,.15)':'rgba(62,207,142,.12)';
+  t.style.border     = type==='error'?'1px solid rgba(248,113,113,.4)':type==='warn'?'1px solid rgba(201,168,76,.4)':'1px solid rgba(62,207,142,.3)';
+  t.style.color      = type==='error'?'#f87171':type==='warn'?'#C9A84C':'#3ecf8e';
+  t.textContent = msg;
+  requestAnimationFrame(()=>{ t.style.opacity='1'; t.style.transform='translateX(-50%) translateY(0)'; });
+  clearTimeout(t._t);
+  t._t = setTimeout(()=>{ t.style.opacity='0'; t.style.transform='translateX(-50%) translateY(20px)'; }, 4000);
+}
+
+loadAllCelebs();
+window.addEventListener('storage', e=>{
+  if(e.key==='rezoro_celeb_data'||e.key==='rezoro_fan_celebs'){
+    loadAllCelebs(); if(currentTier) renderPickGrid(); updatePreview();
+  }
+});
+document.addEventListener('keydown', e=>{ if(e.key==='Escape') closeSuccess(); });
+</script>
+</body>
+</html>

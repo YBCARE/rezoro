@@ -1,0 +1,28 @@
+# Node
+server/node_modules/
+server/npm-debug.log*
+server/*.log
+
+# Environment / secrets
+.env
+.env.local
+.env.*.local
+server/.env
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Editor
+.vscode/
+.idea/
+*.suo
+*.user
+
+# Build artefacts
+dist/
+build/
+
+# Claude internal
+.claude/

@@ -1,0 +1,1009 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Rezoro — Admin Portal</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Montserrat:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --black:  #000000;
+      --bg:     #07070A;
+      --bg2:    #0E0E13;
+      --bg3:    #141419;
+      --bg4:    #1A1A20;
+      --gold:   #C9A84C;
+      --gold-l: #E4C870;
+      --gold-d: rgba(201,168,76,.12);
+      --gold-border: rgba(201,168,76,.22);
+      --green:  #3ecf8e;
+      --greenD: rgba(62,207,142,.12);
+      --red:    #f87171;
+      --redD:   rgba(248,113,113,.12);
+      --blue:   #60a5fa;
+      --blueD:  rgba(96,165,250,.12);
+      --purple: #a78bfa;
+      --purpleD:rgba(167,139,250,.12);
+      --t1: #F0ECE4;
+      --t2: #9A9490;
+      --t3: #5C5852;
+      --border: rgba(255,255,255,.07);
+      --border2: rgba(255,255,255,.13);
+      --font-d: 'Cormorant', Georgia, serif;
+      --font-s: 'Montserrat', system-ui, sans-serif;
+      --sw: 240px;
+      --r-xs:6px; --r-sm:10px; --r-md:14px; --r-lg:20px; --r-xl:28px;
+    }
+    *, *::before, *::after { box-sizing:border-box; margin:0; padding:0; }
+    body { background:var(--bg); color:var(--t1); font-family:var(--font-s); font-size:14px; line-height:1.55; -webkit-font-smoothing:antialiased; display:flex; min-height:100vh; }
+    a { color:inherit; text-decoration:none; }
+    button { cursor:pointer; font-family:var(--font-s); }
+
+    /* ─── SIDEBAR ───────────────────────── */
+    .sidebar {
+      width:var(--sw); flex-shrink:0; background:var(--black);
+      border-right:1px solid var(--border);
+      display:flex; flex-direction:column;
+      position:fixed; top:0; left:0; bottom:0; z-index:40;
+      overflow-y:auto;
+    }
+    .sb-logo {
+      padding:1.5rem 1.4rem 1.2rem;
+      border-bottom:1px solid var(--border);
+      display:flex; align-items:center; justify-content:space-between;
+    }
+    .sb-logo a { font-family:var(--font-d); font-size:1.5rem; font-weight:600; letter-spacing:.04em; color:var(--t1); }
+    .sb-logo a span { color:var(--gold); }
+    .sb-tag { font-size:.54rem; font-weight:700; letter-spacing:.12em; text-transform:uppercase; color:var(--t3); background:var(--bg3); padding:.2rem .5rem; border-radius:3px; border:1px solid var(--border); }
+    .sb-nav { padding:1rem 0; flex:1; }
+    .sb-group { margin-bottom:1.2rem; }
+    .sb-group-label { font-size:.56rem; font-weight:700; letter-spacing:.2em; text-transform:uppercase; color:var(--t3); padding:.5rem 1.4rem; display:block; }
+    .sb-item {
+      display:flex; align-items:center; gap:.65rem;
+      padding:.65rem 1.4rem; font-size:.75rem; font-weight:500;
+      color:var(--t3); cursor:pointer;
+      transition:color .2s, background .2s; border-radius:0;
+      position:relative;
+    }
+    .sb-item:hover { color:var(--t1); background:rgba(255,255,255,.04); }
+    .sb-item.active { color:var(--t1); background:rgba(255,255,255,.05); }
+    .sb-item.active::before { content:''; position:absolute; left:0; top:0; bottom:0; width:2px; background:var(--gold); }
+    .sb-icon { font-size:.9rem; width:18px; text-align:center; }
+    .sb-badge {
+      margin-left:auto; font-size:.55rem; font-weight:700;
+      padding:.18rem .5rem; border-radius:3px;
+    }
+    .sb-badge-gold { background:var(--gold-d); color:var(--gold); }
+    .sb-badge-red  { background:var(--redD);   color:var(--red); }
+    .sb-footer { padding:1rem 1.4rem; border-top:1px solid var(--border); }
+    .sb-user { display:flex; align-items:center; gap:.65rem; }
+    .u-av { width:30px; height:30px; border-radius:50%; background:linear-gradient(135deg,var(--gold),var(--gold-d)); color:#000; font-size:.65rem; font-weight:700; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+    .u-name { font-size:.72rem; font-weight:600; color:var(--t1); }
+    .u-role { font-size:.62rem; color:var(--t3); }
+
+    /* ─── MAIN ──────────────────────────── */
+    .main { margin-left:var(--sw); flex:1; display:flex; flex-direction:column; min-height:100vh; }
+
+    /* TOPBAR */
+    .topbar {
+      position:sticky; top:0; z-index:30;
+      background:rgba(7,7,10,.94); backdrop-filter:blur(20px);
+      border-bottom:1px solid var(--border);
+      padding:.9rem 2rem; display:flex; align-items:center; gap:1rem;
+    }
+    .tb-title { font-family:var(--font-d); font-size:1.3rem; font-weight:600; color:var(--t1); }
+    .tb-crumb { font-size:.68rem; color:var(--t3); margin-top:.1rem; }
+    .tb-space { flex:1; }
+    .tb-search {
+      display:flex; align-items:center; gap:.6rem;
+      background:var(--bg2); border:1px solid var(--border);
+      border-radius:var(--r-sm); padding:.5rem .9rem;
+    }
+    .tb-search input { background:none; border:none; color:var(--t1); font-family:var(--font-s); font-size:.78rem; outline:none; width:180px; }
+    .tb-search input::placeholder { color:var(--t3); }
+    .tb-btn { background:var(--bg2); border:1px solid var(--border); color:var(--t2); padding:.45rem .7rem; border-radius:var(--r-xs); font-size:.8rem; position:relative; transition:color .2s,border-color .2s; }
+    .tb-btn:hover { color:var(--t1); }
+    .tb-dot { position:absolute; top:4px; right:4px; width:6px; height:6px; border-radius:50%; background:var(--gold); border:1px solid var(--bg2); }
+
+    /* ─── PAGES ─────────────────────────── */
+    .page { display:none; padding:2rem; flex:1; }
+    .page.active { display:block; }
+    .pg-header { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:1.8rem; gap:1rem; flex-wrap:wrap; }
+    .pg-title { font-family:var(--font-d); font-size:1.6rem; font-weight:600; color:var(--t1); }
+    .pg-sub { font-size:.75rem; color:var(--t3); margin-top:.25rem; }
+    .pg-actions { display:flex; gap:.6rem; flex-wrap:wrap; }
+    .btn-sm { font-size:.66rem; font-weight:600; letter-spacing:.1em; text-transform:uppercase; padding:.5rem 1.1rem; border-radius:var(--r-xs); border:1px solid var(--border); color:var(--t2); background:var(--bg2); transition:color .2s,border-color .2s; }
+    .btn-sm:hover { color:var(--t1); border-color:var(--border2); }
+    .btn-sm.btn-gold { background:var(--gold); color:#000; border-color:var(--gold); }
+    .btn-sm.btn-gold:hover { background:var(--gold-l); border-color:var(--gold-l); }
+
+    /* ─── KPI GRID ──────────────────────── */
+    .kpi-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:.9rem; margin-bottom:1.8rem; }
+    @media(max-width:1100px){ .kpi-grid{grid-template-columns:repeat(2,1fr);} }
+    .kpi {
+      background:var(--bg2); border:1px solid var(--border);
+      border-radius:var(--r-lg); padding:1.4rem 1.3rem;
+      position:relative; overflow:hidden;
+      transition:border-color .2s;
+    }
+    .kpi:hover { border-color:var(--border2); }
+    .kpi::after { content:''; position:absolute; top:0; left:0; right:0; height:2px; background:var(--kpi-color,var(--gold)); opacity:.6; }
+    .kpi-lbl { font-size:.62rem; font-weight:600; letter-spacing:.1em; text-transform:uppercase; color:var(--t3); display:flex; justify-content:space-between; align-items:center; margin-bottom:.7rem; }
+    .kpi-ico { width:28px; height:28px; border-radius:var(--r-xs); background:var(--kpi-bg,var(--gold-d)); display:flex; align-items:center; justify-content:center; font-size:.85rem; }
+    .kpi-val { font-family:var(--font-d); font-size:1.8rem; font-weight:700; color:var(--t1); line-height:1; margin-bottom:.4rem; }
+    .kpi-d { font-size:.68rem; font-weight:700; display:flex; align-items:center; gap:.2rem; }
+    .kpi-d.up { color:var(--green); }
+    .kpi-d.dn { color:var(--red); }
+    .kpi-d .period { font-size:.62rem; color:var(--t3); font-weight:400; margin-left:.2rem; }
+
+    /* ─── TABLES ────────────────────────── */
+    .tbl-card { background:var(--bg2); border:1px solid var(--border); border-radius:var(--r-lg); overflow:hidden; margin-bottom:1.5rem; }
+    .tbl-header { padding:1.1rem 1.4rem; border-bottom:1px solid var(--border); display:flex; align-items:center; justify-content:space-between; gap:1rem; flex-wrap:wrap; }
+    .tbl-title { font-size:.78rem; font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:var(--t2); }
+    .tbl-meta  { font-size:.7rem; color:var(--t3); }
+    table { width:100%; border-collapse:collapse; }
+    th { font-size:.6rem; font-weight:700; letter-spacing:.1em; text-transform:uppercase; color:var(--t3); padding:.8rem 1rem; text-align:left; border-bottom:1px solid var(--border); }
+    td { padding:.85rem 1rem; border-bottom:1px solid rgba(255,255,255,.035); vertical-align:middle; }
+    tr:last-child td { border:none; }
+    tr:hover td { background:rgba(255,255,255,.018); }
+    .td-row { display:flex; align-items:center; gap:.65rem; }
+    .td-av { width:32px; height:32px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:.85rem; flex-shrink:0; background:var(--bg3); border:1px solid var(--border); }
+    .td-p { font-size:.78rem; font-weight:600; color:var(--t1); }
+    .td-s { font-size:.66rem; color:var(--t3); margin-top:.08rem; }
+    .td-amt { font-size:.8rem; font-weight:700; color:var(--gold); }
+    .td-acts { display:flex; gap:.4rem; }
+    .td-btn { font-size:.62rem; font-weight:600; letter-spacing:.06em; text-transform:uppercase; padding:.32rem .7rem; border-radius:var(--r-xs); border:1px solid var(--border); color:var(--t2); background:transparent; transition:color .2s,border-color .2s; }
+    .td-btn:hover { color:var(--t1); border-color:var(--border2); }
+    .td-btn.danger { color:var(--red); }
+    .td-btn.danger:hover { border-color:rgba(248,113,113,.35); }
+    .td-btn.gold { color:var(--gold); border-color:var(--gold-border); }
+    .td-btn.gold:hover { background:var(--gold-d); }
+
+    /* BADGES */
+    .badge { font-size:.6rem; font-weight:700; letter-spacing:.08em; text-transform:uppercase; padding:.28rem .65rem; border-radius:4px; white-space:nowrap; }
+    .b-gold   { background:var(--gold-d);  color:var(--gold);   border:1px solid var(--gold-border); }
+    .b-green  { background:var(--greenD);  color:var(--green);  border:1px solid rgba(62,207,142,.25); }
+    .b-red    { background:var(--redD);    color:var(--red);    border:1px solid rgba(248,113,113,.25); }
+    .b-blue   { background:var(--blueD);   color:var(--blue);   border:1px solid rgba(96,165,250,.25); }
+    .b-purple { background:var(--purpleD); color:var(--purple); border:1px solid rgba(167,139,250,.25); }
+    .b-silver { background:rgba(168,184,196,.12); color:#A8B8C4; border:1px solid rgba(168,184,196,.28); }
+    .b-bronze { background:rgba(192,120,72,.12);  color:#C07848; border:1px solid rgba(192,120,72,.28); }
+
+    /* CHART AREA */
+    .chart-card { background:var(--bg2); border:1px solid var(--border); border-radius:var(--r-lg); padding:1.4rem; margin-bottom:1.5rem; }
+    .chart-row { display:grid; grid-template-columns:2fr 1fr; gap:1rem; }
+    @media(max-width:900px){ .chart-row{grid-template-columns:1fr;} }
+
+    /* ACTIVITY */
+    .act-list { display:flex; flex-direction:column; gap:.85rem; padding:1rem 1.4rem; }
+    .act-item { display:flex; gap:.85rem; align-items:flex-start; }
+    .act-dot { width:28px; height:28px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:.7rem; flex-shrink:0; }
+    .act-title { font-size:.75rem; color:var(--t2); line-height:1.5; }
+    .act-title strong { color:var(--t1); }
+    .act-time { font-size:.64rem; color:var(--t3); margin-top:.18rem; }
+
+    /* FORM ELEMENTS */
+    .f-grp { margin-bottom:1rem; }
+    .f-lbl { font-size:.62rem; font-weight:700; letter-spacing:.1em; text-transform:uppercase; color:var(--t3); display:block; margin-bottom:.45rem; }
+    .f-in {
+      width:100%; background:var(--bg3); border:1px solid var(--border);
+      border-radius:var(--r-sm); color:var(--t1); font-family:var(--font-s);
+      font-size:.82rem; padding:.65rem .9rem; outline:none; transition:border-color .2s;
+    }
+    .f-in:focus { border-color:var(--gold-border); }
+    .f-in-sm { font-size:.76rem; padding:.45rem .7rem; }
+    .f-sel { width:100%; background:var(--bg3); border:1px solid var(--border); border-radius:var(--r-sm); color:var(--t1); font-family:var(--font-s); font-size:.82rem; padding:.65rem .9rem; outline:none; cursor:pointer; }
+    .f-sel-sm { font-size:.74rem; padding:.42rem .6rem; }
+    .f-row { display:grid; grid-template-columns:1fr 1fr; gap:.9rem; }
+    .f-sub { width:100%; padding:.85rem; border:none; border-radius:var(--r-sm); background:var(--gold); color:#000; font-family:var(--font-s); font-size:.7rem; font-weight:700; letter-spacing:.12em; text-transform:uppercase; cursor:pointer; transition:background .2s; margin-top:.5rem; }
+    .f-sub:hover { background:var(--gold-l); }
+    .f-ta { resize:vertical; min-height:80px; font-family:var(--font-s); }
+
+    /* OVERLAY + MODALS */
+    .overlay { position:fixed; inset:0; z-index:60; background:rgba(0,0,0,.86); backdrop-filter:blur(12px); display:flex; align-items:center; justify-content:center; padding:1.5rem; opacity:0; pointer-events:none; transition:opacity .25s; overflow-y:auto; }
+    .overlay.open { opacity:1; pointer-events:all; }
+    .modal { background:var(--bg2); border:1px solid var(--border); border-radius:var(--r-xl); padding:2.2rem; width:100%; max-width:560px; position:relative; transform:translateY(16px); transition:transform .25s; }
+    .overlay.open .modal { transform:translateY(0); }
+    .m-close { position:absolute; top:1.1rem; right:1.1rem; background:var(--bg3); border:1px solid var(--border); color:var(--t2); width:28px; height:28px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:.7rem; cursor:pointer; transition:color .2s; }
+    .m-close:hover { color:var(--t1); }
+    .m-title { font-family:var(--font-d); font-size:1.5rem; font-weight:600; color:var(--t1); margin-bottom:.4rem; }
+    .m-sub { font-size:.78rem; color:var(--t2); margin-bottom:1.5rem; line-height:1.6; }
+    .confirm-box { max-width:380px; text-align:center; }
+    .confirm-btns { display:flex; gap:.75rem; margin-top:1.4rem; }
+    .confirm-cancel { flex:1; padding:.7rem; border:1px solid var(--border); border-radius:var(--r-sm); background:transparent; color:var(--t2); font-size:.7rem; font-weight:600; letter-spacing:.08em; text-transform:uppercase; cursor:pointer; transition:color .2s,border-color .2s; }
+    .confirm-cancel:hover { color:var(--t1); border-color:var(--border2); }
+    .confirm-delete { flex:1; padding:.7rem; border:1px solid rgba(248,113,113,.35); border-radius:var(--r-sm); background:var(--redD); color:var(--red); font-size:.7rem; font-weight:700; letter-spacing:.08em; text-transform:uppercase; cursor:pointer; transition:background .2s; }
+    .confirm-delete:hover { background:rgba(248,113,113,.2); }
+
+    /* TOAST */
+    .toast { position:fixed; bottom:1.8rem; right:1.8rem; z-index:200; background:var(--bg2); border:1px solid var(--gold-border); color:var(--t1); padding:.85rem 1.3rem; border-radius:var(--r-md); font-size:.76rem; font-weight:500; opacity:0; transform:translateY(10px); transition:opacity .3s,transform .3s; pointer-events:none; max-width:300px; line-height:1.5; }
+    .toast.show { opacity:1; transform:translateY(0); }
+    .toast.error { border-color:rgba(248,113,113,.4); }
+
+    /* CELEBRITY EDITOR */
+    .ce-table-wrap { overflow-x:auto; }
+    .ce-table th { white-space:nowrap; }
+    .ce-input-wrap { display:flex; gap:.5rem; align-items:center; min-width:160px; }
+    .ce-input-wrap .f-in-sm { flex:1; min-width:0; }
+    .trailer-input { min-width:220px; }
+    .save-row-btn { white-space:nowrap; font-size:.62rem; font-weight:700; letter-spacing:.08em; text-transform:uppercase; padding:.38rem .9rem; border-radius:var(--r-xs); border:1px solid var(--gold-border); color:var(--gold); background:var(--gold-d); cursor:pointer; transition:background .2s; }
+    .save-row-btn:hover { background:rgba(201,168,76,.18); }
+
+    /* MOBILE */
+    @media(max-width:768px){
+      .sidebar { transform:translateX(-100%); transition:transform .3s; }
+      .sidebar.open { transform:translateX(0); }
+      .main { margin-left:0; }
+      .kpi-grid { grid-template-columns:1fr 1fr; }
+    }
+    .mob-fab { display:none; position:fixed; bottom:1.5rem; left:1.5rem; z-index:50; background:var(--gold); color:#000; border:none; width:44px; height:44px; border-radius:50%; font-size:1.1rem; }
+    @media(max-width:768px){ .mob-fab{display:flex;align-items:center;justify-content:center;} }
+    .sb-overlay { position:fixed; inset:0; z-index:35; background:rgba(0,0,0,.6); opacity:0; pointer-events:none; transition:opacity .3s; }
+    .sb-overlay.on { opacity:1; pointer-events:all; }
+  </style>
+</head>
+<body>
+
+<div class="sb-overlay" id="sbOverlay" onclick="toggleSB(false)"></div>
+
+<!-- ══ SIDEBAR ══════════════════════════════════════════ -->
+<aside class="sidebar" id="sidebar">
+  <div class="sb-logo">
+    <a href="index.html">Rez<span>oro</span></a>
+    <span class="sb-tag">Admin</span>
+  </div>
+  <nav class="sb-nav">
+    <div class="sb-group">
+      <span class="sb-group-label">Overview</span>
+      <a class="sb-item active" onclick="nav('dashboard',this)"><span class="sb-icon">▦</span> Dashboard</a>
+      <a class="sb-item" onclick="nav('analytics',this)"><span class="sb-icon">◈</span> Analytics</a>
+    </div>
+    <div class="sb-group">
+      <span class="sb-group-label">Operations</span>
+      <a class="sb-item" onclick="nav('bookings',this)"><span class="sb-icon">📋</span> Bookings <span class="sb-badge sb-badge-gold">12</span></a>
+      <a class="sb-item" onclick="nav('inquiries',this)"><span class="sb-icon">✉</span> Inquiries <span class="sb-badge sb-badge-red">5</span></a>
+      <a class="sb-item" onclick="nav('contracts',this)"><span class="sb-icon">📄</span> Contracts</a>
+      <a class="sb-item" onclick="nav('payments',this)"><span class="sb-icon">💳</span> Payments</a>
+    </div>
+    <div class="sb-group">
+      <span class="sb-group-label">Talent</span>
+      <a class="sb-item" onclick="nav('celebrities',this)"><span class="sb-icon">⭐</span> Celebrities</a>
+      <a class="sb-item" onclick="nav('celeb-editor',this)"><span class="sb-icon">✏</span> Celebrity Editor <span class="sb-badge sb-badge-gold">SYNC</span></a>
+      <a class="sb-item" onclick="nav('fancards',this)"><span class="sb-icon">🎴</span> Fan Cards</a>
+      <a class="sb-item" onclick="nav('categories',this)"><span class="sb-icon">🏷</span> Categories</a>
+    </div>
+    <div class="sb-group">
+      <span class="sb-group-label">Management</span>
+      <a class="sb-item" onclick="nav('clients',this)"><span class="sb-icon">👥</span> Clients</a>
+      <a class="sb-item" onclick="nav('agents',this)"><span class="sb-icon">🤝</span> Agents</a>
+      <a class="sb-item" onclick="nav('settings',this)"><span class="sb-icon">⚙</span> Settings</a>
+    </div>
+  </nav>
+  <div class="sb-footer">
+    <div class="sb-user">
+      <div class="u-av">AK</div>
+      <div><div class="u-name">Alex Kim</div><div class="u-role">Super Admin</div></div>
+    </div>
+  </div>
+</aside>
+
+<!-- ══ MAIN ══════════════════════════════════════════════ -->
+<div class="main">
+
+  <!-- TOPBAR -->
+  <header class="topbar">
+    <div>
+      <div class="tb-title" id="tbTitle">Dashboard</div>
+      <div class="tb-crumb">Rezoro › <span id="tbCrumb">Overview</span></div>
+    </div>
+    <div class="tb-space"></div>
+    <div class="tb-search">
+      <span style="color:var(--t3);font-size:.8rem;">🔍</span>
+      <input type="text" placeholder="Search anything…">
+    </div>
+    <div style="display:flex;gap:.5rem;align-items:center;">
+      <button class="tb-btn">🔔<span class="tb-dot"></span></button>
+      <button class="tb-btn">⚙</button>
+      <div class="u-av" style="cursor:pointer;width:32px;height:32px;font-size:.65rem;">AK</div>
+    </div>
+  </header>
+
+  <!-- ════ PAGE: DASHBOARD ════════════════════════════════ -->
+  <div class="page active" id="pg-dashboard">
+    <div class="pg-header">
+      <div><div class="pg-title">Dashboard</div><div class="pg-sub">Welcome back, Alex. Here's your performance overview.</div></div>
+      <div class="pg-actions">
+        <button class="btn-sm">Export Report</button>
+        <button class="btn-sm btn-gold" onclick="openAddCeleb()">+ Add Celebrity</button>
+      </div>
+    </div>
+
+    <div class="kpi-grid">
+      <div class="kpi" style="--kpi-color:var(--gold);--kpi-bg:var(--gold-d);">
+        <div class="kpi-lbl">Total Revenue <div class="kpi-ico">💰</div></div>
+        <div class="kpi-val">$4.2M</div>
+        <div class="kpi-d up">↑ 18.4% <span class="period">vs last month</span></div>
+      </div>
+      <div class="kpi" style="--kpi-color:var(--green);--kpi-bg:var(--greenD);">
+        <div class="kpi-lbl">Active Bookings <div class="kpi-ico">📋</div></div>
+        <div class="kpi-val">12</div>
+        <div class="kpi-d up">↑ 3 <span class="period">this week</span></div>
+      </div>
+      <div class="kpi" style="--kpi-color:var(--blue);--kpi-bg:var(--blueD);">
+        <div class="kpi-lbl">Celebrities <div class="kpi-ico">⭐</div></div>
+        <div class="kpi-val">26</div>
+        <div class="kpi-d up">↑ 2 <span class="period">added</span></div>
+      </div>
+      <div class="kpi" style="--kpi-color:var(--purple);--kpi-bg:var(--purpleD);">
+        <div class="kpi-lbl">Fan Cards Sold <div class="kpi-ico">🎴</div></div>
+        <div class="kpi-val">347</div>
+        <div class="kpi-d up">↑ 42% <span class="period">this month</span></div>
+      </div>
+    </div>
+
+    <div class="chart-row">
+      <div class="tbl-card">
+        <div class="tbl-header">
+          <div class="tbl-title">Recent Bookings</div>
+          <a onclick="nav('bookings',null)" style="font-size:.68rem;color:var(--gold);cursor:pointer;letter-spacing:.06em;text-transform:uppercase;">View All →</a>
+        </div>
+        <div style="overflow-x:auto;">
+          <table>
+            <thead><tr><th>ID</th><th>Client</th><th>Celebrity</th><th>Type</th><th>Date</th><th>Value</th><th>Status</th></tr></thead>
+            <tbody>
+              <tr>
+                <td style="color:var(--t3);font-size:.72rem;">#RZ-4821</td>
+                <td><div class="td-row"><div class="td-av" style="background:linear-gradient(135deg,#d4a847,#7a5010);color:#000;">LV</div><div><div class="td-p">LVMH Group</div><div class="td-s">Campaign Deal</div></div></div></td>
+                <td><div class="td-p">Zendaya</div><div class="td-s">Film · Fashion</div></td>
+                <td style="color:var(--t2);font-size:.78rem;">Brand Campaign</td>
+                <td style="color:var(--t2);font-size:.78rem;">Jun 14, 2026</td>
+                <td class="td-amt">$280K</td>
+                <td><span class="badge b-green">Confirmed</span></td>
+              </tr>
+              <tr>
+                <td style="color:var(--t3);font-size:.72rem;">#RZ-4820</td>
+                <td><div class="td-row"><div class="td-av" style="background:linear-gradient(135deg,#60a5fa,#2563eb);color:#fff;">NK</div><div><div class="td-p">Nike Inc.</div><div class="td-s">Sports Marketing</div></div></div></td>
+                <td><div class="td-p">Chris Hemsworth</div><div class="td-s">Film · Action</div></td>
+                <td style="color:var(--t2);font-size:.78rem;">Endorsement</td>
+                <td style="color:var(--t2);font-size:.78rem;">Jul 2, 2026</td>
+                <td class="td-amt">$175K</td>
+                <td><span class="badge b-gold">Pending</span></td>
+              </tr>
+              <tr>
+                <td style="color:var(--t3);font-size:.72rem;">#RZ-4819</td>
+                <td><div class="td-row"><div class="td-av" style="background:linear-gradient(135deg,#3ecf8e,#059669);color:#000;">KP</div><div><div class="td-p">Keller Private</div><div class="td-s">VIP Event</div></div></div></td>
+                <td><div class="td-p">Scarlett Johansson</div><div class="td-s">Film · Action</div></td>
+                <td style="color:var(--t2);font-size:.78rem;">Private Gala</td>
+                <td style="color:var(--t2);font-size:.78rem;">Jun 28, 2026</td>
+                <td class="td-amt">$320K</td>
+                <td><span class="badge b-green">Confirmed</span></td>
+              </tr>
+              <tr>
+                <td style="color:var(--t3);font-size:.72rem;">#RZ-4818</td>
+                <td><div class="td-row"><div class="td-av" style="background:linear-gradient(135deg,#a78bfa,#7c3aed);color:#fff;">WM</div><div><div class="td-p">Warner Music</div><div class="td-s">Label Event</div></div></div></td>
+                <td><div class="td-p">Henry Cavill</div><div class="td-s">Film · Action</div></td>
+                <td style="color:var(--t2);font-size:.78rem;">Concert</td>
+                <td style="color:var(--t2);font-size:.78rem;">Aug 10, 2026</td>
+                <td class="td-amt">$120K</td>
+                <td><span class="badge b-blue">In Review</span></td>
+              </tr>
+              <tr>
+                <td style="color:var(--t3);font-size:.72rem;">#RZ-4817</td>
+                <td><div class="td-row"><div class="td-av" style="background:linear-gradient(135deg,#f87171,#dc2626);color:#fff;">AG</div><div><div class="td-p">Apex Global</div><div class="td-s">Tech Launch</div></div></div></td>
+                <td><div class="td-p">Cillian Murphy</div><div class="td-s">Film · Drama</div></td>
+                <td style="color:var(--t2);font-size:.78rem;">Speaking</td>
+                <td style="color:var(--t2);font-size:.78rem;">May 30, 2026</td>
+                <td class="td-amt">$95K</td>
+                <td><span class="badge b-purple">Draft</span></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="tbl-card">
+        <div class="tbl-header"><div class="tbl-title">Activity Feed</div></div>
+        <div class="act-list">
+          <div class="act-item">
+            <div class="act-dot" style="background:var(--greenD);color:var(--green);">✓</div>
+            <div><div class="act-title"><strong>Booking #RZ-4821 confirmed</strong> — LVMH signed contract for Zendaya campaign</div><div class="act-time">2 min ago</div></div>
+          </div>
+          <div class="act-item">
+            <div class="act-dot" style="background:var(--blueD);color:var(--blue);">💳</div>
+            <div><div class="act-title"><strong>Payment received</strong> — $175,000 from Nike Inc.</div><div class="act-time">1 hour ago</div></div>
+          </div>
+          <div class="act-item">
+            <div class="act-dot" style="background:var(--purpleD);color:var(--purple);">⭐</div>
+            <div><div class="act-title"><strong>Margot Robbie</strong> updated availability — open for Q3 brand partnerships</div><div class="act-time">3 hours ago</div></div>
+          </div>
+          <div class="act-item">
+            <div class="act-dot" style="background:var(--gold-d);color:var(--gold);">🎴</div>
+            <div><div class="act-title"><strong>42 fan cards</strong> sold this week across all tiers</div><div class="act-time">Today</div></div>
+          </div>
+          <div class="act-item">
+            <div class="act-dot" style="background:var(--redD);color:var(--red);">!</div>
+            <div><div class="act-title"><strong>5 new inquiries</strong> awaiting review</div><div class="act-time">Yesterday</div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ════ PAGE: CELEBRITIES ══════════════════════════════ -->
+  <div class="page" id="pg-celebrities">
+    <div class="pg-header">
+      <div><div class="pg-title">Celebrities</div><div class="pg-sub">Manage your talent roster.</div></div>
+      <div class="pg-actions">
+        <button class="btn-sm">Filter</button>
+        <button class="btn-sm btn-gold" onclick="openAddCeleb()">+ Add Celebrity</button>
+      </div>
+    </div>
+    <div class="tbl-card">
+      <div class="tbl-header">
+        <div class="tbl-title">Talent Roster</div>
+        <div class="tbl-meta">26 celebrities · 5 shown</div>
+      </div>
+      <div style="overflow-x:auto;">
+        <table>
+          <thead><tr><th>Celebrity</th><th>Category</th><th>Followers</th><th>Fee</th><th>Bookings</th><th>Revenue</th><th>Rating</th><th>Status</th><th></th></tr></thead>
+          <tbody id="celebTable">
+            <tr>
+              <td><div class="td-row"><div class="td-av">🎬</div><div><div class="td-p">Zendaya</div><div class="td-s">@zendaya</div></div></div></td>
+              <td><span class="badge b-gold">Film</span></td>
+              <td style="font-weight:700;color:var(--t1);">182.4M</td>
+              <td class="td-amt">$5,000</td>
+              <td style="color:var(--t2);">28</td>
+              <td class="td-amt">$140K</td>
+              <td style="color:var(--gold);">★ 4.98</td>
+              <td><span class="badge b-green">Active</span></td>
+              <td><div class="td-acts"><button class="td-btn">Edit</button><button class="td-btn danger" onclick="openConfirm('Zendaya')">Remove</button></div></td>
+            </tr>
+            <tr>
+              <td><div class="td-row"><div class="td-av">🎬</div><div><div class="td-p">Chris Hemsworth</div><div class="td-s">@chrishemsworth</div></div></div></td>
+              <td><span class="badge b-blue">Film</span></td>
+              <td style="font-weight:700;color:var(--t1);">61.4M</td>
+              <td class="td-amt">$4,100</td>
+              <td style="color:var(--t2);">19</td>
+              <td class="td-amt">$78K</td>
+              <td style="color:var(--gold);">★ 4.95</td>
+              <td><span class="badge b-green">Active</span></td>
+              <td><div class="td-acts"><button class="td-btn">Edit</button><button class="td-btn danger" onclick="openConfirm('Chris Hemsworth')">Remove</button></div></td>
+            </tr>
+            <tr>
+              <td><div class="td-row"><div class="td-av">🎭</div><div><div class="td-p">Scarlett Johansson</div><div class="td-s">@scarjo</div></div></div></td>
+              <td><span class="badge b-purple">Film</span></td>
+              <td style="font-weight:700;color:var(--t1);">38.9M</td>
+              <td class="td-amt">$5,000</td>
+              <td style="color:var(--t2);">22</td>
+              <td class="td-amt">$110K</td>
+              <td style="color:var(--gold);">★ 4.97</td>
+              <td><span class="badge b-green">Active</span></td>
+              <td><div class="td-acts"><button class="td-btn">Edit</button><button class="td-btn danger" onclick="openConfirm('Scarlett Johansson')">Remove</button></div></td>
+            </tr>
+            <tr>
+              <td><div class="td-row"><div class="td-av">🎬</div><div><div class="td-p">Cillian Murphy</div><div class="td-s">@cillianmurphy</div></div></div></td>
+              <td><span class="badge b-gold" style="background:rgba(251,146,60,.12);color:#fb923c;border-color:rgba(251,146,60,.28);">Film</span></td>
+              <td style="font-weight:700;color:var(--t1);">24.1M</td>
+              <td class="td-amt">$2,500</td>
+              <td style="color:var(--t2);">11</td>
+              <td class="td-amt">$27.5K</td>
+              <td style="color:var(--gold);">★ 4.93</td>
+              <td><span class="badge b-gold">On Tour</span></td>
+              <td><div class="td-acts"><button class="td-btn">Edit</button><button class="td-btn danger" onclick="openConfirm('Cillian Murphy')">Remove</button></div></td>
+            </tr>
+            <tr>
+              <td><div class="td-row"><div class="td-av">✨</div><div><div class="td-p">Margot Robbie</div><div class="td-s">@margotrobbie</div></div></div></td>
+              <td><span class="badge b-purple">Film</span></td>
+              <td style="font-weight:700;color:var(--t1);">96.3M</td>
+              <td class="td-amt">$4,100</td>
+              <td style="color:var(--t2);">17</td>
+              <td class="td-amt">$69.7K</td>
+              <td style="color:var(--gold);">★ 4.91</td>
+              <td><span class="badge b-green">Active</span></td>
+              <td><div class="td-acts"><button class="td-btn">Edit</button><button class="td-btn danger" onclick="openConfirm('Margot Robbie')">Remove</button></div></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ════ PAGE: CELEBRITY EDITOR ════════════════════════ -->
+  <div class="page" id="pg-celeb-editor">
+    <div class="pg-header">
+      <div>
+        <div class="pg-title">Celebrity Editor</div>
+        <div class="pg-sub">Edit celebrity names, tiers, and YouTube trailer links. Changes sync to the main site and fan cards page automatically via localStorage.</div>
+      </div>
+      <div class="pg-actions">
+        <button class="btn-sm" onclick="resetCelebData()">Reset to Defaults</button>
+        <button class="btn-sm btn-gold" onclick="saveAllCelebData()">Save All Changes</button>
+      </div>
+    </div>
+
+    <div class="tbl-card">
+      <div class="tbl-header">
+        <div class="tbl-title">All Celebrities</div>
+        <div class="tbl-meta" style="color:var(--green);font-size:.7rem;">✓ Auto-syncs to index.html and fans.html on save</div>
+      </div>
+      <div class="ce-table-wrap">
+        <table class="ce-table">
+          <thead>
+            <tr>
+              <th>Celebrity</th>
+              <th>Display Name</th>
+              <th>Tier</th>
+              <th>YouTube Trailer URL</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="celebEditorTable">
+            <!-- Populated by JS -->
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div style="display:flex;gap:.75rem;margin-top:1rem;">
+      <button class="btn-sm btn-gold" onclick="saveAllCelebData()" style="padding:.65rem 1.6rem;">✦ Save All Changes → Sync to Site</button>
+      <button class="btn-sm" onclick="resetCelebData()">Reset to Defaults</button>
+    </div>
+  </div>
+
+  <!-- ════ PAGE: BOOKINGS ═════════════════════════════════ -->
+  <div class="page" id="pg-bookings">
+    <div class="pg-header">
+      <div><div class="pg-title">Bookings</div><div class="pg-sub">All active and historical booking records.</div></div>
+      <div class="pg-actions"><button class="btn-sm">Filter</button><button class="btn-sm">Export</button></div>
+    </div>
+    <div class="tbl-card">
+      <div class="tbl-header"><div class="tbl-title">All Bookings</div><div class="tbl-meta">12 active bookings</div></div>
+      <div style="overflow-x:auto;">
+        <table>
+          <thead><tr><th>ID</th><th>Client</th><th>Celebrity</th><th>Event</th><th>Date</th><th>Value</th><th>Status</th><th>Agent</th><th></th></tr></thead>
+          <tbody>
+            <tr><td style="color:var(--t3);font-size:.72rem;">#RZ-4821</td><td><div class="td-p">LVMH Group</div></td><td><div class="td-p">Zendaya</div></td><td style="color:var(--t2);font-size:.78rem;">Brand Campaign</td><td style="color:var(--t2);font-size:.78rem;">Jun 14</td><td class="td-amt">$280K</td><td><span class="badge b-green">Confirmed</span></td><td style="color:var(--t2);font-size:.78rem;">S. Park</td><td><div class="td-acts"><button class="td-btn">View</button></div></td></tr>
+            <tr><td style="color:var(--t3);font-size:.72rem;">#RZ-4820</td><td><div class="td-p">Nike Inc.</div></td><td><div class="td-p">Chris Hemsworth</div></td><td style="color:var(--t2);font-size:.78rem;">Endorsement</td><td style="color:var(--t2);font-size:.78rem;">Jul 2</td><td class="td-amt">$175K</td><td><span class="badge b-gold">Pending</span></td><td style="color:var(--t2);font-size:.78rem;">A. Kim</td><td><div class="td-acts"><button class="td-btn">View</button></div></td></tr>
+            <tr><td style="color:var(--t3);font-size:.72rem;">#RZ-4819</td><td><div class="td-p">Keller Private</div></td><td><div class="td-p">S. Johansson</div></td><td style="color:var(--t2);font-size:.78rem;">Private Gala</td><td style="color:var(--t2);font-size:.78rem;">Jun 28</td><td class="td-amt">$320K</td><td><span class="badge b-green">Confirmed</span></td><td style="color:var(--t2);font-size:.78rem;">L. Torres</td><td><div class="td-acts"><button class="td-btn">View</button></div></td></tr>
+            <tr><td style="color:var(--t3);font-size:.72rem;">#RZ-4818</td><td><div class="td-p">Warner Music</div></td><td><div class="td-p">Henry Cavill</div></td><td style="color:var(--t2);font-size:.78rem;">Concert</td><td style="color:var(--t2);font-size:.78rem;">Aug 10</td><td class="td-amt">$120K</td><td><span class="badge b-blue">In Review</span></td><td style="color:var(--t2);font-size:.78rem;">S. Park</td><td><div class="td-acts"><button class="td-btn">View</button></div></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ════ PAGE: FAN CARDS ════════════════════════════════ -->
+  <div class="page" id="pg-fancards">
+    <div class="pg-header">
+      <div><div class="pg-title">Fan Cards</div><div class="pg-sub">Manage celebrities available for fan card bookings on fans.html.</div></div>
+      <div class="pg-actions"><button class="btn-sm btn-gold" onclick="openAddFanCeleb()">+ Add Fan Celebrity</button></div>
+    </div>
+    <div class="kpi-grid">
+      <div class="kpi" style="--kpi-color:#C9A84C;--kpi-bg:rgba(201,168,76,.1);">
+        <div class="kpi-lbl">Gold Tier <div class="kpi-ico">🥇</div></div>
+        <div class="kpi-val">$5,000</div>
+        <div class="kpi-d" style="color:var(--t3);">per fan card</div>
+      </div>
+      <div class="kpi" style="--kpi-color:#A8B8C4;--kpi-bg:rgba(168,184,196,.1);">
+        <div class="kpi-lbl">Silver Tier <div class="kpi-ico">🥈</div></div>
+        <div class="kpi-val">$4,100</div>
+        <div class="kpi-d" style="color:var(--t3);">per fan card</div>
+      </div>
+      <div class="kpi" style="--kpi-color:#C07848;--kpi-bg:rgba(192,120,72,.1);">
+        <div class="kpi-lbl">Bronze Tier <div class="kpi-ico">🥉</div></div>
+        <div class="kpi-val">$2,500</div>
+        <div class="kpi-d" style="color:var(--t3);">per fan card</div>
+      </div>
+      <div class="kpi" style="--kpi-color:var(--gold);--kpi-bg:var(--gold-d);">
+        <div class="kpi-lbl">Custom Added <div class="kpi-ico">⭐</div></div>
+        <div class="kpi-val" id="fc-total-count">0</div>
+        <div class="kpi-d" style="color:var(--t3);">via admin</div>
+      </div>
+    </div>
+    <div class="tbl-card">
+      <div class="tbl-header">
+        <div class="tbl-title">Custom Fan Celebrities</div>
+        <div class="tbl-meta">Added here → appear on fans.html automatically</div>
+      </div>
+      <div style="overflow-x:auto;">
+        <table>
+          <thead><tr><th>Celebrity</th><th>Tier</th><th>Known For</th><th>Fans</th><th>Visibility</th><th></th></tr></thead>
+          <tbody id="fanCelebTable"></tbody>
+        </table>
+      </div>
+      <div id="fc-empty" style="text-align:center;padding:3rem;color:var(--t3);">
+        <div style="font-size:2rem;margin-bottom:.6rem;">🎴</div>
+        <div style="font-size:.82rem;">No custom fan celebrities yet. Click <strong style="color:var(--gold);">+ Add Fan Celebrity</strong> to get started.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ════ PAGE: GENERIC ══════════════════════════════════ -->
+  <div class="page" id="pg-generic">
+    <div class="pg-header">
+      <div><div class="pg-title" id="pgGenericTitle">Page</div><div class="pg-sub">This section is in active development.</div></div>
+    </div>
+    <div class="tbl-card">
+      <div style="text-align:center;padding:4rem;color:var(--t3);">
+        <div style="font-size:2.5rem;margin-bottom:.8rem;">🚧</div>
+        <div style="font-size:.85rem;">This module is being built. Check back soon.</div>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /main -->
+
+<button class="mob-fab" onclick="toggleSB()">☰</button>
+<div class="toast" id="toast"></div>
+
+<!-- ══ MODAL: ADD CELEBRITY ══════════════════════════════ -->
+<div class="overlay" id="addCelebOverlay" onclick="closeAddCelebOutside(event)">
+  <div class="modal" style="max-width:600px;">
+    <button class="m-close" onclick="closeAddCeleb()">✕</button>
+    <div class="m-title">Add Celebrity</div>
+    <p class="m-sub">Add a new celebrity to the Rezoro talent roster.</p>
+    <div class="f-row">
+      <div class="f-grp"><label class="f-lbl">First Name *</label><input class="f-in" type="text" placeholder="e.g. Leonardo" id="ac-fname"></div>
+      <div class="f-grp"><label class="f-lbl">Last Name *</label><input class="f-in" type="text" placeholder="e.g. DiCaprio" id="ac-lname"></div>
+    </div>
+    <div class="f-row">
+      <div class="f-grp"><label class="f-lbl">Category *</label>
+        <select class="f-sel" id="ac-cat">
+          <option>Film / Drama</option><option>Film / Action</option><option>Film / Comedy</option>
+          <option>TV / Series</option><option>Music / Pop</option><option>Sports</option><option>Digital / Creator</option>
+        </select>
+      </div>
+      <div class="f-grp"><label class="f-lbl">Base Booking Fee *</label><input class="f-in" type="text" placeholder="e.g. $5,000" id="ac-fee"></div>
+    </div>
+    <div class="f-row">
+      <div class="f-grp"><label class="f-lbl">Total Followers</label><input class="f-in" type="text" placeholder="e.g. 45.2M" id="ac-total"></div>
+      <div class="f-grp"><label class="f-lbl">Agent</label><input class="f-in" type="text" placeholder="Agent name" id="ac-agent"></div>
+    </div>
+    <div class="f-grp"><label class="f-lbl">Bio</label><textarea class="f-in f-ta" id="ac-bio" placeholder="Short bio..."></textarea></div>
+    <button class="f-sub" onclick="submitAddCeleb()">✦ Add to Roster</button>
+  </div>
+</div>
+
+<!-- ══ MODAL: ADD FAN CELEBRITY ══════════════════════════ -->
+<div class="overlay" id="addFanCelebOverlay" onclick="closeAddFanCelebOutside(event)">
+  <div class="modal" style="max-width:480px;">
+    <button class="m-close" onclick="closeAddFanCeleb()">✕</button>
+    <div class="m-title">Add Fan Celebrity</div>
+    <p class="m-sub">This celebrity will appear on fans.html immediately after saving.</p>
+    <div class="f-row">
+      <div class="f-grp"><label class="f-lbl">Celebrity Name *</label><input class="f-in" type="text" id="fc-name" placeholder="e.g. Ana de Armas"></div>
+      <div class="f-grp"><label class="f-lbl">Tier *</label>
+        <select class="f-sel" id="fc-tier">
+          <option value="gold">🥇 Gold — $5,000</option>
+          <option value="silver">🥈 Silver — $4,100</option>
+          <option value="bronze">🥉 Bronze — $2,500</option>
+        </select>
+      </div>
+    </div>
+    <div class="f-row">
+      <div class="f-grp"><label class="f-lbl">Emoji</label><input class="f-in" type="text" id="fc-emoji" placeholder="🎬" maxlength="4"></div>
+      <div class="f-grp"><label class="f-lbl">Fan Count</label><input class="f-in" type="text" id="fc-fans" placeholder="e.g. 45.2M"></div>
+    </div>
+    <div class="f-grp"><label class="f-lbl">Known For</label><input class="f-in" type="text" id="fc-known" placeholder="e.g. No Time to Die, Blade Runner 2049"></div>
+    <div class="f-grp"><label class="f-lbl">YouTube Trailer URL <span style="color:var(--t3);font-weight:400;">(optional)</span></label><input class="f-in" type="text" id="fc-trailer" placeholder="https://youtube.com/watch?v=..."></div>
+    <div class="f-grp"><label class="f-lbl">Visibility</label>
+      <select class="f-sel" id="fc-visible">
+        <option value="1">● Visible on Fan Cards Page</option>
+        <option value="0">○ Hidden</option>
+      </select>
+    </div>
+    <button class="f-sub" onclick="submitAddFanCeleb()">✦ Add to Fan Cards</button>
+  </div>
+</div>
+
+<!-- ══ MODAL: CONFIRM REMOVE ═════════════════════════════ -->
+<div class="overlay" id="confirmOverlay" onclick="closeConfirmOutside(event)">
+  <div class="modal confirm-box">
+    <button class="m-close" onclick="closeConfirm()">✕</button>
+    <div style="font-size:2rem;margin-bottom:.7rem;">⚠️</div>
+    <div class="m-title" style="font-size:1.3rem;">Remove Celebrity?</div>
+    <p class="m-sub" id="confirmText">This will remove the celebrity from the roster.</p>
+    <div class="confirm-btns">
+      <button class="confirm-cancel" onclick="closeConfirm()">Cancel</button>
+      <button class="confirm-delete" onclick="doRemove()">Yes, Remove</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ════════════════════════════════════════════
+   PAGE NAVIGATION
+════════════════════════════════════════════ */
+const PAGE_MAP = {
+  dashboard:'dashboard', analytics:'dashboard',
+  bookings:'bookings', inquiries:'bookings', contracts:'generic', payments:'generic',
+  celebrities:'celebrities', 'celeb-editor':'celeb-editor',
+  fancards:'fancards', categories:'generic', availability:'generic',
+  clients:'generic', agents:'generic', settings:'generic'
+};
+const LABELS = {
+  dashboard:'Dashboard', analytics:'Analytics', bookings:'Bookings', inquiries:'Inquiries',
+  contracts:'Contracts', payments:'Payments', celebrities:'Celebrities',
+  'celeb-editor':'Celebrity Editor', fancards:'Fan Cards',
+  categories:'Categories', availability:'Availability',
+  clients:'Clients', agents:'Agents', settings:'Settings'
+};
+
+function nav(name, el){
+  document.querySelectorAll('.sb-item').forEach(i=>i.classList.remove('active'));
+  if(el) el.classList.add('active');
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  const pgId = 'pg-' + (PAGE_MAP[name]||'generic');
+  const pg = document.getElementById(pgId);
+  if(pg) pg.classList.add('active');
+  const label = LABELS[name]||name;
+  document.getElementById('tbTitle').textContent = label;
+  document.getElementById('tbCrumb').textContent = label;
+  if(PAGE_MAP[name]==='generic') document.getElementById('pgGenericTitle').textContent = label;
+  if(name==='celeb-editor') renderCelebEditor();
+  if(name==='fancards') renderFanTable();
+  if(window.innerWidth <= 768) toggleSB(false);
+}
+
+/* ════════════════════════════════════════════
+   SIDEBAR MOBILE
+════════════════════════════════════════════ */
+function toggleSB(force){
+  const sb = document.getElementById('sidebar');
+  const ov = document.getElementById('sbOverlay');
+  const open = typeof force==='boolean'?force:!sb.classList.contains('open');
+  sb.classList.toggle('open', open);
+  ov.classList.toggle('on', open);
+}
+
+/* ════════════════════════════════════════════
+   TOAST
+════════════════════════════════════════════ */
+function showToast(msg, type='success'){
+  const t = document.getElementById('toast');
+  t.className = 'toast' + (type==='error'?' error':'');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'), 4000);
+}
+
+/* ════════════════════════════════════════════
+   ADD CELEBRITY MODAL
+════════════════════════════════════════════ */
+function openAddCeleb(){ document.getElementById('addCelebOverlay').classList.add('open'); document.body.style.overflow='hidden'; }
+function closeAddCeleb(){ document.getElementById('addCelebOverlay').classList.remove('open'); document.body.style.overflow=''; }
+function closeAddCelebOutside(e){ if(e.target===document.getElementById('addCelebOverlay')) closeAddCeleb(); }
+function submitAddCeleb(){
+  const fname = document.getElementById('ac-fname').value.trim();
+  const lname = document.getElementById('ac-lname').value.trim();
+  const cat   = document.getElementById('ac-cat').value;
+  const fee   = document.getElementById('ac-fee').value.trim();
+  if(!fname||!lname||!fee){ showToast('⚠ Please fill required fields.', 'error'); return; }
+  const tbody = document.getElementById('celebTable');
+  const tr = document.createElement('tr');
+  tr.innerHTML = `
+    <td><div class="td-row"><div class="td-av">🎬</div><div><div class="td-p">${fname} ${lname}</div><div class="td-s">Newly Added</div></div></div></td>
+    <td><span class="badge b-gold">${cat.split('/')[0].trim()}</span></td>
+    <td style="font-weight:700;color:var(--t1);">—</td>
+    <td class="td-amt">${fee}</td>
+    <td style="color:var(--t2);">0</td>
+    <td class="td-amt">$0</td>
+    <td style="color:var(--t3);">—</td>
+    <td><span class="badge b-gold">Pending</span></td>
+    <td><div class="td-acts"><button class="td-btn">Edit</button><button class="td-btn danger" onclick="openConfirm('${fname} ${lname}')">Remove</button></div></td>`;
+  tbody.insertBefore(tr, tbody.firstChild);
+  closeAddCeleb();
+  showToast(`✦ ${fname} ${lname} added to the roster!`);
+  ['ac-fname','ac-lname','ac-bio','ac-total','ac-fee','ac-agent'].forEach(id=>document.getElementById(id).value='');
+}
+
+/* ════════════════════════════════════════════
+   CONFIRM REMOVE MODAL
+════════════════════════════════════════════ */
+let removeName='';
+function openConfirm(name){
+  removeName=name;
+  document.getElementById('confirmText').textContent=`Remove "${name}" from the roster? This can be undone.`;
+  document.getElementById('confirmOverlay').classList.add('open');
+  document.body.style.overflow='hidden';
+}
+function closeConfirm(){ document.getElementById('confirmOverlay').classList.remove('open'); document.body.style.overflow=''; }
+function closeConfirmOutside(e){ if(e.target===document.getElementById('confirmOverlay')) closeConfirm(); }
+function doRemove(){ closeConfirm(); showToast(`${removeName} removed from the roster.`); }
+
+/* ════════════════════════════════════════════
+   ╔══════════════════════════════════════════╗
+   ║   CELEBRITY EDITOR — localStorage SYNC  ║
+   ║   Writes 'rezoro_celeb_data'             ║
+   ║   index.html & fans.html read this       ║
+   ╚══════════════════════════════════════════╝
+════════════════════════════════════════════ */
+const CELEB_KEY = 'rezoro_celeb_data';
+
+const CELEB_DEFAULTS = [
+  {id:'dicaprio', name:'Leonardo DiCaprio', tier:'gold',   emoji:'🎬', genre:'Film · Drama',    trailer:'https://www.youtube.com/watch?v=vQDHgi_7W0k'},
+  {id:'zendaya',  name:'Zendaya',           tier:'gold',   emoji:'⭐', genre:'Film · Fashion',   trailer:'https://www.youtube.com/watch?v=MDnVk5jIJr0'},
+  {id:'cruise',   name:'Tom Cruise',        tier:'gold',   emoji:'🏆', genre:'Film · Action',    trailer:'https://www.youtube.com/watch?v=5WWGS2PwFB0'},
+  {id:'johnson',  name:'Dwayne Johnson',    tier:'gold',   emoji:'💪', genre:'Film · Action',    trailer:'https://www.youtube.com/watch?v=aRpnP3LZ99g'},
+  {id:'johansson',name:'Scarlett Johansson',tier:'gold',   emoji:'🎭', genre:'Film · Action',    trailer:'https://www.youtube.com/watch?v=5SnQbEpWvvs'},
+  {id:'rdj',      name:'Robert Downey Jr',  tier:'gold',   emoji:'🦸', genre:'Film · Marvel',    trailer:'https://www.youtube.com/watch?v=5L1wQb29SfU'},
+  {id:'pitt',     name:'Brad Pitt',         tier:'gold',   emoji:'🎬', genre:'Film · Drama',     trailer:'https://www.youtube.com/watch?v=6-0pE6a6Jss'},
+  {id:'wsmith',   name:'Will Smith',        tier:'gold',   emoji:'🎤', genre:'Film · Comedy',    trailer:'https://www.youtube.com/watch?v=mggw7ykX8to'},
+  {id:'washington',name:'Denzel Washington',tier:'gold',   emoji:'🎬', genre:'Film · Drama',     trailer:'https://www.youtube.com/watch?v=Sh8yqcozfn8'},
+  {id:'freeman',  name:'Morgan Freeman',    tier:'gold',   emoji:'🎙', genre:'Film · Drama',     trailer:'https://www.youtube.com/watch?v=4KoM6LickzE'},
+  {id:'depp',     name:'Johnny Depp',       tier:'silver', emoji:'🎩', genre:'Film · Drama',     trailer:'https://www.youtube.com/watch?v=fONjfvXT1D8'},
+  {id:'momoa',    name:'Jason Momoa',       tier:'silver', emoji:'🌊', genre:'Film · Action',    trailer:'https://www.youtube.com/watch?v=NFIxQLu9Iss'},
+  {id:'reynolds', name:'Ryan Reynolds',     tier:'silver', emoji:'😄', genre:'Film · Comedy',    trailer:'https://www.youtube.com/watch?v=nGYArc7UmGE'},
+  {id:'hemsworth',name:'Chris Hemsworth',   tier:'silver', emoji:'⚡', genre:'Film · Action',    trailer:'https://www.youtube.com/watch?v=9IHXCMdbJI0'},
+  {id:'robbie',   name:'Margot Robbie',     tier:'silver', emoji:'✨', genre:'Film · Drama',     trailer:'https://www.youtube.com/watch?v=TozZ3hg4Kn4'},
+  {id:'evans',    name:'Chris Evans',       tier:'silver', emoji:'🛡', genre:'Film · Action',    trailer:'https://www.youtube.com/watch?v=4A_kmjtsJ7c'},
+  {id:'cavill',   name:'Henry Cavill',      tier:'silver', emoji:'🦸', genre:'Film · Action',    trailer:'https://www.youtube.com/watch?v=zvwDen1Wrx8'},
+  {id:'theron',   name:'Charlize Theron',   tier:'silver', emoji:'👑', genre:'Film · Action',    trailer:'https://www.youtube.com/watch?v=KMyzQLeQl4Q'},
+  {id:'costner',  name:'Kevin Costner',     tier:'silver', emoji:'🤠', genre:'Film · Drama',     trailer:'https://www.youtube.com/watch?v=IuyzP60mMnU'},
+  {id:'yaman',    name:'Can Yaman',         tier:'silver', emoji:'🌟', genre:'TV · Drama',       trailer:'https://www.youtube.com/watch?v=qylBS40vTBA'},
+  {id:'murphy',   name:'Cillian Murphy',    tier:'bronze', emoji:'🎬', genre:'Film · Drama',     trailer:'https://www.youtube.com/watch?v=Nqwn5Y_Y4xs'},
+  {id:'pascal',   name:'Pedro Pascal',      tier:'bronze', emoji:'🎭', genre:'Film · Drama',     trailer:'https://www.youtube.com/watch?v=fxwTk-wD57s'},
+  {id:'mescal',   name:'Paul Mescal',       tier:'bronze', emoji:'🎭', genre:'Film · Drama',     trailer:'https://www.youtube.com/watch?v=4rgYUipGJNo'},
+  {id:'elba',     name:'Idris Elba',        tier:'bronze', emoji:'🎬', genre:'Film · Drama',     trailer:'https://www.youtube.com/watch?v=lCSbgdQVKDM'},
+  {id:'hardy',    name:'Tom Hardy',         tier:'bronze', emoji:'💪', genre:'Film · Action',    trailer:'https://www.youtube.com/watch?v=x8fygDmupB0'},
+  {id:'jordan',   name:'Michael B Jordan',  tier:'bronze', emoji:'🥊', genre:'Film · Drama',     trailer:'https://www.youtube.com/watch?v=bKGxHflevuk'},
+];
+
+let celebData = [];
+
+function loadCelebData(){
+  try { celebData = JSON.parse(localStorage.getItem(CELEB_KEY)||'[]'); } catch(e){ celebData=[]; }
+  // Fill in any missing defaults
+  CELEB_DEFAULTS.forEach(def=>{
+    if(!celebData.find(c=>c.id===def.id)) celebData.push({...def});
+  });
+}
+
+function saveCelebData(){
+  localStorage.setItem(CELEB_KEY, JSON.stringify(celebData));
+  showToast('✦ Changes saved. Main site and Fan Cards page updated automatically.');
+}
+
+function saveAllCelebData(){
+  celebData.forEach((c,i)=>{
+    const nameEl    = document.getElementById(`ce-name-${i}`);
+    const tierEl    = document.getElementById(`ce-tier-${i}`);
+    const trailerEl = document.getElementById(`ce-trailer-${i}`);
+    if(nameEl)    c.name    = nameEl.value.trim() || c.name;
+    if(tierEl)    c.tier    = tierEl.value;
+    if(trailerEl) c.trailer = trailerEl.value.trim();
+  });
+  saveCelebData();
+}
+
+function saveSingleCeleb(i){
+  const nameEl    = document.getElementById(`ce-name-${i}`);
+  const tierEl    = document.getElementById(`ce-tier-${i}`);
+  const trailerEl = document.getElementById(`ce-trailer-${i}`);
+  if(nameEl)    celebData[i].name    = nameEl.value.trim() || celebData[i].name;
+  if(tierEl)    celebData[i].tier    = tierEl.value;
+  if(trailerEl) celebData[i].trailer = trailerEl.value.trim();
+  saveCelebData();
+}
+
+function resetCelebData(){
+  if(!confirm('Reset all celebrities to defaults? This will clear any custom names, tiers and trailer links.')) return;
+  celebData = CELEB_DEFAULTS.map(d=>({...d}));
+  saveCelebData();
+  renderCelebEditor();
+  showToast('All celebrities reset to defaults.');
+}
+
+function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+function tierBadge(t){
+  const map={gold:'b-gold',silver:'b-silver',bronze:'b-bronze'};
+  const label=t.charAt(0).toUpperCase()+t.slice(1);
+  return `<span class="badge ${map[t]||'b-gold'}">${label}</span>`;
+}
+
+function renderCelebEditor(){
+  loadCelebData();
+  const tbody = document.getElementById('celebEditorTable');
+  if(!tbody) return;
+  tbody.innerHTML = celebData.map((c,i)=>`
+    <tr>
+      <td>
+        <div class="td-row">
+          <div class="td-av">${c.emoji||'🎬'}</div>
+          <div><div class="td-s">${esc(c.genre)}</div></div>
+        </div>
+      </td>
+      <td>
+        <input type="text" class="f-in f-in-sm" id="ce-name-${i}" value="${esc(c.name)}" placeholder="Celebrity name" style="min-width:160px;">
+      </td>
+      <td>
+        <select class="f-sel f-sel-sm" id="ce-tier-${i}" style="min-width:110px;">
+          <option value="gold"   ${c.tier==='gold'  ?'selected':''}>🥇 Gold</option>
+          <option value="silver" ${c.tier==='silver'?'selected':''}>🥈 Silver</option>
+          <option value="bronze" ${c.tier==='bronze'?'selected':''}>🥉 Bronze</option>
+        </select>
+      </td>
+      <td>
+        <input type="text" class="f-in f-in-sm trailer-input" id="ce-trailer-${i}"
+          value="${esc(c.trailer||'')}" placeholder="https://youtube.com/watch?v=..."
+          style="min-width:260px;">
+      </td>
+      <td>
+        <button class="save-row-btn" onclick="saveSingleCeleb(${i})">Save</button>
+      </td>
+    </tr>
+  `).join('');
+}
+
+/* ════════════════════════════════════════════
+   FAN CARDS MANAGEMENT
+════════════════════════════════════════════ */
+const FC_KEY = 'rezoro_fan_celebs';
+let fanCelebs = [];
+
+function loadFanCelebs(){
+  try { fanCelebs=JSON.parse(localStorage.getItem(FC_KEY)||'[]'); } catch(e){ fanCelebs=[]; }
+}
+
+function saveFanCelebs(){
+  localStorage.setItem(FC_KEY, JSON.stringify(fanCelebs));
+}
+
+function renderFanTable(){
+  loadFanCelebs();
+  const tbody=document.getElementById('fanCelebTable');
+  const empty=document.getElementById('fc-empty');
+  const counter=document.getElementById('fc-total-count');
+  if(!tbody) return;
+  counter.textContent=fanCelebs.length;
+  if(!fanCelebs.length){ tbody.innerHTML=''; if(empty) empty.style.display='block'; return; }
+  if(empty) empty.style.display='none';
+  const ts={gold:'b-gold',silver:'b-silver',bronze:'b-bronze'};
+  const tl={gold:'🥇 Gold',silver:'🥈 Silver',bronze:'🥉 Bronze'};
+  tbody.innerHTML=fanCelebs.map((c,i)=>`
+    <tr>
+      <td><div class="td-row"><div class="td-av">${c.emoji||'🎬'}</div><div><div class="td-p">${esc(c.name)}</div><div class="td-s">${esc(c.knownFor||'—')}</div></div></div></td>
+      <td><span class="badge ${ts[c.tier]||'b-gold'}">${tl[c.tier]||c.tier}</span></td>
+      <td style="color:var(--t2);font-size:.78rem;">${esc(c.knownFor||'—')}</td>
+      <td style="font-weight:700;color:var(--t1);">${esc(c.fans||'—')}</td>
+      <td><button class="td-btn ${c.visible!==false?'gold':''}" onclick="toggleFanVis(${i})">${c.visible!==false?'● Visible':'○ Hidden'}</button></td>
+      <td><button class="td-btn danger" onclick="removeFanCeleb(${i})">Remove</button></td>
+    </tr>`).join('');
+}
+
+function toggleFanVis(i){ fanCelebs[i].visible=fanCelebs[i].visible===false?true:false; saveFanCelebs(); renderFanTable(); showToast(`${fanCelebs[i].name} is now ${fanCelebs[i].visible!==false?'visible':'hidden'}.`); }
+function removeFanCeleb(i){ const n=fanCelebs[i]?.name||'Celebrity'; fanCelebs.splice(i,1); saveFanCelebs(); renderFanTable(); showToast(`${n} removed from Fan Cards.`); }
+
+function openAddFanCeleb(){ document.getElementById('addFanCelebOverlay').classList.add('open'); document.body.style.overflow='hidden'; }
+function closeAddFanCeleb(){ document.getElementById('addFanCelebOverlay').classList.remove('open'); document.body.style.overflow=''; }
+function closeAddFanCelebOutside(e){ if(e.target===document.getElementById('addFanCelebOverlay')) closeAddFanCeleb(); }
+function submitAddFanCeleb(){
+  const name=document.getElementById('fc-name').value.trim();
+  const tier=document.getElementById('fc-tier').value;
+  const emoji=document.getElementById('fc-emoji').value.trim()||'🎬';
+  const fans=document.getElementById('fc-fans').value.trim();
+  const known=document.getElementById('fc-known').value.trim();
+  const visible=document.getElementById('fc-visible').value==='1';
+  if(!name){ showToast('⚠ Please enter a celebrity name.','error'); return; }
+  fanCelebs.push({id:'custom_'+Date.now(), name, tier, emoji, fans, knownFor:known, visible});
+  saveFanCelebs(); renderFanTable(); closeAddFanCeleb();
+  showToast(`✦ ${name} added to Fan Cards!`);
+  ['fc-name','fc-emoji','fc-fans','fc-known'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('fc-tier').selectedIndex=0;
+  document.getElementById('fc-visible').selectedIndex=0;
+}
+
+/* ── Escape key ── */
+document.addEventListener('keydown', e=>{
+  if(e.key==='Escape'){ closeAddCeleb(); closeConfirm(); closeAddFanCeleb(); }
+});
+
+/* ── Init ── */
+loadCelebData();
+loadFanCelebs();
+</script>
+</body>
+</html>

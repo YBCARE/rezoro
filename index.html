@@ -1,0 +1,1210 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Rezoro — Celebrity Booking Platform</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400;1,600&family=Montserrat:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    /* ═══════════════════════════════════════════════════════
+       REZORO — DESIGN TOKENS (UI/UX Pro Max · Luxury Dark)
+    ═══════════════════════════════════════════════════════ */
+    :root {
+      /* Backgrounds */
+      --black:   #000000;
+      --bg:      #07070A;
+      --bg2:     #0E0E13;
+      --bg3:     #141419;
+      --glass:   rgba(255,255,255,.04);
+      --glass2:  rgba(255,255,255,.07);
+
+      /* Gold palette */
+      --gold:    #C9A84C;
+      --gold-l:  #E4C870;
+      --gold-d:  #8B6914;
+      --gold-glow:   rgba(201,168,76,.18);
+      --gold-border: rgba(201,168,76,.22);
+      --gold-bg:     rgba(201,168,76,.07);
+
+      /* Tier colours */
+      --silver:  #A8B8C4;
+      --bronze:  #C07848;
+
+      /* Text */
+      --t1: #F0ECE4;
+      --t2: #9A9490;
+      --t3: #5C5852;
+
+      /* Borders */
+      --border:  rgba(255,255,255,.07);
+      --border2: rgba(255,255,255,.12);
+
+      /* Typography */
+      --font-d: 'Cormorant', Georgia, serif;
+      --font-s: 'Montserrat', system-ui, sans-serif;
+
+      /* Radii */
+      --r-xs: 6px;
+      --r-sm: 10px;
+      --r-md: 16px;
+      --r-lg: 22px;
+      --r-xl: 30px;
+
+      /* Z-index scale */
+      --z-card:  10;
+      --z-modal: 30;
+      --z-nav:   50;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+    body {
+      background: var(--black);
+      color: var(--t1);
+      font-family: var(--font-s);
+      font-size: 16px;
+      line-height: 1.6;
+      overflow-x: hidden;
+      -webkit-font-smoothing: antialiased;
+    }
+    a { color: inherit; text-decoration: none; }
+    button { cursor: pointer; font-family: var(--font-s); }
+    img { max-width: 100%; }
+
+    /* ─── NAV ─────────────────────────────────────────── */
+    #nav {
+      position: fixed; inset: 0 0 auto;
+      z-index: var(--z-nav);
+      padding: 1.2rem 5%;
+      display: flex; align-items: center; justify-content: space-between;
+      transition: background .4s, border-color .4s, backdrop-filter .4s;
+      border-bottom: 1px solid transparent;
+    }
+    #nav.scrolled {
+      background: rgba(0,0,0,.88);
+      backdrop-filter: blur(24px);
+      -webkit-backdrop-filter: blur(24px);
+      border-bottom-color: var(--border);
+    }
+    .logo {
+      font-family: var(--font-d);
+      font-size: 1.75rem; font-weight: 600;
+      letter-spacing: .04em; color: var(--t1);
+    }
+    .logo span { color: var(--gold); }
+    .nav-links { display: flex; gap: 2.4rem; list-style: none; }
+    .nav-links a {
+      font-size: .68rem; font-weight: 600;
+      letter-spacing: .14em; text-transform: uppercase;
+      color: var(--t3); transition: color .2s;
+    }
+    .nav-links a:hover { color: var(--t1); }
+    .nav-links .nav-fan { color: var(--gold); }
+    .nav-right { display: flex; gap: .75rem; align-items: center; }
+    .btn-nav-ghost {
+      font-size: .68rem; font-weight: 600; letter-spacing: .1em; text-transform: uppercase;
+      color: var(--t2); padding: .55rem 1.1rem;
+      border: 1px solid var(--border); border-radius: var(--r-xs);
+      transition: color .2s, border-color .2s;
+    }
+    .btn-nav-ghost:hover { color: var(--t1); border-color: var(--border2); }
+    .btn-nav-gold {
+      font-size: .68rem; font-weight: 700; letter-spacing: .1em; text-transform: uppercase;
+      color: #000; padding: .55rem 1.3rem;
+      background: var(--gold); border-radius: var(--r-xs); border: none;
+      transition: background .2s, transform .15s;
+    }
+    .btn-nav-gold:hover { background: var(--gold-l); transform: translateY(-1px); }
+
+    /* ─── HERO ────────────────────────────────────────── */
+    .hero {
+      position: relative; height: 100vh; min-height: 680px;
+      display: flex; align-items: flex-end; overflow: hidden;
+    }
+    .hero-video {
+      position: absolute; inset: 0;
+      width: 100%; height: 100%; object-fit: cover;
+      z-index: 1; opacity: 0; transition: opacity 1.5s ease;
+    }
+    .hero-video.playing { opacity: 1; }
+    .hero-reel {
+      position: absolute; inset: 0; z-index: 0;
+      background:
+        radial-gradient(ellipse 90% 70% at 65% 35%, rgba(201,168,76,.05) 0%, transparent 65%),
+        linear-gradient(160deg, #0A0806 0%, #000000 55%, #060408 100%);
+    }
+    .hero-overlay {
+      position: absolute; inset: 0; z-index: 2;
+      background: linear-gradient(to top,
+        #000000 0%,
+        rgba(0,0,0,.72) 28%,
+        rgba(0,0,0,.18) 60%,
+        rgba(0,0,0,.5) 100%);
+    }
+    .hero-grain {
+      position: absolute; inset: 0; z-index: 3; opacity: .035; pointer-events: none;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+      background-size: 180px;
+    }
+    .hero-content {
+      position: relative; z-index: 5;
+      padding: 0 6% 9vh; max-width: 820px;
+    }
+    .hero-eyebrow {
+      display: flex; align-items: center; gap: .8rem;
+      font-size: .65rem; font-weight: 700;
+      letter-spacing: .24em; text-transform: uppercase; color: var(--gold);
+      margin-bottom: 1.6rem;
+    }
+    .hero-eyebrow::before { content: ''; width: 32px; height: 1px; background: var(--gold); }
+    .hero h1 {
+      font-family: var(--font-d);
+      font-size: clamp(3rem, 6.5vw, 6.2rem);
+      font-weight: 500; line-height: 1.06; letter-spacing: -.01em;
+      color: var(--t1); margin-bottom: 1.6rem;
+    }
+    .hero h1 em { font-style: italic; color: var(--gold); }
+    .hero-sub {
+      font-size: .875rem; line-height: 1.8; color: var(--t2);
+      max-width: 420px; margin-bottom: 2.4rem;
+    }
+    .hero-ctas { display: flex; gap: 1rem; flex-wrap: wrap; }
+    .hero-cta-1 {
+      font-size: .72rem; font-weight: 700; letter-spacing: .12em; text-transform: uppercase;
+      color: #000; padding: .9rem 2rem; border-radius: var(--r-sm);
+      background: var(--gold); border: none;
+      transition: background .2s, transform .15s;
+    }
+    .hero-cta-1:hover { background: var(--gold-l); transform: translateY(-2px); }
+    .hero-cta-2 {
+      font-size: .72rem; font-weight: 600; letter-spacing: .12em; text-transform: uppercase;
+      color: var(--t1); padding: .9rem 2rem; border-radius: var(--r-sm);
+      border: 1px solid rgba(255,255,255,.18);
+      transition: border-color .2s, color .2s, transform .15s;
+    }
+    .hero-cta-2:hover { border-color: var(--gold-border); color: var(--gold); transform: translateY(-2px); }
+    .hero-stats {
+      position: absolute; right: 6%; bottom: 9vh; z-index: 5;
+      display: flex; flex-direction: column; gap: 2rem; align-items: flex-end;
+    }
+    .hstat-val {
+      font-family: var(--font-d); font-size: 2.1rem; font-weight: 600;
+      color: var(--t1); line-height: 1;
+    }
+    .hstat-lbl {
+      font-size: .62rem; font-weight: 600; letter-spacing: .14em;
+      text-transform: uppercase; color: var(--t3); margin-top: .25rem;
+    }
+    /* Scroll indicator */
+    .hero-scroll {
+      position: absolute; bottom: 2.5rem; left: 50%;
+      transform: translateX(-50%); z-index: 5;
+      display: flex; flex-direction: column; align-items: center; gap: .5rem;
+      font-size: .6rem; letter-spacing: .16em; text-transform: uppercase; color: var(--t3);
+    }
+    .scroll-line {
+      width: 1px; height: 40px; background: linear-gradient(to bottom, var(--gold), transparent);
+      animation: scrollPulse 2s ease-in-out infinite;
+    }
+    @keyframes scrollPulse {
+      0%, 100% { opacity: .3; transform: scaleY(.8); }
+      50% { opacity: 1; transform: scaleY(1); }
+    }
+
+    /* ─── MARQUEE ─────────────────────────────────────── */
+    .marquee-wrap {
+      background: var(--bg);
+      border-top: 1px solid var(--border);
+      border-bottom: 1px solid var(--border);
+      padding: 1.05rem 0; overflow: hidden;
+    }
+    .marquee-track {
+      display: flex; width: max-content;
+      animation: marquee 50s linear infinite;
+    }
+    .marquee-wrap:hover .marquee-track { animation-play-state: paused; }
+    .marquee-item {
+      display: flex; align-items: center; gap: 1.8rem; padding: 0 1.8rem;
+      font-size: .62rem; font-weight: 700;
+      letter-spacing: .16em; text-transform: uppercase; color: var(--t3);
+      white-space: nowrap;
+    }
+    .marquee-dot { color: var(--gold); font-size: .45rem; }
+    @keyframes marquee {
+      from { transform: translateX(0); }
+      to   { transform: translateX(-50%); }
+    }
+
+    /* ─── SECTIONS ────────────────────────────────────── */
+    .section { padding: clamp(72px, 10vw, 130px) 6%; }
+    .sec-eyebrow {
+      display: flex; align-items: center; gap: .6rem;
+      font-size: .62rem; font-weight: 700;
+      letter-spacing: .2em; text-transform: uppercase; color: var(--gold);
+      margin-bottom: 1rem;
+    }
+    .sec-eyebrow::before { content: ''; width: 22px; height: 1px; background: var(--gold); }
+    .sec-title {
+      font-family: var(--font-d);
+      font-size: clamp(2rem, 3.8vw, 3.4rem);
+      font-weight: 500; line-height: 1.1; color: var(--t1);
+      margin-bottom: .75rem;
+    }
+    .sec-sub { font-size: .875rem; color: var(--t2); max-width: 460px; line-height: 1.8; }
+    .sec-head {
+      display: flex; justify-content: space-between;
+      align-items: flex-end; margin-bottom: 3rem;
+      gap: 2rem; flex-wrap: wrap;
+    }
+    .btn-outline {
+      font-size: .68rem; font-weight: 600; letter-spacing: .1em; text-transform: uppercase;
+      color: var(--t2); padding: .55rem 1.2rem;
+      border: 1px solid var(--border); border-radius: var(--r-xs);
+      transition: color .2s, border-color .2s;
+    }
+    .btn-outline:hover { color: var(--t1); border-color: var(--border2); }
+
+    /* ─── CELEB CARDS ─────────────────────────────────── */
+    #talent { background: var(--bg); }
+    .celeb-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(265px, 1fr));
+      gap: 1.1rem;
+    }
+    .celeb-card {
+      background: var(--bg2); border: 1px solid var(--border);
+      border-radius: var(--r-lg); overflow: hidden; position: relative;
+      cursor: pointer;
+      transition: border-color .3s, transform .3s, box-shadow .3s;
+    }
+    .celeb-card:hover {
+      border-color: var(--gold-border);
+      transform: translateY(-5px);
+      box-shadow: 0 24px 64px rgba(0,0,0,.7), 0 0 48px var(--gold-glow);
+    }
+    .celeb-visual {
+      height: 230px; position: relative; background: var(--bg3);
+      display: flex; align-items: center; justify-content: center; overflow: hidden;
+    }
+    .celeb-glow {
+      position: absolute; inset: 0;
+      background: radial-gradient(ellipse 70% 70% at 50% 50%, rgba(201,168,76,.07) 0%, transparent 70%);
+      transition: opacity .35s;
+    }
+    .celeb-card:hover .celeb-glow { opacity: 2.5; }
+    .celeb-emoji { font-size: 4.5rem; z-index: 1; transition: transform .35s; }
+    .celeb-card:hover .celeb-emoji { transform: scale(1.08); }
+    .celeb-tier-tag {
+      position: absolute; top: .9rem; left: .9rem; z-index: 3;
+      font-size: .58rem; font-weight: 700; letter-spacing: .1em; text-transform: uppercase;
+      padding: .28rem .65rem; border-radius: 4px;
+    }
+    .tier-gold   { background: rgba(201,168,76,.14); color: var(--gold);   border: 1px solid var(--gold-border); }
+    .tier-silver { background: rgba(168,184,196,.1);  color: var(--silver); border: 1px solid rgba(168,184,196,.25); }
+    .tier-bronze { background: rgba(192,120,72,.1);   color: var(--bronze); border: 1px solid rgba(192,120,72,.25); }
+    .celeb-hover-actions {
+      position: absolute; inset: 0; z-index: 2;
+      display: flex; flex-direction: column; align-items: center; justify-content: center; gap: .6rem;
+      background: rgba(0,0,0,.72);
+      opacity: 0; transition: opacity .25s;
+    }
+    .celeb-card:hover .celeb-hover-actions { opacity: 1; }
+    .cha-btn {
+      font-size: .66rem; font-weight: 700; letter-spacing: .1em; text-transform: uppercase;
+      padding: .58rem 1.5rem; border-radius: var(--r-xs); border: none;
+      transition: transform .15s, background .15s;
+    }
+    .cha-btn:hover { transform: translateY(-1px); }
+    .cha-book { background: var(--gold); color: #000; }
+    .cha-book:hover { background: var(--gold-l); }
+    .cha-trailer {
+      background: transparent; color: var(--t1);
+      border: 1px solid rgba(255,255,255,.25);
+    }
+    .cha-trailer:hover { border-color: var(--gold-border); color: var(--gold); }
+    /* ── Inline hover preview iframe ── */
+    .celeb-preview-iframe {
+      position: absolute; inset: -1px; /* bleed 1px to hide subpixel borders */
+      width: calc(100% + 2px); height: calc(100% + 2px);
+      border: none; z-index: 2; /* above emoji(1), below hover-actions(3) */
+      opacity: 0; transition: opacity .5s ease;
+      pointer-events: none; /* hover overlay buttons remain clickable */
+    }
+    .celeb-preview-iframe.visible { opacity: 1; }
+    /* push hover overlay and tier tag above the iframe */
+    .celeb-hover-actions { z-index: 3; }
+    .celeb-tier-tag      { z-index: 4; }
+    .celeb-info { padding: 1.35rem 1.4rem 1.6rem; }
+    .celeb-name {
+      font-family: var(--font-d); font-size: 1.3rem; font-weight: 600;
+      line-height: 1.2; color: var(--t1); margin-bottom: .28rem;
+    }
+    .celeb-genre {
+      font-size: .62rem; font-weight: 600; letter-spacing: .1em;
+      text-transform: uppercase; color: var(--t3); margin-bottom: 1rem;
+    }
+    .celeb-prices { display: grid; grid-template-columns: repeat(3, 1fr); gap: .45rem; }
+    .cp {
+      text-align: center; padding: .5rem .2rem;
+      border-radius: var(--r-xs); border: 1px solid var(--border);
+    }
+    .cp-lbl { font-size: .56rem; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--t3); }
+    .cp-val { font-size: .78rem; font-weight: 700; color: var(--t2); margin-top: .18rem; }
+    .cp.hi-gold   { border-color: var(--gold-border); background: var(--gold-bg); }
+    .cp.hi-gold .cp-lbl { color: var(--gold); }
+    .cp.hi-gold .cp-val { color: var(--gold-l); }
+    .cp.hi-silver { border-color: rgba(168,184,196,.28); background: rgba(168,184,196,.06); }
+    .cp.hi-silver .cp-lbl { color: var(--silver); }
+    .cp.hi-silver .cp-val { color: var(--silver); }
+    .cp.hi-bronze { border-color: rgba(192,120,72,.28); background: rgba(192,120,72,.06); }
+    .cp.hi-bronze .cp-lbl { color: var(--bronze); }
+    .cp.hi-bronze .cp-val { color: var(--bronze); }
+
+    /* ─── STRIP ───────────────────────────────────────── */
+    #strip { background: var(--black); padding-top: 0; }
+    .strip-track {
+      display: flex; gap: .9rem; overflow-x: auto;
+      scroll-snap-type: x mandatory; scrollbar-width: none; cursor: grab;
+    }
+    .strip-track:active { cursor: grabbing; }
+    .strip-track::-webkit-scrollbar { display: none; }
+    .strip-card {
+      min-width: 160px; scroll-snap-align: start;
+      background: var(--bg2); border: 1px solid var(--border);
+      border-radius: var(--r-md); padding: 1.5rem 1rem;
+      display: flex; flex-direction: column; align-items: center; gap: .5rem;
+      cursor: pointer;
+      transition: border-color .25s, transform .25s;
+      flex-shrink: 0;
+    }
+    .strip-card:hover { border-color: var(--gold-border); transform: translateY(-3px); }
+    .strip-av {
+      width: 52px; height: 52px; border-radius: 50%;
+      background: var(--bg3); border: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.3rem; transition: border-color .25s;
+    }
+    .strip-card:hover .strip-av { border-color: var(--gold-border); }
+    .strip-name {
+      font-family: var(--font-d); font-size: .88rem; font-weight: 600;
+      color: var(--t1); text-align: center; line-height: 1.3;
+    }
+    .strip-genre { font-size: .56rem; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; color: var(--t3); }
+    .strip-tier {
+      font-size: .54rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase;
+      padding: .22rem .55rem; border-radius: 3px; margin-top: .15rem;
+    }
+
+    /* ─── CATEGORIES ──────────────────────────────────── */
+    #categories { background: var(--bg); }
+    .cat-bento {
+      display: grid; grid-template-columns: 2fr 1fr 1fr;
+      grid-template-rows: auto auto; gap: 1rem;
+    }
+    .cat-cell {
+      background: var(--bg2); border: 1px solid var(--border);
+      border-radius: var(--r-lg); padding: 2rem 1.8rem;
+      position: relative; overflow: hidden; cursor: pointer;
+      transition: border-color .25s, transform .25s;
+    }
+    .cat-cell:hover { border-color: var(--gold-border); transform: translateY(-3px); }
+    .cat-cell.span2 { grid-column: span 2; }
+    .cat-badge {
+      position: absolute; top: 1.3rem; right: 1.3rem;
+      font-size: .58rem; font-weight: 700; letter-spacing: .08em;
+      color: var(--gold); background: rgba(201,168,76,.1);
+      padding: .28rem .6rem; border-radius: 4px; border: 1px solid var(--gold-border);
+    }
+    .cat-icon-wrap {
+      width: 44px; height: 44px; border-radius: var(--r-sm);
+      background: var(--bg3); border: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.2rem; margin-bottom: 1.2rem;
+    }
+    .cat-name {
+      font-family: var(--font-d); font-size: 1.25rem; font-weight: 600;
+      color: var(--t1); margin-bottom: .5rem;
+    }
+    .cat-desc { font-size: .8rem; color: var(--t2); line-height: 1.7; }
+
+    /* ─── HOW IT WORKS ────────────────────────────────── */
+    #how { background: var(--black); }
+    .steps-grid { display: grid; grid-template-columns: repeat(4,1fr); gap: 1rem; }
+    .step-card {
+      background: var(--bg2); border: 1px solid var(--border);
+      border-radius: var(--r-lg); padding: 2rem 1.6rem;
+    }
+    .step-num {
+      font-family: var(--font-d); font-size: 3.2rem; font-weight: 600;
+      color: rgba(201,168,76,.1); line-height: 1; margin-bottom: 1.2rem;
+    }
+    .step-title {
+      font-family: var(--font-d); font-size: 1.1rem; font-weight: 600;
+      color: var(--t1); margin-bottom: .5rem;
+    }
+    .step-desc { font-size: .8rem; color: var(--t2); line-height: 1.75; }
+
+    /* ─── TESTIMONIALS ────────────────────────────────── */
+    #testimonials { background: var(--bg); }
+    .testi-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 1rem; }
+    .testi-card {
+      background: var(--bg2); border: 1px solid var(--border);
+      border-radius: var(--r-lg); padding: 2rem;
+    }
+    .testi-stars { color: var(--gold); font-size: .7rem; letter-spacing: .15em; margin-bottom: 1rem; }
+    .testi-text {
+      font-family: var(--font-d); font-style: italic;
+      font-size: 1.05rem; line-height: 1.72; color: var(--t1); margin-bottom: 1.4rem;
+    }
+    .testi-author { font-size: .7rem; font-weight: 700; color: var(--t2); letter-spacing: .08em; text-transform: uppercase; }
+    .testi-role { font-size: .66rem; color: var(--t3); margin-top: .2rem; }
+
+    /* ─── FOOTER ──────────────────────────────────────── */
+    footer { background: var(--bg); border-top: 1px solid var(--border); padding: 4.5rem 6% 2.5rem; }
+    .footer-top { display: flex; justify-content: space-between; gap: 3rem; margin-bottom: 3rem; flex-wrap: wrap; }
+    .footer-brand p { font-size: .78rem; color: var(--t3); max-width: 230px; line-height: 1.75; margin-top: .8rem; }
+    .footer-col h4 {
+      font-size: .62rem; font-weight: 700; letter-spacing: .18em;
+      text-transform: uppercase; color: var(--t2); margin-bottom: 1.2rem;
+    }
+    .footer-col a { display: block; font-size: .8rem; color: var(--t3); margin-bottom: .6rem; transition: color .2s; }
+    .footer-col a:hover { color: var(--t1); }
+    .footer-bottom {
+      border-top: 1px solid var(--border); padding-top: 1.8rem;
+      display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;
+    }
+    .footer-copy { font-size: .7rem; color: var(--t3); }
+
+    /* ─── MODALS ──────────────────────────────────────── */
+    .overlay {
+      position: fixed; inset: 0; z-index: var(--z-modal);
+      background: rgba(0,0,0,.86); backdrop-filter: blur(14px);
+      display: flex; align-items: center; justify-content: center; padding: 1.5rem;
+      opacity: 0; pointer-events: none; transition: opacity .28s;
+    }
+    .overlay.open { opacity: 1; pointer-events: all; }
+    .modal-box {
+      background: var(--bg2); border: 1px solid var(--border);
+      border-radius: var(--r-xl); padding: 2.6rem;
+      width: 100%; max-width: 460px; position: relative;
+      transform: translateY(18px); transition: transform .28s;
+    }
+    .overlay.open .modal-box { transform: translateY(0); }
+    .modal-x {
+      position: absolute; top: 1.2rem; right: 1.2rem;
+      background: var(--bg3); border: 1px solid var(--border);
+      color: var(--t2); width: 30px; height: 30px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: .75rem; cursor: pointer; transition: color .2s, border-color .2s;
+    }
+    .modal-x:hover { color: var(--t1); border-color: var(--border2); }
+    .modal-title {
+      font-family: var(--font-d); font-size: 1.75rem; font-weight: 600;
+      color: var(--t1); margin-bottom: .5rem;
+    }
+    .modal-sub { font-size: .82rem; color: var(--t2); line-height: 1.65; margin-bottom: 1.8rem; }
+    .f-lbl { font-size: .65rem; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--t3); display: block; margin-bottom: .5rem; }
+    .f-inp {
+      width: 100%; background: var(--bg3); border: 1px solid var(--border);
+      border-radius: var(--r-sm); color: var(--t1); font-family: var(--font-s);
+      font-size: .875rem; padding: .7rem 1rem; margin-bottom: 1rem;
+      transition: border-color .2s; outline: none;
+    }
+    .f-inp:focus { border-color: var(--gold-border); }
+    .f-sub {
+      width: 100%; padding: .9rem; border: none; border-radius: var(--r-sm);
+      background: var(--gold); color: #000;
+      font-family: var(--font-s); font-size: .72rem; font-weight: 700;
+      letter-spacing: .12em; text-transform: uppercase;
+      transition: background .2s; margin-top: .4rem;
+    }
+    .f-sub:hover { background: var(--gold-l); }
+
+    /* Trailer modal */
+    .trailer-wrap { position: relative; width: 100%; max-width: 900px; }
+    .trailer-close-btn {
+      position: absolute; top: -44px; right: 0;
+      background: var(--bg2); border: 1px solid var(--border);
+      color: var(--t1); padding: .5rem 1.1rem; border-radius: var(--r-xs);
+      font-size: .68rem; font-weight: 600; letter-spacing: .08em; text-transform: uppercase;
+      cursor: pointer; transition: background .2s;
+    }
+    .trailer-close-btn:hover { background: var(--bg3); }
+    .trailer-box {
+      background: #000; border: 1px solid var(--border);
+      border-radius: var(--r-lg); overflow: hidden;
+      width: 100%; aspect-ratio: 16/9;
+    }
+    .trailer-box iframe { width: 100%; height: 100%; border: none; display: block; }
+
+    /* ─── SCROLL REVEAL ───────────────────────────────── */
+    .reveal { opacity: 0; transform: translateY(24px); transition: opacity .7s ease, transform .7s ease; }
+    .reveal.visible { opacity: 1; transform: translateY(0); }
+    .rd1 { transition-delay: .1s; }
+    .rd2 { transition-delay: .2s; }
+    .rd3 { transition-delay: .3s; }
+
+    /* ─── RESPONSIVE ──────────────────────────────────── */
+    @media (max-width: 1100px) {
+      .cat-bento { grid-template-columns: 1fr 1fr; }
+      .cat-cell.span2 { grid-column: span 1; }
+      .steps-grid { grid-template-columns: repeat(2,1fr); }
+    }
+    @media (max-width: 900px) {
+      .nav-links { display: none; }
+      .hero-stats { display: none; }
+      .testi-grid { grid-template-columns: 1fr 1fr; }
+    }
+    @media (max-width: 640px) {
+      .celeb-grid { grid-template-columns: 1fr 1fr; gap: .75rem; }
+      .testi-grid { grid-template-columns: 1fr; }
+      .cat-bento { grid-template-columns: 1fr; }
+      .steps-grid { grid-template-columns: 1fr; }
+      .hero-ctas { flex-direction: column; }
+    }
+    @media (max-width: 400px) {
+      .celeb-grid { grid-template-columns: 1fr; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { animation: none !important; transition: none !important; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ══ NAV ══════════════════════════════════════════════ -->
+<nav id="nav">
+  <a href="#" class="logo">Rez<span>oro</span></a>
+  <ul class="nav-links">
+    <li><a href="#talent">Celebrities</a></li>
+    <li><a href="#categories">Categories</a></li>
+    <li><a href="#how">How It Works</a></li>
+    <li><a href="#testimonials">Reviews</a></li>
+    <li><a href="fans.html" class="nav-fan">Fan Cards</a></li>
+  </ul>
+  <div class="nav-right">
+    <a href="#" class="btn-nav-ghost" onclick="openBook(event)">Sign In</a>
+    <button class="btn-nav-gold" onclick="openBook(event)">Book a Star</button>
+  </div>
+</nav>
+
+<!-- ══ HERO ═════════════════════════════════════════════ -->
+<section class="hero">
+  <video class="hero-video" autoplay muted loop playsinline>
+    <source src="hero.mp4" type="video/mp4">
+  </video>
+  <div class="hero-reel"></div>
+  <div class="hero-overlay"></div>
+  <div class="hero-grain"></div>
+
+  <div class="hero-content">
+    <div class="hero-eyebrow">Exclusive Celebrity Booking</div>
+    <h1>The World's Most <em>Exclusive</em><br>Talent Platform</h1>
+    <p class="hero-sub">Private access to A-list celebrities for brand campaigns, exclusive events, personal appearances, and luxury fan experiences.</p>
+    <div class="hero-ctas">
+      <a href="#talent" class="hero-cta-1">Explore Talent</a>
+      <a href="fans.html" class="hero-cta-2">Fan Cards</a>
+    </div>
+  </div>
+
+  <div class="hero-stats">
+    <div><div class="hstat-val">26+</div><div class="hstat-lbl">A-List Celebrities</div></div>
+    <div><div class="hstat-val">$4.2M</div><div class="hstat-lbl">Deals Closed</div></div>
+    <div><div class="hstat-val">100%</div><div class="hstat-lbl">Satisfaction</div></div>
+  </div>
+
+  <div class="hero-scroll">
+    <div class="scroll-line"></div>
+    <span>Scroll</span>
+  </div>
+</section>
+
+<!-- ══ MARQUEE ══════════════════════════════════════════ -->
+<div class="marquee-wrap">
+  <div class="marquee-track" id="marqueeTrack">
+    <div class="marquee-item">Leonardo DiCaprio<span class="marquee-dot">✦</span></div>
+    <div class="marquee-item">Zendaya<span class="marquee-dot">✦</span></div>
+    <div class="marquee-item">Tom Cruise<span class="marquee-dot">✦</span></div>
+    <div class="marquee-item">Dwayne Johnson<span class="marquee-dot">✦</span></div>
+    <div class="marquee-item">Scarlett Johansson<span class="marquee-dot">✦</span></div>
+    <div class="marquee-item">Johnny Depp<span class="marquee-dot">✦</span></div>
+    <div class="marquee-item">Jason Momoa<span class="marquee-dot">✦</span></div>
+    <div class="marquee-item">Margot Robbie<span class="marquee-dot">✦</span></div>
+    <div class="marquee-item">Ryan Reynolds<span class="marquee-dot">✦</span></div>
+    <div class="marquee-item">Chris Hemsworth<span class="marquee-dot">✦</span></div>
+    <div class="marquee-item">Henry Cavill<span class="marquee-dot">✦</span></div>
+    <div class="marquee-item">Cillian Murphy<span class="marquee-dot">✦</span></div>
+    <div class="marquee-item">Brad Pitt<span class="marquee-dot">✦</span></div>
+    <div class="marquee-item">Pedro Pascal<span class="marquee-dot">✦</span></div>
+    <!-- duplicate for seamless loop -->
+    <div class="marquee-item">Leonardo DiCaprio<span class="marquee-dot">✦</span></div>
+    <div class="marquee-item">Zendaya<span class="marquee-dot">✦</span></div>
+    <div class="marquee-item">Tom Cruise<span class="marquee-dot">✦</span></div>
+    <div class="marquee-item">Dwayne Johnson<span class="marquee-dot">✦</span></div>
+    <div class="marquee-item">Scarlett Johansson<span class="marquee-dot">✦</span></div>
+    <div class="marquee-item">Johnny Depp<span class="marquee-dot">✦</span></div>
+    <div class="marquee-item">Jason Momoa<span class="marquee-dot">✦</span></div>
+    <div class="marquee-item">Margot Robbie<span class="marquee-dot">✦</span></div>
+    <div class="marquee-item">Ryan Reynolds<span class="marquee-dot">✦</span></div>
+    <div class="marquee-item">Chris Hemsworth<span class="marquee-dot">✦</span></div>
+    <div class="marquee-item">Henry Cavill<span class="marquee-dot">✦</span></div>
+    <div class="marquee-item">Cillian Murphy<span class="marquee-dot">✦</span></div>
+    <div class="marquee-item">Brad Pitt<span class="marquee-dot">✦</span></div>
+    <div class="marquee-item">Pedro Pascal<span class="marquee-dot">✦</span></div>
+  </div>
+</div>
+
+<!-- ══ FEATURED CELEBRITIES ════════════════════════════ -->
+<section class="section" id="talent">
+  <div class="sec-head">
+    <div>
+      <div class="sec-eyebrow">Featured Talent</div>
+      <h2 class="sec-title">A-List Celebrities</h2>
+      <p class="sec-sub">The world's most sought-after talent, exclusively available through Rezoro.</p>
+    </div>
+    <a href="#" class="btn-outline" onclick="openBook(event)">Browse All →</a>
+  </div>
+  <div class="celeb-grid" id="celebGrid">
+
+    <!-- Each card: data-celeb-id matched in admin Celebrity Editor -->
+    <div class="celeb-card reveal" data-celeb-id="dicaprio">
+      <div class="celeb-visual">
+        <div class="celeb-glow"></div>
+        <div class="celeb-emoji">🎬</div>
+        <div class="celeb-tier-tag tier-gold">Gold</div>
+        <div class="celeb-hover-actions">
+          <button class="cha-btn cha-book" onclick="openBook(event)">Book Now</button>
+          <button class="cha-btn cha-trailer trailer-btn" data-trailer="https://www.youtube.com/watch?v=vQDHgi_7W0k">Watch Trailer</button>
+        </div>
+      </div>
+      <div class="celeb-info">
+        <div class="celeb-name">Leonardo DiCaprio</div>
+        <div class="celeb-genre">Film · Drama</div>
+        <div class="celeb-prices">
+          <div class="cp hi-gold"><div class="cp-lbl">Gold</div><div class="cp-val">$5K</div></div>
+          <div class="cp"><div class="cp-lbl">Silver</div><div class="cp-val">$4.1K</div></div>
+          <div class="cp"><div class="cp-lbl">Bronze</div><div class="cp-val">$2.5K</div></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="celeb-card reveal rd1" data-celeb-id="zendaya">
+      <div class="celeb-visual">
+        <div class="celeb-glow"></div>
+        <div class="celeb-emoji">⭐</div>
+        <div class="celeb-tier-tag tier-gold">Gold</div>
+        <div class="celeb-hover-actions">
+          <button class="cha-btn cha-book" onclick="openBook(event)">Book Now</button>
+          <button class="cha-btn cha-trailer trailer-btn" data-trailer="https://www.youtube.com/watch?v=MDnVk5jIJr0">Watch Trailer</button>
+        </div>
+      </div>
+      <div class="celeb-info">
+        <div class="celeb-name">Zendaya</div>
+        <div class="celeb-genre">Film · Fashion</div>
+        <div class="celeb-prices">
+          <div class="cp hi-gold"><div class="cp-lbl">Gold</div><div class="cp-val">$5K</div></div>
+          <div class="cp"><div class="cp-lbl">Silver</div><div class="cp-val">$4.1K</div></div>
+          <div class="cp"><div class="cp-lbl">Bronze</div><div class="cp-val">$2.5K</div></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="celeb-card reveal rd2" data-celeb-id="cruise">
+      <div class="celeb-visual">
+        <div class="celeb-glow"></div>
+        <div class="celeb-emoji">🏆</div>
+        <div class="celeb-tier-tag tier-gold">Gold</div>
+        <div class="celeb-hover-actions">
+          <button class="cha-btn cha-book" onclick="openBook(event)">Book Now</button>
+          <button class="cha-btn cha-trailer trailer-btn" data-trailer="https://www.youtube.com/watch?v=5WWGS2PwFB0">Watch Trailer</button>
+        </div>
+      </div>
+      <div class="celeb-info">
+        <div class="celeb-name">Tom Cruise</div>
+        <div class="celeb-genre">Film · Action</div>
+        <div class="celeb-prices">
+          <div class="cp hi-gold"><div class="cp-lbl">Gold</div><div class="cp-val">$5K</div></div>
+          <div class="cp"><div class="cp-lbl">Silver</div><div class="cp-val">$4.1K</div></div>
+          <div class="cp"><div class="cp-lbl">Bronze</div><div class="cp-val">$2.5K</div></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="celeb-card reveal rd3" data-celeb-id="johnson">
+      <div class="celeb-visual">
+        <div class="celeb-glow"></div>
+        <div class="celeb-emoji">💪</div>
+        <div class="celeb-tier-tag tier-gold">Gold</div>
+        <div class="celeb-hover-actions">
+          <button class="cha-btn cha-book" onclick="openBook(event)">Book Now</button>
+          <button class="cha-btn cha-trailer trailer-btn" data-trailer="https://www.youtube.com/watch?v=aRpnP3LZ99g">Watch Trailer</button>
+        </div>
+      </div>
+      <div class="celeb-info">
+        <div class="celeb-name">Dwayne Johnson</div>
+        <div class="celeb-genre">Film · Action</div>
+        <div class="celeb-prices">
+          <div class="cp hi-gold"><div class="cp-lbl">Gold</div><div class="cp-val">$5K</div></div>
+          <div class="cp"><div class="cp-lbl">Silver</div><div class="cp-val">$4.1K</div></div>
+          <div class="cp"><div class="cp-lbl">Bronze</div><div class="cp-val">$2.5K</div></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="celeb-card reveal" data-celeb-id="johansson">
+      <div class="celeb-visual">
+        <div class="celeb-glow"></div>
+        <div class="celeb-emoji">🎭</div>
+        <div class="celeb-tier-tag tier-gold">Gold</div>
+        <div class="celeb-hover-actions">
+          <button class="cha-btn cha-book" onclick="openBook(event)">Book Now</button>
+          <button class="cha-btn cha-trailer trailer-btn" data-trailer="https://www.youtube.com/watch?v=5SnQbEpWvvs">Watch Trailer</button>
+        </div>
+      </div>
+      <div class="celeb-info">
+        <div class="celeb-name">Scarlett Johansson</div>
+        <div class="celeb-genre">Film · Action</div>
+        <div class="celeb-prices">
+          <div class="cp hi-gold"><div class="cp-lbl">Gold</div><div class="cp-val">$5K</div></div>
+          <div class="cp"><div class="cp-lbl">Silver</div><div class="cp-val">$4.1K</div></div>
+          <div class="cp"><div class="cp-lbl">Bronze</div><div class="cp-val">$2.5K</div></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="celeb-card reveal rd1" data-celeb-id="rdj">
+      <div class="celeb-visual">
+        <div class="celeb-glow"></div>
+        <div class="celeb-emoji">🦸</div>
+        <div class="celeb-tier-tag tier-gold">Gold</div>
+        <div class="celeb-hover-actions">
+          <button class="cha-btn cha-book" onclick="openBook(event)">Book Now</button>
+          <button class="cha-btn cha-trailer trailer-btn" data-trailer="https://www.youtube.com/watch?v=5L1wQb29SfU">Watch Trailer</button>
+        </div>
+      </div>
+      <div class="celeb-info">
+        <div class="celeb-name">Robert Downey Jr</div>
+        <div class="celeb-genre">Film · Marvel</div>
+        <div class="celeb-prices">
+          <div class="cp hi-gold"><div class="cp-lbl">Gold</div><div class="cp-val">$5K</div></div>
+          <div class="cp"><div class="cp-lbl">Silver</div><div class="cp-val">$4.1K</div></div>
+          <div class="cp"><div class="cp-lbl">Bronze</div><div class="cp-val">$2.5K</div></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="celeb-card reveal rd2" data-celeb-id="depp">
+      <div class="celeb-visual">
+        <div class="celeb-glow"></div>
+        <div class="celeb-emoji">🎩</div>
+        <div class="celeb-tier-tag tier-silver">Silver</div>
+        <div class="celeb-hover-actions">
+          <button class="cha-btn cha-book" onclick="openBook(event)">Book Now</button>
+          <button class="cha-btn cha-trailer trailer-btn" data-trailer="https://www.youtube.com/watch?v=fONjfvXT1D8">Watch Trailer</button>
+        </div>
+      </div>
+      <div class="celeb-info">
+        <div class="celeb-name">Johnny Depp</div>
+        <div class="celeb-genre">Film · Drama</div>
+        <div class="celeb-prices">
+          <div class="cp"><div class="cp-lbl">Gold</div><div class="cp-val">$5K</div></div>
+          <div class="cp hi-silver"><div class="cp-lbl">Silver</div><div class="cp-val">$4.1K</div></div>
+          <div class="cp"><div class="cp-lbl">Bronze</div><div class="cp-val">$2.5K</div></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="celeb-card reveal rd3" data-celeb-id="momoa">
+      <div class="celeb-visual">
+        <div class="celeb-glow"></div>
+        <div class="celeb-emoji">🌊</div>
+        <div class="celeb-tier-tag tier-silver">Silver</div>
+        <div class="celeb-hover-actions">
+          <button class="cha-btn cha-book" onclick="openBook(event)">Book Now</button>
+          <button class="cha-btn cha-trailer trailer-btn" data-trailer="https://www.youtube.com/watch?v=NFIxQLu9Iss">Watch Trailer</button>
+        </div>
+      </div>
+      <div class="celeb-info">
+        <div class="celeb-name">Jason Momoa</div>
+        <div class="celeb-genre">Film · Action</div>
+        <div class="celeb-prices">
+          <div class="cp"><div class="cp-lbl">Gold</div><div class="cp-val">$5K</div></div>
+          <div class="cp hi-silver"><div class="cp-lbl">Silver</div><div class="cp-val">$4.1K</div></div>
+          <div class="cp"><div class="cp-lbl">Bronze</div><div class="cp-val">$2.5K</div></div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<!-- ══ CELEBRITY STRIP ══════════════════════════════════ -->
+<section class="section" id="strip" style="padding-top:0">
+  <div class="sec-head">
+    <div>
+      <div class="sec-eyebrow">All Talent</div>
+      <h2 class="sec-title">More Stars</h2>
+    </div>
+  </div>
+  <div class="strip-track" id="stripTrack">
+    <div class="strip-card" data-celeb-id="pitt"><div class="strip-av">🎬</div><div class="strip-name">Brad Pitt</div><div class="strip-genre">Film · Drama</div><span class="strip-tier tier-gold">Gold</span></div>
+    <div class="strip-card" data-celeb-id="robbie"><div class="strip-av">✨</div><div class="strip-name">Margot Robbie</div><div class="strip-genre">Film · Drama</div><span class="strip-tier tier-silver">Silver</span></div>
+    <div class="strip-card" data-celeb-id="reynolds"><div class="strip-av">😄</div><div class="strip-name">Ryan Reynolds</div><div class="strip-genre">Film · Comedy</div><span class="strip-tier tier-silver">Silver</span></div>
+    <div class="strip-card" data-celeb-id="hemsworth"><div class="strip-av">⚡</div><div class="strip-name">Chris Hemsworth</div><div class="strip-genre">Film · Action</div><span class="strip-tier tier-silver">Silver</span></div>
+    <div class="strip-card" data-celeb-id="cavill"><div class="strip-av">🦸</div><div class="strip-name">Henry Cavill</div><div class="strip-genre">Film · Action</div><span class="strip-tier tier-silver">Silver</span></div>
+    <div class="strip-card" data-celeb-id="wsmith"><div class="strip-av">🎤</div><div class="strip-name">Will Smith</div><div class="strip-genre">Film · Comedy</div><span class="strip-tier tier-gold">Gold</span></div>
+    <div class="strip-card" data-celeb-id="pascal"><div class="strip-av">🎭</div><div class="strip-name">Pedro Pascal</div><div class="strip-genre">Film · Drama</div><span class="strip-tier tier-bronze">Bronze</span></div>
+    <div class="strip-card" data-celeb-id="elba"><div class="strip-av">🎬</div><div class="strip-name">Idris Elba</div><div class="strip-genre">Film · Drama</div><span class="strip-tier tier-bronze">Bronze</span></div>
+    <div class="strip-card" data-celeb-id="hardy"><div class="strip-av">💪</div><div class="strip-name">Tom Hardy</div><div class="strip-genre">Film · Action</div><span class="strip-tier tier-bronze">Bronze</span></div>
+    <div class="strip-card" data-celeb-id="jordan"><div class="strip-av">🥊</div><div class="strip-name">Michael B Jordan</div><div class="strip-genre">Film · Drama</div><span class="strip-tier tier-bronze">Bronze</span></div>
+    <div class="strip-card" data-celeb-id="theron"><div class="strip-av">👑</div><div class="strip-name">Charlize Theron</div><div class="strip-genre">Film · Action</div><span class="strip-tier tier-silver">Silver</span></div>
+    <div class="strip-card" data-celeb-id="costner"><div class="strip-av">🤠</div><div class="strip-name">Kevin Costner</div><div class="strip-genre">Film · Drama</div><span class="strip-tier tier-silver">Silver</span></div>
+    <div class="strip-card" data-celeb-id="yaman"><div class="strip-av">🌟</div><div class="strip-name">Can Yaman</div><div class="strip-genre">TV · Drama</div><span class="strip-tier tier-silver">Silver</span></div>
+    <div class="strip-card" data-celeb-id="washington"><div class="strip-av">🎬</div><div class="strip-name">Denzel Washington</div><div class="strip-genre">Film · Drama</div><span class="strip-tier tier-gold">Gold</span></div>
+    <div class="strip-card" data-celeb-id="freeman"><div class="strip-av">🎙</div><div class="strip-name">Morgan Freeman</div><div class="strip-genre">Film · Drama</div><span class="strip-tier tier-gold">Gold</span></div>
+    <div class="strip-card" data-celeb-id="evans"><div class="strip-av">🛡</div><div class="strip-name">Chris Evans</div><div class="strip-genre">Film · Action</div><span class="strip-tier tier-silver">Silver</span></div>
+    <div class="strip-card" data-celeb-id="mescal"><div class="strip-av">🎭</div><div class="strip-name">Paul Mescal</div><div class="strip-genre">Film · Drama</div><span class="strip-tier tier-bronze">Bronze</span></div>
+    <div class="strip-card" data-celeb-id="murphy"><div class="strip-av">🎬</div><div class="strip-name">Cillian Murphy</div><div class="strip-genre">Film · Drama</div><span class="strip-tier tier-bronze">Bronze</span></div>
+  </div>
+</section>
+
+<!-- ══ CATEGORIES ════════════════════════════════════════ -->
+<section class="section" id="categories">
+  <div class="sec-head">
+    <div>
+      <div class="sec-eyebrow">Booking Types</div>
+      <h2 class="sec-title">What Can You Book?</h2>
+      <p class="sec-sub">From global brand campaigns to intimate private events — Rezoro covers every format.</p>
+    </div>
+  </div>
+  <div class="cat-bento">
+    <div class="cat-cell reveal">
+      <span class="cat-badge">Most Popular</span>
+      <div class="cat-icon-wrap">📢</div>
+      <div class="cat-name">Brand Campaigns</div>
+      <p class="cat-desc">Long-term partnerships, product launches, ambassador deals and social media campaigns with the world's biggest names.</p>
+    </div>
+    <div class="cat-cell reveal rd1">
+      <div class="cat-icon-wrap">🎬</div>
+      <div class="cat-name">Film & TV</div>
+      <p class="cat-desc">Cameos, appearances, and entertainment bookings for productions worldwide.</p>
+    </div>
+    <div class="cat-cell reveal rd2">
+      <div class="cat-icon-wrap">🎤</div>
+      <div class="cat-name">Private Events</div>
+      <p class="cat-desc">Exclusive galas, VIP dinners, and ultra-premium corporate experiences.</p>
+    </div>
+    <div class="cat-cell reveal">
+      <div class="cat-icon-wrap">✍️</div>
+      <div class="cat-name">Meet & Greet</div>
+      <p class="cat-desc">Private fan meetings, signings, and intimate Q&A sessions.</p>
+    </div>
+    <div class="cat-cell reveal rd1">
+      <div class="cat-icon-wrap">📱</div>
+      <div class="cat-name">Digital Content</div>
+      <p class="cat-desc">Social posts, video messages, live streams, and personalised shoutouts.</p>
+    </div>
+    <div class="cat-cell reveal rd2">
+      <div class="cat-icon-wrap">🎴</div>
+      <div class="cat-name">Fan Cards</div>
+      <p class="cat-desc">Premium collectible fan cards — Gold, Silver and Bronze — signed and personalised.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ══ HOW IT WORKS ══════════════════════════════════════ -->
+<section class="section" id="how">
+  <div class="sec-head">
+    <div>
+      <div class="sec-eyebrow">The Process</div>
+      <h2 class="sec-title">How Rezoro Works</h2>
+    </div>
+  </div>
+  <div class="steps-grid">
+    <div class="step-card reveal">
+      <div class="step-num">01</div>
+      <div class="step-title">Browse & Select</div>
+      <p class="step-desc">Explore our curated roster of A-list talent. Filter by category, tier, or availability.</p>
+    </div>
+    <div class="step-card reveal rd1">
+      <div class="step-num">02</div>
+      <div class="step-title">Submit Inquiry</div>
+      <p class="step-desc">Share your vision, budget, and timeline. Our team reviews within 24 hours.</p>
+    </div>
+    <div class="step-card reveal rd2">
+      <div class="step-num">03</div>
+      <div class="step-title">Negotiate & Contract</div>
+      <p class="step-desc">We handle all negotiations, contracts, and legal documentation on your behalf.</p>
+    </div>
+    <div class="step-card reveal rd3">
+      <div class="step-num">04</div>
+      <div class="step-title">Experience Delivered</div>
+      <p class="step-desc">Your booking is executed flawlessly with dedicated support from start to finish.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ══ TESTIMONIALS ══════════════════════════════════════ -->
+<section class="section" id="testimonials">
+  <div class="sec-head">
+    <div>
+      <div class="sec-eyebrow">Client Stories</div>
+      <h2 class="sec-title">What Clients Say</h2>
+    </div>
+  </div>
+  <div class="testi-grid">
+    <div class="testi-card reveal">
+      <div class="testi-stars">★ ★ ★ ★ ★</div>
+      <div class="testi-text">"Rezoro delivered an impossible ask — a three-day brand partnership with an A-lister — in under two weeks. Flawless from first call to final delivery."</div>
+      <div class="testi-author">Marcus L.</div>
+      <div class="testi-role">CMO, LVMH Group</div>
+    </div>
+    <div class="testi-card reveal rd1">
+      <div class="testi-stars">★ ★ ★ ★ ★</div>
+      <div class="testi-text">"The caliber of talent on this platform is unmatched. We booked three campaigns in one quarter. The ROI was extraordinary."</div>
+      <div class="testi-author">Sarah K.</div>
+      <div class="testi-role">Head of Brand, Nike Global</div>
+    </div>
+    <div class="testi-card reveal rd2">
+      <div class="testi-stars">★ ★ ★ ★ ★</div>
+      <div class="testi-text">"I used Rezoro's fan card for my daughter's 18th birthday. She cried when she saw it. I've never seen anything more premium in my life."</div>
+      <div class="testi-author">James T.</div>
+      <div class="testi-role">Private Client, Dubai</div>
+    </div>
+  </div>
+</section>
+
+<!-- ══ FOOTER ════════════════════════════════════════════ -->
+<footer>
+  <div class="footer-top">
+    <div class="footer-brand">
+      <a href="#" class="logo">Rez<span>oro</span></a>
+      <p>The world's most exclusive platform for celebrity bookings and luxury fan experiences.</p>
+    </div>
+    <div class="footer-col">
+      <h4>Platform</h4>
+      <a href="#talent">Browse Talent</a>
+      <a href="fans.html">Fan Cards</a>
+      <a href="#categories">Categories</a>
+      <a href="#how">How It Works</a>
+    </div>
+    <div class="footer-col">
+      <h4>Company</h4>
+      <a href="#">About Rezoro</a>
+      <a href="#">Press</a>
+      <a href="#">Careers</a>
+      <a href="#">Contact</a>
+    </div>
+    <div class="footer-col">
+      <h4>Legal</h4>
+      <a href="#">Privacy Policy</a>
+      <a href="#">Terms of Service</a>
+      <a href="#">NDA Template</a>
+    </div>
+  </div>
+  <div class="footer-bottom">
+    <div class="footer-copy">© 2026 Rezoro. All rights reserved.</div>
+    <div class="footer-copy" style="color:var(--t3)">Built for the world's most exclusive experiences.</div>
+  </div>
+</footer>
+
+<!-- ══ BOOKING MODAL ═════════════════════════════════════ -->
+<div class="overlay" id="bookOverlay" onclick="closeBook(event)">
+  <div class="modal-box">
+    <button class="modal-x" onclick="closeBook()">✕</button>
+    <div class="modal-title">Book a Celebrity</div>
+    <p class="modal-sub">Tell us about your booking. Our team responds within 24 hours.</p>
+    <label class="f-lbl">Your Name</label>
+    <input type="text" class="f-inp" placeholder="Full name">
+    <label class="f-lbl">Company</label>
+    <input type="text" class="f-inp" placeholder="Company name">
+    <label class="f-lbl">Preferred Celebrity</label>
+    <input type="text" class="f-inp" placeholder="e.g. Leonardo DiCaprio">
+    <label class="f-lbl">Budget Range</label>
+    <input type="text" class="f-inp" placeholder="e.g. $50,000 – $200,000">
+    <button class="f-sub" onclick="submitBook()">Submit Inquiry →</button>
+  </div>
+</div>
+
+<!-- ══ TRAILER MODAL ═════════════════════════════════════ -->
+<div class="overlay" id="trailerOverlay" onclick="closeTrailer(event)">
+  <div class="trailer-wrap">
+    <button class="trailer-close-btn" onclick="closeTrailer()">✕ Close</button>
+    <div class="trailer-box">
+      <iframe id="trailerFrame" src="" allowfullscreen allow="autoplay; encrypted-media"></iframe>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ── HERO VIDEO ────────────────────────────────── */
+(function(){
+  const v = document.querySelector('.hero-video');
+  if(!v) return;
+  const show = () => {
+    v.classList.add('playing');
+    setTimeout(() => { const r = document.querySelector('.hero-reel'); if(r) r.style.opacity='0'; }, 1400);
+  };
+  if(v.readyState >= 3) show();
+  else {
+    v.addEventListener('playing', show, {once:true});
+    v.addEventListener('canplay', () => v.play().catch(()=>{}), {once:true});
+  }
+  v.addEventListener('error', () => v.style.display='none');
+})();
+
+/* ── NAV SCROLL ────────────────────────────────── */
+const NAV = document.getElementById('nav');
+window.addEventListener('scroll', () => NAV.classList.toggle('scrolled', scrollY > 40), {passive:true});
+
+/* ── SCROLL REVEAL ─────────────────────────────── */
+const ro = new IntersectionObserver(entries => {
+  entries.forEach(e => { if(e.isIntersecting){ e.target.classList.add('visible'); ro.unobserve(e.target); }});
+}, {threshold: 0.1});
+document.querySelectorAll('.reveal').forEach(el => ro.observe(el));
+
+/* ── DRAG SCROLL STRIP ─────────────────────────── */
+const strip = document.getElementById('stripTrack');
+if(strip){
+  let drag=false, sx=0, sl=0;
+  strip.addEventListener('mousedown', e => { drag=true; sx=e.pageX-strip.offsetLeft; sl=strip.scrollLeft; strip.style.cursor='grabbing'; });
+  document.addEventListener('mouseup', () => { drag=false; strip.style.cursor='grab'; });
+  strip.addEventListener('mousemove', e => { if(!drag) return; e.preventDefault(); strip.scrollLeft = sl-(e.pageX-strip.offsetLeft-sx)*1.5; });
+}
+
+/* ── BOOKING MODAL ─────────────────────────────── */
+function openBook(e){ if(e) e.preventDefault(); document.getElementById('bookOverlay').classList.add('open'); document.body.style.overflow='hidden'; }
+function closeBook(e){ if(e && e.target!==document.getElementById('bookOverlay')) return; document.getElementById('bookOverlay').classList.remove('open'); document.body.style.overflow=''; }
+function submitBook(){ closeBook(); showToast('✦ Inquiry received. We\'ll contact you within 24 hours.'); }
+
+/* ── TRAILER MODAL ─────────────────────────────── */
+function ytId(url){
+  if(!url) return null;
+  const m = url.match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|embed\/))([^&?\/\s]+)/);
+  return m ? m[1] : null;
+}
+function openTrailer(url){
+  const id = ytId(url); if(!id) return;
+  document.getElementById('trailerFrame').src = `https://www.youtube.com/embed/${id}?autoplay=1&rel=0`;
+  document.getElementById('trailerOverlay').classList.add('open');
+  document.body.style.overflow='hidden';
+}
+function closeTrailer(e){
+  if(e && e.target!==document.getElementById('trailerOverlay')) return;
+  document.getElementById('trailerOverlay').classList.remove('open');
+  document.getElementById('trailerFrame').src='';
+  document.body.style.overflow='';
+}
+document.querySelectorAll('.trailer-btn').forEach(b => {
+  b.addEventListener('click', e => { e.stopPropagation(); openTrailer(b.dataset.trailer); });
+});
+
+/* ── INLINE HOVER TRAILER PREVIEW ──────────────── */
+(function(){
+  const DELAY = 400; // ms pause before loading — avoids firing on quick sweeps
+
+  document.querySelectorAll('.celeb-card').forEach(card => {
+    const btn = card.querySelector('.trailer-btn');
+    if(!btn || !btn.dataset.trailer) return;
+
+    let timer = null;
+    let iframe = null;
+
+    function startPreview(){
+      const id = ytId(btn.dataset.trailer);
+      if(!id) return;
+
+      iframe = document.createElement('iframe');
+      iframe.className = 'celeb-preview-iframe';
+      iframe.allow = 'autoplay; encrypted-media; picture-in-picture';
+      iframe.setAttribute('allowfullscreen','');
+      // autoplay=1, mute=1, controls=0, rel=0, loop=1
+      iframe.src = `https://www.youtube.com/embed/${id}?autoplay=1&mute=1&controls=0&rel=0&modestbranding=1&loop=1&playlist=${id}&playsinline=1&iv_load_policy=3`;
+
+      card.querySelector('.celeb-visual').appendChild(iframe);
+      // Two rAF frames so the browser registers the element before transitioning opacity
+      requestAnimationFrame(() => requestAnimationFrame(() => iframe.classList.add('visible')));
+    }
+
+    function stopPreview(){
+      clearTimeout(timer);
+      timer = null;
+      if(iframe){
+        iframe.src = ''; // Immediately cut audio/network
+        iframe.remove();
+        iframe = null;
+      }
+    }
+
+    card.addEventListener('mouseenter', () => {
+      timer = setTimeout(startPreview, DELAY);
+    });
+    card.addEventListener('mouseleave', stopPreview);
+  });
+})();
+
+/* ── TOAST ─────────────────────────────────────── */
+function showToast(msg){
+  let t = document.getElementById('rz-toast');
+  if(!t){
+    t = document.createElement('div'); t.id='rz-toast';
+    t.style.cssText='position:fixed;bottom:2rem;right:2rem;z-index:200;background:var(--bg2);border:1px solid var(--gold-border);color:var(--t1);padding:.9rem 1.4rem;border-radius:var(--r-md);font-family:var(--font-s);font-size:.78rem;font-weight:500;opacity:0;transform:translateY(10px);transition:opacity .3s,transform .3s;pointer-events:none;max-width:320px;line-height:1.5;';
+    document.body.appendChild(t);
+  }
+  t.textContent=msg;
+  requestAnimationFrame(()=>{ t.style.opacity='1'; t.style.transform='translateY(0)'; });
+  clearTimeout(t._t);
+  t._t=setTimeout(()=>{ t.style.opacity='0'; t.style.transform='translateY(10px)'; }, 4200);
+}
+
+/* ── ADMIN CELEBRITY DATA SYNC ─────────────────── */
+/* Reads 'rezoro_celeb_data' from localStorage (set by admin Celebrity Editor)
+   and updates name, tier tag, and trailer button on each card.             */
+function applyAdminOverrides(){
+  let data=[];
+  try { data = JSON.parse(localStorage.getItem('rezoro_celeb_data')||'[]'); } catch(e){ return; }
+  data.forEach(ov => {
+    document.querySelectorAll(`[data-celeb-id="${ov.id}"]`).forEach(card => {
+      // Name
+      const nameEl = card.querySelector('.celeb-name,.strip-name');
+      if(nameEl && ov.name) nameEl.textContent = ov.name;
+      // Tier tag
+      const tierTag = card.querySelector('.celeb-tier-tag,.strip-tier');
+      if(tierTag && ov.tier){
+        tierTag.className = tierTag.className.replace(/tier-\w+/, '') + ' tier-'+ov.tier;
+        const label = ov.tier.charAt(0).toUpperCase()+ov.tier.slice(1);
+        tierTag.textContent = label;
+      }
+      // Trailer button
+      const tBtn = card.querySelector('.trailer-btn');
+      if(tBtn){
+        if(ov.trailer && ov.trailer.trim()){
+          tBtn.dataset.trailer = ov.trailer;
+          tBtn.style.display='';
+          tBtn.onclick = e => { e.stopPropagation(); openTrailer(ov.trailer); };
+        } else {
+          tBtn.style.display='none';
+        }
+      }
+      // Price highlight
+      if(ov.tier){
+        const cps = card.querySelectorAll('.cp');
+        cps.forEach((cp,i) => {
+          cp.className='cp';
+          const tiers=['gold','silver','bronze'];
+          if(ov.tier===tiers[i]) cp.classList.add('hi-'+ov.tier);
+        });
+      }
+    });
+  });
+}
+applyAdminOverrides();
+window.addEventListener('storage', e => { if(e.key==='rezoro_celeb_data') applyAdminOverrides(); });
+
+/* ── ESCAPE ─────────────────────────────────────── */
+document.addEventListener('keydown', e => { if(e.key==='Escape'){ closeBook(); closeTrailer(); } });
+</script>
+</body>
+</html>
