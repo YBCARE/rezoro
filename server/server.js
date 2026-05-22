@@ -66,8 +66,9 @@ app.get('/admin.html', (req, res) => {
 });
 
 // POST /admin-auth — validate password, set cookie
-app.post('/admin-auth', express.urlencoded({ extended: false }), (req, res) => {
-  if (req.body.pass === ADMIN_PASS) {
+app.post('/admin-auth', (req, res) => {
+  const pass = (req.body && req.body.pass) || '';
+  if (pass === ADMIN_PASS) {
     const token = uuidv4();
     adminSessions.add(token);
     res.set('Set-Cookie', `rz_admin=${token}; Path=/; HttpOnly; SameSite=Strict; Max-Age=86400`);
@@ -139,7 +140,7 @@ function makeRef() {
 
 /* ── Health check ───────────────────────────────────────── */
 app.get('/api/health', (_req, res) => {
-  res.json({ status: 'ok', service: 'Rezoro Backend', version: '1.0.1' });
+  res.json({ status: 'ok', service: 'Rezoro Backend', version: '1.0.2' });
 });
 
 /* ── Debug: check admin.html content on disk ────────────── */
