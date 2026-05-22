@@ -68,6 +68,7 @@ function doLogin(){
   .then(function(d){
     if(d.ok){
       sessionStorage.setItem('rz_tok', d.token);
+      sessionStorage.setItem('rz_admin_auth', '1');
       window.location.href = '/admin.html?rzt=' + encodeURIComponent(d.token);
     } else {
       document.getElementById('err').textContent = 'Incorrect password. Try again.';
@@ -171,7 +172,7 @@ function makeRef() {
 
 /* ── Health check ───────────────────────────────────────── */
 app.get('/api/health', (_req, res) => {
-  res.json({ status: 'ok', service: 'Rezoro Backend', version: '1.0.3' });
+  res.json({ status: 'ok', service: 'Rezoro Backend', version: '1.0.4' });
 });
 
 /* ── Debug: check admin.html content on disk ────────────── */
