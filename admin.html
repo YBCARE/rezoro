@@ -394,8 +394,9 @@ function gateUnlock(){
     </div>
     <div class="sb-group">
       <span class="sb-group-label">Operations</span>
-      <a class="sb-item" onclick="nav('bookings',this)"><span class="sb-icon">📋</span> Bookings <span class="sb-badge sb-badge-gold">12</span></a>
-      <a class="sb-item" onclick="nav('inquiries',this)"><span class="sb-icon">✉</span> Inquiries <span class="sb-badge sb-badge-red">5</span></a>
+      <a class="sb-item" onclick="nav('incoming',this)"><span class="sb-icon">📥</span> Incoming Bookings <span class="sb-badge sb-badge-red" id="sb-pending-count"></span></a>
+      <a class="sb-item" onclick="nav('bookings',this)"><span class="sb-icon">📋</span> Bookings</a>
+      <a class="sb-item" onclick="nav('newsletter',this)"><span class="sb-icon">📨</span> Newsletter</a>
       <a class="sb-item" onclick="nav('contracts',this)"><span class="sb-icon">📄</span> Contracts</a>
       <a class="sb-item" onclick="nav('payments',this)"><span class="sb-icon">💳</span> Payments</a>
     </div>
@@ -706,6 +707,74 @@ function gateUnlock(){
     </div>
   </div>
 
+  <!-- ════ PAGE: INCOMING BOOKINGS ══════════════════════ -->
+  <div class="page" id="pg-incoming">
+    <div class="pg-header">
+      <div><div class="pg-title">Incoming Bookings</div><div class="pg-sub">Review and respond to booking inquiries from customers.</div></div>
+      <div class="pg-actions"><button class="btn-sm" onclick="loadIncoming()">↻ Refresh</button></div>
+    </div>
+
+    <!-- Status filter -->
+    <div style="display:flex;gap:.5rem;flex-wrap:wrap;margin-bottom:1.4rem;">
+      <button class="btn-sm" id="inc-filter-all" onclick="setIncFilter('all',this)" style="color:var(--t1);border-color:var(--border2);">All</button>
+      <button class="btn-sm" id="inc-filter-pending" onclick="setIncFilter('pending',this)">Pending</button>
+      <button class="btn-sm" id="inc-filter-accepted" onclick="setIncFilter('accepted',this)">Accepted</button>
+      <button class="btn-sm" id="inc-filter-rejected" onclick="setIncFilter('rejected',this)">Rejected</button>
+    </div>
+
+    <div id="incoming-list"><div style="text-align:center;padding:3rem;color:var(--t3);font-size:.85rem;">Loading bookings…</div></div>
+  </div>
+
+  <!-- ════ PAGE: NEWSLETTER ══════════════════════════════ -->
+  <div class="page" id="pg-newsletter">
+    <div class="pg-header">
+      <div><div class="pg-title">Newsletter</div><div class="pg-sub">Manage subscribers and send campaigns.</div></div>
+      <div class="pg-actions"><button class="btn-sm" onclick="loadSubscribers()">↻ Refresh</button></div>
+    </div>
+
+    <div class="kpi-grid" style="grid-template-columns:repeat(3,1fr);">
+      <div class="kpi" style="--kpi-color:var(--gold);--kpi-bg:var(--gold-d);">
+        <div class="kpi-lbl">Total Subscribers <div class="kpi-ico">📨</div></div>
+        <div class="kpi-val" id="nl-total">—</div>
+        <div class="kpi-d" style="color:var(--t3);">all time</div>
+      </div>
+      <div class="kpi" style="--kpi-color:var(--green);--kpi-bg:var(--greenD);">
+        <div class="kpi-lbl">Last Sent <div class="kpi-ico">📤</div></div>
+        <div class="kpi-val" id="nl-last-count" style="font-size:1.2rem;">—</div>
+        <div class="kpi-d" style="color:var(--t3);" id="nl-last-time">emails</div>
+      </div>
+      <div class="kpi" style="--kpi-color:var(--blue);--kpi-bg:var(--blueD);">
+        <div class="kpi-lbl">Status <div class="kpi-ico">✓</div></div>
+        <div class="kpi-val" style="font-size:1rem;padding-top:.3rem;color:var(--green);">Active</div>
+        <div class="kpi-d" style="color:var(--t3);">SMTP ready</div>
+      </div>
+    </div>
+
+    <!-- Compose -->
+    <div class="tbl-card" style="padding:1.5rem 1.4rem;">
+      <div class="tbl-header" style="padding:0;border:none;margin-bottom:1.2rem;">
+        <div class="tbl-title">Compose & Send</div>
+      </div>
+      <div class="f-grp"><label class="f-lbl">Subject Line *</label><input class="f-in" type="text" id="nl-subject" placeholder="e.g. New celebrities available for booking this week"></div>
+      <div class="f-grp"><label class="f-lbl">Message (HTML supported)</label><textarea class="f-in f-ta" id="nl-body" style="min-height:140px;" placeholder="Write your newsletter message here. You can use HTML tags for formatting."></textarea></div>
+      <div style="display:flex;gap:.75rem;align-items:center;flex-wrap:wrap;">
+        <button class="f-sub" style="max-width:220px;margin-top:0;" onclick="sendNewsletter()">📤 Send to All Subscribers</button>
+        <div id="nl-send-status" style="font-size:.78rem;color:var(--t3);"></div>
+      </div>
+    </div>
+
+    <!-- Subscriber list -->
+    <div class="tbl-card">
+      <div class="tbl-header"><div class="tbl-title">Subscribers</div><div class="tbl-meta" id="nl-sub-meta"></div></div>
+      <div style="overflow-x:auto;">
+        <table>
+          <thead><tr><th>Email</th><th>Name</th><th>Joined</th></tr></thead>
+          <tbody id="nl-sub-table"><tr><td colspan="3" style="text-align:center;color:var(--t3);padding:2rem;">Loading subscribers…</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
   <!-- ════ PAGE: FAN CARDS ════════════════════════════════ -->
   <div class="page" id="pg-fancards">
     <div class="pg-header">
@@ -851,14 +920,15 @@ function gateUnlock(){
 const PAGE_MAP = {
   dashboard:'dashboard', analytics:'dashboard',
   bookings:'bookings', inquiries:'bookings', contracts:'generic', payments:'generic',
+  incoming:'incoming', newsletter:'newsletter',
   celebrities:'celebrities', 'celeb-editor':'celeb-editor',
   fancards:'fancards', categories:'generic', availability:'generic',
   clients:'generic', agents:'generic', settings:'generic'
 };
 const LABELS = {
   dashboard:'Dashboard', analytics:'Analytics', bookings:'Bookings', inquiries:'Inquiries',
-  contracts:'Contracts', payments:'Payments', celebrities:'Celebrities',
-  'celeb-editor':'Celebrity Editor', fancards:'Fan Cards',
+  contracts:'Contracts', payments:'Payments', incoming:'Incoming Bookings', newsletter:'Newsletter',
+  celebrities:'Celebrities', 'celeb-editor':'Celebrity Editor', fancards:'Fan Cards',
   categories:'Categories', availability:'Availability',
   clients:'Clients', agents:'Agents', settings:'Settings'
 };
@@ -876,6 +946,8 @@ function nav(name, el){
   if(PAGE_MAP[name]==='generic') document.getElementById('pgGenericTitle').textContent = label;
   if(name==='celeb-editor') renderCelebEditor();
   if(name==='fancards') renderFanTable();
+  if(name==='incoming') loadIncoming();
+  if(name==='newsletter') loadSubscribers();
   if(window.innerWidth <= 768) toggleSB(false);
 }
 
@@ -1128,6 +1200,179 @@ function submitAddFanCeleb(){
   document.getElementById('fc-visible').selectedIndex=0;
 }
 
+/* ═══════════════════════════════════════════
+   INCOMING BOOKINGS
+═══════════════════════════════════════════ */
+let allIncomingBookings = [];
+let incFilter = 'all';
+
+const statusColors = {
+  pending:      'b-gold',
+  accepted:     'b-green',
+  payment_sent: 'b-purple',
+  confirmed:    'b-blue',
+  completed:    'b-silver',
+  rejected:     'b-red'
+};
+const statusLabels = {
+  pending:      'Pending',
+  accepted:     'Accepted',
+  payment_sent: 'Payment Sent',
+  confirmed:    'Confirmed',
+  completed:    'Completed',
+  rejected:     'Rejected'
+};
+
+async function loadIncoming() {
+  const el = document.getElementById('incoming-list');
+  if (!el) return;
+  el.innerHTML = '<div style="text-align:center;padding:3rem;color:var(--t3);font-size:.85rem;">Loading…</div>';
+  try {
+    const r = await fetch('/api/admin/bookings');
+    allIncomingBookings = await r.json();
+    // Update pending badge
+    const pending = allIncomingBookings.filter(b=>b.status==='pending').length;
+    const badge = document.getElementById('sb-pending-count');
+    if (badge) { badge.textContent = pending > 0 ? pending : ''; badge.style.display = pending ? '' : 'none'; }
+    renderIncoming();
+  } catch(e) {
+    el.innerHTML = '<div style="text-align:center;padding:3rem;color:#f87171;font-size:.85rem;">Failed to load bookings. Is the server running?</div>';
+  }
+}
+
+function setIncFilter(f, el) {
+  incFilter = f;
+  document.querySelectorAll('[id^="inc-filter-"]').forEach(b=>{ b.style.color=''; b.style.borderColor=''; });
+  if (el) { el.style.color='var(--t1)'; el.style.borderColor='var(--border2)'; }
+  renderIncoming();
+}
+
+function renderIncoming() {
+  const el = document.getElementById('incoming-list');
+  if (!el) return;
+  const list = incFilter === 'all' ? allIncomingBookings : allIncomingBookings.filter(b=>b.status===incFilter);
+  if (!list.length) {
+    el.innerHTML = `<div style="text-align:center;padding:4rem;color:var(--t3);"><div style="font-size:2rem;margin-bottom:.6rem;">📭</div><div style="font-size:.85rem;">${incFilter==='all'?'No bookings yet.':'No '+incFilter+' bookings.'}</div></div>`;
+    return;
+  }
+  el.innerHTML = list.map(b => {
+    const sc = statusColors[b.status] || 'b-gold';
+    const sl = statusLabels[b.status] || b.status;
+    const date = new Date(b.createdAt).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
+    const actions = b.status === 'pending'
+      ? `<button class="td-btn gold" onclick="acceptBooking('${b.id}')">✓ Accept</button>
+         <button class="td-btn danger" onclick="rejectBooking('${b.id}')">✕ Reject</button>`
+      : b.status === 'accepted' && b.paymentLink
+        ? `<a href="${b.paymentLink}" target="_blank" class="td-btn gold" style="text-decoration:none;">💳 Payment Link</a>`
+        : '';
+    return `<div class="tbl-card" style="margin-bottom:1rem;">
+      <div style="padding:1.2rem 1.4rem;">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:1rem;flex-wrap:wrap;">
+          <div>
+            <div style="font-size:.72rem;font-weight:700;letter-spacing:.1em;color:var(--gold);font-family:'Courier New',monospace;margin-bottom:.3rem;">${b.ref}</div>
+            <div style="font-size:1rem;font-weight:600;color:var(--t1);">${esc(b.celebName)}</div>
+            <div style="font-size:.78rem;color:var(--t3);margin-top:.2rem;">${esc(b.tier)} · ${b.tierType} · ${b.days} days</div>
+            <span class="badge ${sc}" style="margin-top:.5rem;display:inline-block;">${sl}</span>
+          </div>
+          <div style="text-align:right;">
+            <div style="font-size:1.1rem;font-weight:700;color:var(--gold);">$${Number(b.price).toLocaleString()}</div>
+            <div style="font-size:.72rem;color:var(--t3);margin-top:.2rem;">${date}</div>
+          </div>
+        </div>
+        <div style="margin-top:1rem;padding-top:1rem;border-top:1px solid var(--border);display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:.5rem;">
+          <div><div style="font-size:.6rem;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--t3);">Client</div><div style="font-size:.82rem;color:var(--t1);">${esc(b.name)}</div></div>
+          <div><div style="font-size:.6rem;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--t3);">Email</div><div style="font-size:.82rem;color:var(--t1);">${esc(b.email)}</div></div>
+          ${b.phone ? `<div><div style="font-size:.6rem;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--t3);">Phone</div><div style="font-size:.82rem;color:var(--t1);">${esc(b.phone)}</div></div>` : ''}
+          ${b.company ? `<div><div style="font-size:.6rem;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--t3);">Company</div><div style="font-size:.82rem;color:var(--t1);">${esc(b.company)}</div></div>` : ''}
+        </div>
+        ${b.message ? `<div style="margin-top:.8rem;font-size:.8rem;color:var(--t3);padding:.7rem;background:var(--bg3);border-radius:6px;">"${esc(b.message)}"</div>` : ''}
+        ${actions ? `<div style="margin-top:1rem;display:flex;gap:.6rem;flex-wrap:wrap;">${actions}</div>` : ''}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+async function acceptBooking(id) {
+  if (!confirm('Accept this booking? A payment link will be generated and sent to the customer.')) return;
+  try {
+    const r = await fetch(`/api/admin/bookings/${id}/accept`, { method:'POST' });
+    const d = await r.json();
+    if (d.success) { showToast('✦ Booking accepted. Payment email sent.'); loadIncoming(); }
+    else showToast(d.error || 'Failed to accept.', 'error');
+  } catch { showToast('Server error.', 'error'); }
+}
+
+async function rejectBooking(id) {
+  if (!confirm('Reject this booking? The customer will be notified by email.')) return;
+  try {
+    const r = await fetch(`/api/admin/bookings/${id}/reject`, { method:'POST' });
+    const d = await r.json();
+    if (d.success) { showToast('Booking rejected. Customer notified.'); loadIncoming(); }
+    else showToast(d.error || 'Failed to reject.', 'error');
+  } catch { showToast('Server error.', 'error'); }
+}
+
+/* ═══════════════════════════════════════════
+   NEWSLETTER
+═══════════════════════════════════════════ */
+async function loadSubscribers() {
+  const tbody = document.getElementById('nl-sub-table');
+  const total = document.getElementById('nl-total');
+  const meta  = document.getElementById('nl-sub-meta');
+  if (!tbody) return;
+  tbody.innerHTML = '<tr><td colspan="3" style="text-align:center;color:var(--t3);padding:2rem;">Loading…</td></tr>';
+  try {
+    const r = await fetch('/api/newsletter/subscribers');
+    const data = await r.json();
+    if (total) total.textContent = data.length;
+    if (meta) meta.textContent = data.length + ' subscriber' + (data.length===1?'':'s');
+    if (!data.length) {
+      tbody.innerHTML = '<tr><td colspan="3" style="text-align:center;color:var(--t3);padding:2rem;">No subscribers yet.</td></tr>';
+      return;
+    }
+    tbody.innerHTML = data.map(s=>`<tr>
+      <td style="font-size:.82rem;color:var(--t1);">${esc(s.email)}</td>
+      <td style="font-size:.82rem;color:var(--t2);">${esc(s.name||'—')}</td>
+      <td style="font-size:.78rem;color:var(--t3);">${new Date(s.createdAt).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})}</td>
+    </tr>`).join('');
+  } catch {
+    tbody.innerHTML = '<tr><td colspan="3" style="text-align:center;color:#f87171;padding:2rem;">Failed to load subscribers.</td></tr>';
+  }
+}
+
+async function sendNewsletter() {
+  const subject = document.getElementById('nl-subject').value.trim();
+  const bodyTxt = document.getElementById('nl-body').value.trim();
+  const status  = document.getElementById('nl-send-status');
+  if (!subject || !bodyTxt) { showToast('⚠ Subject and message are required.', 'error'); return; }
+  if (!confirm(`Send this newsletter to all subscribers?`)) return;
+  status.textContent = 'Sending…';
+  status.style.color = 'var(--t3)';
+  try {
+    const r = await fetch('/api/newsletter/send', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ subject, html: bodyTxt.replace(/\n/g,'<br>'), text: bodyTxt })
+    });
+    const d = await r.json();
+    if (d.success) {
+      showToast(`✦ Sent to ${d.sent} subscriber${d.sent===1?'':'s'}!`);
+      status.textContent = `Last sent: ${d.sent} emails`;
+      status.style.color = 'var(--green)';
+      document.getElementById('nl-last-count').textContent = d.sent;
+      document.getElementById('nl-last-time').textContent = 'emails sent';
+    } else {
+      showToast(d.error||'Failed to send.','error');
+      status.textContent = 'Send failed.';
+      status.style.color = '#f87171';
+    }
+  } catch {
+    showToast('Server error.','error');
+    status.textContent = 'Server error.';
+    status.style.color = '#f87171';
+  }
+}
+
 /* ── Escape key ── */
 document.addEventListener('keydown', e=>{
   if(e.key==='Escape'){ closeAddCeleb(); closeConfirm(); closeAddFanCeleb(); }
@@ -1136,6 +1381,8 @@ document.addEventListener('keydown', e=>{
 /* ── Init ── */
 loadCelebData();
 loadFanCelebs();
+// Pre-load pending count
+loadIncoming();
 </script>
 </body>
 </html>

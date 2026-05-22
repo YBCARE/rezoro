@@ -1,7 +1,7 @@
 {
   "name": "rezoro-server",
-  "version": "1.0.0",
-  "description": "Rezoro backend — fan card generation & email delivery",
+  "version": "2.0.0",
+  "description": "Rezoro backend — bookings, fan cards, auth, newsletter",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
@@ -9,8 +9,10 @@
   },
   "dependencies": {
     "@napi-rs/canvas": "^0.1.57",
+    "bcryptjs": "^2.4.3",
     "cors": "^2.8.5",
     "express": "^4.19.2",
+    "jsonwebtoken": "^9.0.2",
     "multer": "^1.4.5-lts.1",
     "nodemailer": "^6.9.14",
     "uuid": "^10.0.0"

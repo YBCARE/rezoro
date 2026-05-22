@@ -1,189 +1,430 @@
 'use strict';
-const express  = require('express');
-const cors     = require('cors');
-const multer   = require('multer');
-const path     = require('path');
+const express   = require('express');
+const cors      = require('cors');
+const multer    = require('multer');
+const path      = require('path');
+const bcrypt    = require('bcryptjs');
+const jwt       = require('jsonwebtoken');
 const { v4: uuidv4 } = require('uuid');
 
-const { generateFanCard }   = require('./fancard');
-const { sendFanCardEmail }  = require('./mailer');
+const { generateFanCard }          = require('./fancard');
+const {
+  sendFanCardEmail,
+  sendBookingConfirmation,
+  sendBookingAccepted,
+  sendBookingRejected,
+  sendNewsletterWelcome,
+  sendNewsletter
+} = require('./mailer');
 
 const app  = express();
 const PORT = process.env.PORT || 3001;
+const ROOT = path.join(__dirname, '..');
+const JWT_SECRET = process.env.JWT_SECRET || 'rezoro-jwt-secret-change-in-prod';
+const FW_SECRET  = process.env.FLUTTERWAVE_SECRET_KEY || '';
+const FW_PUBLIC  = process.env.FLUTTERWAVE_PUBLIC_KEY || '';
+
+/* ══════════════════════════════════════════════════════════
+   IN-MEMORY STORES  (swap to DB for production)
+═══════════════════════════════════════════════════════════ */
+const bookings    = new Map();   // id → booking
+const users       = new Map();   // email → user
+const fancards    = new Map();   // userId → [fancard, ...]
+const subscribers = new Map();   // email → { email, name, createdAt }
 
 /* ── Middleware ─────────────────────────────────────────── */
 app.use(cors({ origin: '*' }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-
-const ROOT = path.join(__dirname, '..');
-
-// Serve all static files — HTML, images, video, etc.
 app.use(express.static(ROOT, { acceptRanges: true }));
 
-// Explicit route for hero.mp4 — ensures video streaming works on all hosts
-app.get('/hero.mp4', (req, res) => {
-  const fs       = require('fs');
-  const filePath = path.join(__dirname, '..', 'hero.mp4');
-  const stat     = fs.statSync(filePath);
-  const total    = stat.size;
-  const range    = req.headers.range;
-
-  if (range) {
-    const [startStr, endStr] = range.replace(/bytes=/, '').split('-');
-    const start = parseInt(startStr, 10);
-    const end   = endStr ? parseInt(endStr, 10) : total - 1;
-    const chunk = end - start + 1;
-    const stream = fs.createReadStream(filePath, { start, end });
-    res.writeHead(206, {
-      'Content-Range':  `bytes ${start}-${end}/${total}`,
-      'Accept-Ranges':  'bytes',
-      'Content-Length': chunk,
-      'Content-Type':   'video/mp4',
-    });
-    stream.pipe(res);
-  } else {
-    res.writeHead(200, {
-      'Content-Length': total,
-      'Content-Type':   'video/mp4',
-      'Accept-Ranges':  'bytes',
-    });
-    fs.createReadStream(filePath).pipe(res);
-  }
-});
-
-// Photo uploads held in memory (max 5 MB)
+/* ── Photo uploads (memory, max 5 MB) ───────────────────── */
 const upload = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: 5 * 1024 * 1024 }
 });
 
-/* ── Reference generator ────────────────────────────────── */
+/* ── Helpers ────────────────────────────────────────────── */
 function makeRef() {
-  const date  = new Date();
-  const yy    = String(date.getFullYear()).slice(-2);
-  const mm    = String(date.getMonth() + 1).padStart(2, '0');
-  const dd    = String(date.getDate()).padStart(2, '0');
-  const short = uuidv4().replace(/-/g, '').slice(0, 6).toUpperCase();
-  return `RZ-${yy}${mm}${dd}-${short}`;
+  const d = new Date();
+  const yy = String(d.getFullYear()).slice(-2);
+  const mm = String(d.getMonth()+1).padStart(2,'0');
+  const dd = String(d.getDate()).padStart(2,'0');
+  return `RZ-${yy}${mm}${dd}-${uuidv4().replace(/-/g,'').slice(0,6).toUpperCase()}`;
 }
 
-/* ── Health check ───────────────────────────────────────── */
+function authMiddleware(req, res, next) {
+  const header = req.headers.authorization || '';
+  const token  = header.startsWith('Bearer ') ? header.slice(7) : null;
+  if (!token) return res.status(401).json({ error: 'Not authenticated' });
+  try {
+    req.user = jwt.verify(token, JWT_SECRET);
+    next();
+  } catch {
+    res.status(401).json({ error: 'Invalid or expired token' });
+  }
+}
+
+/* ══════════════════════════════════════════════════════════
+   HEALTH
+═══════════════════════════════════════════════════════════ */
 app.get('/api/health', (_req, res) => {
-  res.json({ status: 'ok', service: 'Rezoro Backend', version: '1.0.5' });
+  res.json({ status: 'ok', service: 'Rezoro Backend', version: '2.0.0' });
 });
 
-/* ── Debug: check admin.html content on disk ────────────── */
-app.get('/api/debug-admin', (_req, res) => {
-  const fs = require('fs');
-  const p  = path.join(__dirname, '..', 'admin.html');
+/* ══════════════════════════════════════════════════════════
+   HERO VIDEO STREAMING
+═══════════════════════════════════════════════════════════ */
+app.get('/hero.mp4', (req, res) => {
+  const fs       = require('fs');
+  const filePath = path.join(ROOT, 'hero.mp4');
   try {
-    const content = fs.readFileSync(p, 'utf8');
-    const hasGate = content.includes('admin-gate');
-    const size    = content.length;
-    const snippet = content.slice(content.indexOf('</style>') - 200, content.indexOf('</style>') + 50);
-    res.json({ hasGate, size, snippet });
-  } catch(e) { res.json({ error: e.message }); }
+    const stat  = fs.statSync(filePath);
+    const total = stat.size;
+    const range = req.headers.range;
+    if (range) {
+      const [s, e]  = range.replace(/bytes=/, '').split('-');
+      const start   = parseInt(s, 10);
+      const end     = e ? parseInt(e, 10) : total - 1;
+      res.writeHead(206, {
+        'Content-Range':  `bytes ${start}-${end}/${total}`,
+        'Accept-Ranges':  'bytes',
+        'Content-Length': end - start + 1,
+        'Content-Type':   'video/mp4'
+      });
+      fs.createReadStream(filePath, { start, end }).pipe(res);
+    } else {
+      res.writeHead(200, { 'Content-Length': total, 'Content-Type': 'video/mp4', 'Accept-Ranges': 'bytes' });
+      fs.createReadStream(filePath).pipe(res);
+    }
+  } catch { res.status(404).send('Not found'); }
 });
 
-/* ── Debug: show what files are visible to the server ───── */
-app.get('/api/debug-files', (_req, res) => {
-  const fs   = require('fs');
-  const root = path.join(__dirname, '..');
+/* ══════════════════════════════════════════════════════════
+   BOOKING INQUIRY  (index.html → submit booking)
+═══════════════════════════════════════════════════════════ */
+const TIERS = {
+  individual: {
+    bronze: { price: 2500,  days: 3  },
+    silver: { price: 4100,  days: 7  },
+    gold:   { price: 5000,  days: 14 }
+  },
+  company: {
+    standard: { price: 10000, days: 7  },
+    premium:  { price: 25000, days: 14 },
+    elite:    { price: 50000, days: 30 }
+  }
+};
+
+app.post('/api/booking-inquiry', async (req, res) => {
   try {
-    const files     = fs.readdirSync(root).slice(0, 40);
-    const heroPath  = path.join(root, 'hero.mp4');
-    const heroExists = fs.existsSync(heroPath);
-    const heroSize  = heroExists ? fs.statSync(heroPath).size : null;
-    res.json({ root, heroExists, heroSize, files });
-  } catch (e) {
-    res.json({ error: e.message, root });
+    const { name, email, phone, company, celebName, tier, tierType, message } = req.body;
+    if (!name || !email || !celebName || !tier || !tierType) {
+      return res.status(400).json({ error: 'name, email, celebName, tier and tierType are required.' });
+    }
+
+    const typeKey = (tierType||'individual').toLowerCase();
+    const tierKey = (tier||'').toLowerCase();
+    const tierData = (TIERS[typeKey]||{})[tierKey] || { price: 0, days: 0 };
+
+    const ref = makeRef();
+    const booking = {
+      id: uuidv4(), ref,
+      status: 'pending',
+      name, email, phone: phone||'',
+      company: company||'',
+      celebName,
+      tier: tier.charAt(0).toUpperCase() + tier.slice(1),
+      tierType: typeKey,
+      price: tierData.price,
+      days: tierData.days,
+      message: message||'',
+      createdAt: new Date().toISOString(),
+      paymentLink: null
+    };
+    bookings.set(booking.id, booking);
+
+    console.log(`[BOOKING] ${ref} — ${celebName} for ${name} (${email})`);
+
+    // Send confirmation email (non-blocking — don't fail booking if email fails)
+    sendBookingConfirmation({
+      to: email, name, celebName, ref,
+      tier: booking.tier, tierType: typeKey,
+      price: tierData.price, days: tierData.days
+    }).catch(e => console.error('[email] confirmation failed:', e.message));
+
+    res.json({ success: true, ref, message: `Booking received. Confirmation sent to ${email}` });
+  } catch (err) {
+    console.error('[booking-inquiry]', err.message);
+    res.status(500).json({ error: 'Failed to process booking.' });
   }
 });
 
-/* ── Shared handler for booking & fancard ───────────────── */
-async function handleBooking(req, res) {
-  try {
-    const { fanName, country, celebName, celebEmoji, tier, email } = req.body;
+/* ══════════════════════════════════════════════════════════
+   ADMIN — BOOKINGS
+═══════════════════════════════════════════════════════════ */
+app.get('/api/admin/bookings', (_req, res) => {
+  res.json([...bookings.values()].sort((a,b) => new Date(b.createdAt)-new Date(a.createdAt)));
+});
 
+app.post('/api/admin/bookings/:id/accept', async (req, res) => {
+  const booking = bookings.get(req.params.id);
+  if (!booking) return res.status(404).json({ error: 'Booking not found' });
+
+  // Generate Flutterwave payment link
+  let paymentLink = `https://rezoro.pro?ref=${booking.ref}`; // fallback
+  if (FW_SECRET) {
+    try {
+      const fwRes = await fetch('https://api.flutterwave.com/v3/payments', {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${FW_SECRET}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          tx_ref:       booking.ref,
+          amount:       booking.price,
+          currency:     'USD',
+          redirect_url: `https://rezoro.pro/payment-success.html?ref=${booking.ref}`,
+          customer: { email: booking.email, name: booking.name },
+          customizations: {
+            title:       'Rezoro — Celebrity Booking',
+            description: `${booking.tier} booking — ${booking.celebName}`,
+            logo:        'https://rezoro.pro/logo.png'
+          }
+        })
+      });
+      const fwData = await fwRes.json();
+      if (fwData.status === 'success') paymentLink = fwData.data.link;
+    } catch (e) { console.error('[flutterwave]', e.message); }
+  }
+
+  booking.status      = 'accepted';
+  booking.paymentLink = paymentLink;
+
+  sendBookingAccepted({
+    to: booking.email, name: booking.name,
+    celebName: booking.celebName, ref: booking.ref,
+    tier: `${booking.tier} (${booking.tierType})`,
+    price: booking.price, days: booking.days,
+    paymentLink
+  }).catch(e => console.error('[email] accepted:', e.message));
+
+  res.json({ success: true, booking });
+});
+
+app.post('/api/admin/bookings/:id/reject', async (req, res) => {
+  const booking = bookings.get(req.params.id);
+  if (!booking) return res.status(404).json({ error: 'Booking not found' });
+
+  booking.status = 'rejected';
+
+  sendBookingRejected({
+    to: booking.email, name: booking.name,
+    celebName: booking.celebName, ref: booking.ref
+  }).catch(e => console.error('[email] rejected:', e.message));
+
+  res.json({ success: true, booking });
+});
+
+app.post('/api/admin/bookings/:id/status', (req, res) => {
+  const booking = bookings.get(req.params.id);
+  if (!booking) return res.status(404).json({ error: 'Booking not found' });
+  const allowed = ['pending','accepted','payment_sent','confirmed','completed','rejected'];
+  if (!allowed.includes(req.body.status)) return res.status(400).json({ error: 'Invalid status' });
+  booking.status = req.body.status;
+  res.json({ success: true, booking });
+});
+
+/* ══════════════════════════════════════════════════════════
+   FLUTTERWAVE WEBHOOK
+═══════════════════════════════════════════════════════════ */
+app.post('/api/payment/webhook', (req, res) => {
+  const secret = req.headers['verif-hash'] || '';
+  if (FW_SECRET && secret !== process.env.FW_WEBHOOK_SECRET) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+  const { data } = req.body;
+  if (data && data.status === 'successful') {
+    const ref = data.tx_ref;
+    for (const [, b] of bookings) {
+      if (b.ref === ref) { b.status = 'confirmed'; break; }
+    }
+  }
+  res.json({ status: 'ok' });
+});
+
+/* ══════════════════════════════════════════════════════════
+   USER AUTH
+═══════════════════════════════════════════════════════════ */
+app.post('/api/auth/register', async (req, res) => {
+  try {
+    const { name, email, password } = req.body;
+    if (!name || !email || !password) return res.status(400).json({ error: 'All fields required.' });
+    if (users.has(email.toLowerCase())) return res.status(409).json({ error: 'Email already registered.' });
+    if (password.length < 6) return res.status(400).json({ error: 'Password must be at least 6 characters.' });
+
+    const hash = await bcrypt.hash(password, 10);
+    const user = { id: uuidv4(), name, email: email.toLowerCase(), hash, createdAt: new Date().toISOString() };
+    users.set(user.email, user);
+
+    const token = jwt.sign({ id: user.id, email: user.email, name: user.name }, JWT_SECRET, { expiresIn: '7d' });
+    res.json({ token, user: { id: user.id, name: user.name, email: user.email, createdAt: user.createdAt } });
+  } catch (err) {
+    res.status(500).json({ error: 'Registration failed.' });
+  }
+});
+
+app.post('/api/auth/login', async (req, res) => {
+  try {
+    const { email, password } = req.body;
+    const user = users.get((email||'').toLowerCase());
+    if (!user) return res.status(401).json({ error: 'Invalid email or password.' });
+    const ok = await bcrypt.compare(password, user.hash);
+    if (!ok) return res.status(401).json({ error: 'Invalid email or password.' });
+    const token = jwt.sign({ id: user.id, email: user.email, name: user.name }, JWT_SECRET, { expiresIn: '7d' });
+    res.json({ token, user: { id: user.id, name: user.name, email: user.email, createdAt: user.createdAt } });
+  } catch {
+    res.status(500).json({ error: 'Login failed.' });
+  }
+});
+
+app.get('/api/auth/me', authMiddleware, (req, res) => {
+  const user = users.get(req.user.email);
+  if (!user) return res.status(404).json({ error: 'User not found' });
+  res.json({ id: user.id, name: user.name, email: user.email, createdAt: user.createdAt });
+});
+
+/* ── Google Sign-In ─────────────────────────────────────── */
+app.post('/api/auth/google', async (req, res) => {
+  try {
+    const { credential } = req.body;
+    if (!credential) return res.status(400).json({ error: 'No credential' });
+    // Verify via Google's tokeninfo endpoint
+    const gRes  = await fetch(`https://oauth2.googleapis.com/tokeninfo?id_token=${credential}`);
+    const gData = await gRes.json();
+    if (gData.error || !gData.email) return res.status(401).json({ error: 'Invalid Google token' });
+
+    const email = gData.email.toLowerCase();
+    let user = users.get(email);
+    if (!user) {
+      user = { id: uuidv4(), name: gData.name || email, email, hash: '', createdAt: new Date().toISOString(), google: true };
+      users.set(email, user);
+    }
+    const token = jwt.sign({ id: user.id, email: user.email, name: user.name }, JWT_SECRET, { expiresIn: '7d' });
+    res.json({ token, user: { id: user.id, name: user.name, email: user.email, createdAt: user.createdAt } });
+  } catch (err) {
+    res.status(500).json({ error: 'Google sign-in failed.' });
+  }
+});
+
+/* ══════════════════════════════════════════════════════════
+   USER — PROFILE DATA
+═══════════════════════════════════════════════════════════ */
+app.get('/api/user/bookings', authMiddleware, (req, res) => {
+  const userBookings = [...bookings.values()]
+    .filter(b => b.email === req.user.email)
+    .sort((a,b) => new Date(b.createdAt)-new Date(a.createdAt));
+  res.json(userBookings);
+});
+
+app.get('/api/user/fancards', authMiddleware, (req, res) => {
+  res.json(fancards.get(req.user.id) || []);
+});
+
+/* ══════════════════════════════════════════════════════════
+   NEWSLETTER
+═══════════════════════════════════════════════════════════ */
+app.post('/api/newsletter/subscribe', async (req, res) => {
+  const { email, name } = req.body;
+  if (!email || !email.includes('@')) return res.status(400).json({ error: 'Valid email required.' });
+  const key = email.toLowerCase();
+  if (subscribers.has(key)) return res.json({ success: true, message: 'Already subscribed.' });
+  subscribers.set(key, { email: key, name: name||'', createdAt: new Date().toISOString() });
+  sendNewsletterWelcome({ to: key, name: name||'' }).catch(e => console.error('[email] welcome:', e.message));
+  res.json({ success: true, message: 'Subscribed successfully!' });
+});
+
+app.get('/api/newsletter/subscribers', (_req, res) => {
+  res.json([...subscribers.values()].sort((a,b) => new Date(b.createdAt)-new Date(a.createdAt)));
+});
+
+app.post('/api/newsletter/send', async (req, res) => {
+  try {
+    const { subject, html, text } = req.body;
+    if (!subject || !html) return res.status(400).json({ error: 'subject and html are required.' });
+    const list = [...subscribers.keys()];
+    if (list.length === 0) return res.json({ success: true, sent: 0 });
+    let sent = 0;
+    for (const to of list) {
+      try { await sendNewsletter({ to, subject, html, text }); sent++; } catch {}
+    }
+    res.json({ success: true, sent, total: list.length });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to send newsletter.' });
+  }
+});
+
+/* ══════════════════════════════════════════════════════════
+   FAN CARD  (existing + link to user account)
+═══════════════════════════════════════════════════════════ */
+app.post('/api/fancard', upload.single('photo'), async (req, res) => {
+  try {
+    const { fanName, country, celebName, celebEmoji, tier, email, userId } = req.body;
     if (!fanName || !celebName || !email) {
       return res.status(400).json({ error: 'fanName, celebName and email are required.' });
     }
-
     const ref       = makeRef();
     const photoSrc  = req.file ? req.file.buffer : null;
     const tierClean = ['gold','silver','bronze'].includes(tier) ? tier : 'gold';
 
-    console.log(`[${new Date().toISOString()}] Booking  ${ref}  ${celebName}  for ${fanName}  (${email})`);
-
     const cardBuffer = await generateFanCard({
-      fanName,
-      country:    country || '',
-      celebName,
-      celebEmoji: celebEmoji || '🎬',
-      tier:       tierClean,
-      ref,
-      photoSrc
+      fanName, country: country||'', celebName,
+      celebEmoji: celebEmoji||'🎬', tier: tierClean, ref, photoSrc
     });
 
     await sendFanCardEmail({ to: email, fanName, country: country||'', celebName, tier: tierClean, ref, cardBuffer });
 
-    console.log(`[${new Date().toISOString()}] Email sent → ${email}`);
+    // Save to user's fancard collection if logged in
+    if (userId) {
+      const existing = fancards.get(userId) || [];
+      existing.unshift({ ref, celebName, tier: tierClean, fanName, country: country||'', createdAt: new Date().toISOString() });
+      fancards.set(userId, existing);
+    }
 
+    console.log(`[FANCARD] ${ref} — ${celebName} for ${fanName}`);
     res.json({ success: true, ref, message: `Fan card sent to ${email}` });
-
   } catch (err) {
-    console.error('[booking] Error:', err.message);
-    res.status(500).json({ error: 'Failed to process booking.', detail: err.message });
+    console.error('[fancard]', err.message);
+    res.status(500).json({ error: 'Failed to process fan card.', detail: err.message });
   }
-}
+});
 
-/* ══════════════════════════════════════════════════════════
-   POST /api/booking  &  POST /api/fancard  (same logic)
-═══════════════════════════════════════════════════════════ */
-app.post('/api/booking', upload.single('photo'), handleBooking);
-app.post('/api/fancard', upload.single('photo'), handleBooking);
+app.post('/api/booking', upload.single('photo'), async (req, res) => {
+  // Legacy alias → fancard
+  req.url = '/api/fancard';
+  app.handle(req, res);
+});
 
-/* ══════════════════════════════════════════════════════════
-   POST /api/preview-card
-   Returns the fan card PNG directly (no email).
-   Useful for showing a preview before purchase.
-═══════════════════════════════════════════════════════════ */
 app.post('/api/preview-card', upload.single('photo'), async (req, res) => {
   try {
     const { fanName, country, celebName, celebEmoji, tier } = req.body;
-    const ref      = makeRef();
-    const photoSrc = req.file ? req.file.buffer : null;
     const tierClean = ['gold','silver','bronze'].includes(tier) ? tier : 'gold';
-
     const cardBuffer = await generateFanCard({
-      fanName:    fanName    || 'Preview Fan',
-      country:    country    || '',
-      celebName:  celebName  || 'Celebrity',
-      celebEmoji: celebEmoji || '🎬',
-      tier:       tierClean,
-      ref,
-      photoSrc
+      fanName: fanName||'Preview Fan', country: country||'',
+      celebName: celebName||'Celebrity', celebEmoji: celebEmoji||'🎬',
+      tier: tierClean, ref: makeRef(), photoSrc: req.file?.buffer||null
     });
-
     res.set('Content-Type', 'image/png');
     res.set('Cache-Control', 'no-store');
     res.send(cardBuffer);
-
   } catch (err) {
-    console.error('[/api/preview-card] Error:', err.message);
-    res.status(500).json({ error: 'Failed to generate preview.', detail: err.message });
+    res.status(500).json({ error: 'Preview failed.', detail: err.message });
   }
 });
 
 /* ── Start ──────────────────────────────────────────────── */
 app.listen(PORT, () => {
-  console.log('');
-  console.log('  ╔══════════════════════════════════════╗');
-  console.log('  ║   R E Z O R O   B A C K E N D        ║');
-  console.log('  ╠══════════════════════════════════════╣');
-  console.log(`  ║  API     →  http://localhost:${PORT}/api ║`);
-  console.log(`  ║  Site    →  http://localhost:${PORT}     ║`);
-  console.log('  ╚══════════════════════════════════════╝');
-  console.log('');
+  console.log(`\n  ╔══════════════════════════════════════╗`);
+  console.log(`  ║   R E Z O R O   B A C K E N D  v2    ║`);
+  console.log(`  ╠══════════════════════════════════════╣`);
+  console.log(`  ║  http://localhost:${PORT}                ║`);
+  console.log(`  ╚══════════════════════════════════════╝\n`);
 });

@@ -587,7 +587,7 @@
     <li><a href="fans.html" class="nav-fan">Fan Cards</a></li>
   </ul>
   <div class="nav-right">
-    <a href="#" class="btn-nav-ghost" onclick="openBook(event)">Sign In</a>
+    <a href="signin.html" class="btn-nav-ghost">Sign In</a>
     <button class="btn-nav-gold" onclick="openBook(event)">Book a Star</button>
   </div>
 </nav>
@@ -978,6 +978,20 @@
   </div>
 </section>
 
+<!-- ══ NEWSLETTER ════════════════════════════════════════ -->
+<section style="background:#07070A;border-top:1px solid rgba(255,255,255,.06);padding:80px 24px;">
+  <div style="max-width:560px;margin:0 auto;text-align:center;">
+    <div style="font-size:.68rem;font-weight:700;letter-spacing:.22em;text-transform:uppercase;color:var(--gold);margin-bottom:.8rem;">Exclusive Access</div>
+    <h2 style="font-family:var(--font-d);font-size:clamp(1.8rem,4vw,2.6rem);font-weight:600;color:var(--t1);margin-bottom:.8rem;">Stay in the Know</h2>
+    <p style="font-size:.95rem;color:var(--t2);line-height:1.7;margin-bottom:2rem;">Be the first to hear about new talent additions, exclusive booking windows and special events.</p>
+    <div style="display:flex;gap:.5rem;max-width:420px;margin:0 auto;" id="nl-form">
+      <input type="email" id="nl-email" placeholder="Your email address" style="flex:1;padding:.85rem 1rem;background:#0E0E13;border:1px solid rgba(255,255,255,.1);border-radius:8px;color:#F0ECE4;font-family:inherit;font-size:.9rem;outline:none;">
+      <button onclick="subscribeNewsletter()" style="padding:.85rem 1.4rem;background:var(--gold);color:#000;border:none;border-radius:8px;font-family:inherit;font-size:.75rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;cursor:pointer;white-space:nowrap;">Subscribe</button>
+    </div>
+    <div id="nl-msg" style="font-size:.8rem;margin-top:.8rem;min-height:1em;"></div>
+  </div>
+</section>
+
 <!-- ══ FOOTER ════════════════════════════════════════════ -->
 <footer>
   <div class="footer-top">
@@ -1014,19 +1028,37 @@
 
 <!-- ══ BOOKING MODAL ═════════════════════════════════════ -->
 <div class="overlay" id="bookOverlay" onclick="closeBook(event)">
-  <div class="modal-box">
+  <div class="modal-box" style="max-height:90vh;overflow-y:auto;">
     <button class="modal-x" onclick="closeBook()">✕</button>
     <div class="modal-title">Book a Celebrity</div>
-    <p class="modal-sub">Tell us about your booking. Our team responds within 24 hours.</p>
+    <p class="modal-sub">Select your booking type and tier. We respond within 24 hours.</p>
+
+    <!-- Individual / Company toggle -->
+    <div style="display:flex;gap:.5rem;margin-bottom:1.4rem;background:#0E0E13;border-radius:10px;padding:4px;">
+      <button id="btn-individual" onclick="setBookType('individual')"
+        style="flex:1;padding:.6rem;border:none;border-radius:7px;font-family:inherit;font-size:.75rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;cursor:pointer;background:#C9A84C;color:#000;transition:all .2s;">Individual</button>
+      <button id="btn-company" onclick="setBookType('company')"
+        style="flex:1;padding:.6rem;border:none;border-radius:7px;font-family:inherit;font-size:.75rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;cursor:pointer;background:transparent;color:#5C5852;transition:all .2s;">Company</button>
+    </div>
+
+    <!-- Tier selector -->
+    <label class="f-lbl">Select Tier</label>
+    <div id="tier-options" style="display:grid;gap:.5rem;margin-bottom:1.2rem;"></div>
+
     <label class="f-lbl">Your Name</label>
-    <input type="text" class="f-inp" placeholder="Full name">
-    <label class="f-lbl">Company</label>
-    <input type="text" class="f-inp" placeholder="Company name">
+    <input type="text" class="f-inp" id="book-name" placeholder="Full name">
+    <label class="f-lbl">Email</label>
+    <input type="email" class="f-inp" id="book-email" placeholder="your@email.com">
+    <label class="f-lbl">Phone (optional)</label>
+    <input type="tel" class="f-inp" id="book-phone" placeholder="+1 234 567 8900">
+    <label class="f-lbl" id="company-lbl" style="display:none;">Company Name</label>
+    <input type="text" class="f-inp" id="book-company" placeholder="Your company" style="display:none;">
     <label class="f-lbl">Preferred Celebrity</label>
-    <input type="text" class="f-inp" placeholder="e.g. Leonardo DiCaprio">
-    <label class="f-lbl">Budget Range</label>
-    <input type="text" class="f-inp" placeholder="e.g. $50,000 – $200,000">
-    <button class="f-sub" onclick="submitBook()">Submit Inquiry →</button>
+    <input type="text" class="f-inp" id="book-celeb" placeholder="e.g. Leonardo DiCaprio">
+    <label class="f-lbl">Message (optional)</label>
+    <textarea class="f-inp" id="book-message" rows="3" placeholder="Tell us about your project..." style="resize:vertical;"></textarea>
+    <button class="f-sub" id="book-submit" onclick="submitBook()">Submit Inquiry →</button>
+    <div id="book-err" style="font-size:.78rem;color:#f87171;margin-top:.6rem;min-height:1em;"></div>
   </div>
 </div>
 
@@ -1084,9 +1116,120 @@ if(strip){
 }
 
 /* ── BOOKING MODAL ─────────────────────────────── */
-function openBook(e){ if(e) e.preventDefault(); document.getElementById('bookOverlay').classList.add('open'); document.body.style.overflow='hidden'; }
-function closeBook(e){ if(e && e.target!==document.getElementById('bookOverlay')) return; document.getElementById('bookOverlay').classList.remove('open'); document.body.style.overflow=''; }
-function submitBook(){ closeBook(); showToast('✦ Inquiry received. We\'ll contact you within 24 hours.'); }
+/* ── BOOKING MODAL ─────────────────────────────── */
+const TIERS = {
+  individual: [
+    { key:'bronze', label:'Bronze', price:2500,  days:3,  desc:'3-day engagement' },
+    { key:'silver', label:'Silver', price:4100,  days:7,  desc:'7-day engagement' },
+    { key:'gold',   label:'Gold',   price:5000,  days:14, desc:'14-day engagement' }
+  ],
+  company: [
+    { key:'standard', label:'Standard', price:10000, days:7,  desc:'7-day campaign' },
+    { key:'premium',  label:'Premium',  price:25000, days:14, desc:'14-day campaign' },
+    { key:'elite',    label:'Elite',    price:50000, days:30, desc:'30-day campaign' }
+  ]
+};
+let bookType = 'individual';
+let bookTier = 'bronze';
+
+function setBookType(type) {
+  bookType = type;
+  document.getElementById('btn-individual').style.background = type==='individual' ? '#C9A84C' : 'transparent';
+  document.getElementById('btn-individual').style.color      = type==='individual' ? '#000' : '#5C5852';
+  document.getElementById('btn-company').style.background    = type==='company'    ? '#C9A84C' : 'transparent';
+  document.getElementById('btn-company').style.color         = type==='company'    ? '#000' : '#5C5852';
+  document.getElementById('company-lbl').style.display       = type==='company'    ? 'block' : 'none';
+  document.getElementById('book-company').style.display      = type==='company'    ? 'block' : 'none';
+  renderTiers();
+}
+
+function renderTiers() {
+  const wrap = document.getElementById('tier-options');
+  wrap.innerHTML = '';
+  bookTier = TIERS[bookType][0].key;
+  TIERS[bookType].forEach(t => {
+    const el = document.createElement('div');
+    el.id = 'tier-'+t.key;
+    el.onclick = () => selectTier(t.key);
+    el.style.cssText = `padding:.9rem 1rem;border-radius:9px;border:1px solid rgba(201,168,76,${t.key===bookTier?'.5':'.15'});background:${t.key===bookTier?'rgba(201,168,76,.08)':'transparent'};cursor:pointer;display:flex;justify-content:space-between;align-items:center;transition:all .15s;`;
+    el.innerHTML = `<div><div style="font-size:.82rem;font-weight:700;color:#F0ECE4;">${t.label}</div><div style="font-size:.72rem;color:#5C5852;margin-top:2px;">${t.desc}</div></div><div style="font-size:.9rem;font-weight:700;color:#C9A84C;">$${t.price.toLocaleString()}</div>`;
+    wrap.appendChild(el);
+  });
+}
+
+function selectTier(key) {
+  bookTier = key;
+  TIERS[bookType].forEach(t => {
+    const el = document.getElementById('tier-'+t.key);
+    if(!el) return;
+    el.style.borderColor   = t.key===key ? 'rgba(201,168,76,.5)' : 'rgba(201,168,76,.15)';
+    el.style.background    = t.key===key ? 'rgba(201,168,76,.08)' : 'transparent';
+  });
+}
+
+function openBook(e) {
+  if(e) e.preventDefault();
+  renderTiers();
+  document.getElementById('bookOverlay').classList.add('open');
+  document.body.style.overflow='hidden';
+}
+function closeBook(e) {
+  if(e && e.target!==document.getElementById('bookOverlay')) return;
+  document.getElementById('bookOverlay').classList.remove('open');
+  document.body.style.overflow='';
+}
+
+async function submitBook() {
+  const name   = document.getElementById('book-name').value.trim();
+  const email  = document.getElementById('book-email').value.trim();
+  const celeb  = document.getElementById('book-celeb').value.trim();
+  const err    = document.getElementById('book-err');
+  err.textContent = '';
+  if (!name)  { err.textContent = 'Please enter your name.'; return; }
+  if (!email || !email.includes('@')) { err.textContent = 'Please enter a valid email.'; return; }
+  if (!celeb) { err.textContent = 'Please enter a preferred celebrity.'; return; }
+  const btn = document.getElementById('book-submit');
+  btn.textContent = 'Sending…'; btn.disabled = true;
+  try {
+    const t = TIERS[bookType].find(x=>x.key===bookTier)||TIERS[bookType][0];
+    const r = await fetch('/api/booking-inquiry', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({
+        name, email,
+        phone:   document.getElementById('book-phone').value.trim(),
+        company: document.getElementById('book-company').value.trim(),
+        celebName: celeb,
+        tier: t.label, tierType: bookType,
+        message: document.getElementById('book-message').value.trim()
+      })
+    });
+    const d = await r.json();
+    if (d.success) {
+      closeBook();
+      showToast('✦ Inquiry received! Confirmation sent to your email.');
+    } else {
+      err.textContent = d.error || 'Something went wrong.';
+    }
+  } catch { err.textContent = 'Connection error. Please try again.'; }
+  btn.textContent = 'Submit Inquiry →'; btn.disabled = false;
+}
+
+/* ── NEWSLETTER ─────────────────────────────────── */
+async function subscribeNewsletter() {
+  const email = document.getElementById('nl-email').value.trim();
+  const msg   = document.getElementById('nl-msg');
+  if (!email || !email.includes('@')) { msg.style.color='#f87171'; msg.textContent='Please enter a valid email.'; return; }
+  try {
+    const r = await fetch('/api/newsletter/subscribe', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ email })
+    });
+    const d = await r.json();
+    msg.style.color = d.success ? '#3ecf8e' : '#f87171';
+    msg.textContent = d.success ? '✓ You\'re subscribed! Welcome to Rezoro.' : (d.error||'Error');
+    if (d.success) document.getElementById('nl-email').value='';
+  } catch { msg.style.color='#f87171'; msg.textContent='Connection error.'; }
+}
 
 /* ── TRAILER MODAL ─────────────────────────────── */
 function ytId(url){
