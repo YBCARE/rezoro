@@ -40,6 +40,21 @@ app.get('/api/health', (_req, res) => {
   res.json({ status: 'ok', service: 'Rezoro Backend', version: '1.0.0' });
 });
 
+/* ── Debug: show what files are visible to the server ───── */
+app.get('/api/debug-files', (_req, res) => {
+  const fs   = require('fs');
+  const root = path.join(__dirname, '..');
+  try {
+    const files     = fs.readdirSync(root).slice(0, 40);
+    const heroPath  = path.join(root, 'hero.mp4');
+    const heroExists = fs.existsSync(heroPath);
+    const heroSize  = heroExists ? fs.statSync(heroPath).size : null;
+    res.json({ root, heroExists, heroSize, files });
+  } catch (e) {
+    res.json({ error: e.message, root });
+  }
+});
+
 /* ── Shared handler for booking & fancard ───────────────── */
 async function handleBooking(req, res) {
   try {
