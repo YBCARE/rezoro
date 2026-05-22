@@ -22,7 +22,7 @@ const ROOT = path.join(__dirname, '..');
 const ADMIN_PASS   = 'Rezoro2025!';
 const adminSessions = new Set();
 
-function adminLoginPage(err) {
+function adminLoginPage() {
   return `<!DOCTYPE html><html lang="en"><head>
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Rezoro — Admin Login</title>
@@ -44,19 +44,52 @@ button:active{opacity:.8}
 <div class="card">
   <div class="logo">Rez<span>oro</span></div>
   <div class="sub">Admin Portal</div>
-  <form method="POST" action="/admin-auth">
-    <label>Password</label>
-    <input type="password" name="pass" placeholder="Enter admin password"
-           autocomplete="current-password" autocorrect="off" autocapitalize="off" autofocus>
-    <button type="submit">Access Dashboard</button>
-    <div class="err">${err || ''}</div>
-  </form>
-</div></body></html>`;
+  <label>Password</label>
+  <input id="pw" type="password" placeholder="Enter admin password"
+         autocomplete="current-password" autocorrect="off" autocapitalize="off">
+  <button onclick="doLogin()">Access Dashboard</button>
+  <div class="err" id="err"></div>
+</div>
+<script>
+document.getElementById('pw').addEventListener('keydown', function(e){
+  if(e.key==='Enter') doLogin();
+});
+function doLogin(){
+  var pw = document.getElementById('pw').value;
+  var btn = document.querySelector('button');
+  btn.textContent = 'Checking...';
+  btn.disabled = true;
+  fetch('/admin-auth', {
+    method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({pass: pw})
+  })
+  .then(function(r){ return r.json(); })
+  .then(function(d){
+    if(d.ok){
+      sessionStorage.setItem('rz_tok', d.token);
+      window.location.href = '/admin.html?rzt=' + encodeURIComponent(d.token);
+    } else {
+      document.getElementById('err').textContent = 'Incorrect password. Try again.';
+      document.getElementById('pw').value = '';
+      document.getElementById('pw').focus();
+      btn.textContent = 'Access Dashboard';
+      btn.disabled = false;
+    }
+  })
+  .catch(function(){
+    document.getElementById('err').textContent = 'Connection error. Please try again.';
+    btn.textContent = 'Access Dashboard';
+    btn.disabled = false;
+  });
+}
+</script>
+</body></html>`;
 }
 
-// GET /admin.html — check session cookie, show login or dashboard
+// GET /admin.html — check token in query param or session
 app.get('/admin.html', (req, res) => {
-  const token = (req.headers.cookie || '').match(/rz_admin=([^;]+)/)?.[1];
+  const token = req.query.rzt || '';
   if (token && adminSessions.has(token)) {
     res.set('Cache-Control', 'no-store');
     return res.sendFile(path.join(ROOT, 'admin.html'));
@@ -65,17 +98,15 @@ app.get('/admin.html', (req, res) => {
   res.send(adminLoginPage());
 });
 
-// POST /admin-auth — validate password, set cookie
+// POST /admin-auth — validate password, return JSON token
 app.post('/admin-auth', (req, res) => {
   const pass = (req.body && req.body.pass) || '';
   if (pass === ADMIN_PASS) {
     const token = uuidv4();
     adminSessions.add(token);
-    res.set('Set-Cookie', `rz_admin=${token}; Path=/; HttpOnly; SameSite=Strict; Max-Age=86400`);
-    res.redirect(302, '/admin.html');
+    res.json({ ok: true, token });
   } else {
-    res.set('Cache-Control', 'no-store');
-    res.send(adminLoginPage('Incorrect password. Try again.'));
+    res.json({ ok: false });
   }
 });
 
@@ -140,7 +171,7 @@ function makeRef() {
 
 /* ── Health check ───────────────────────────────────────── */
 app.get('/api/health', (_req, res) => {
-  res.json({ status: 'ok', service: 'Rezoro Backend', version: '1.0.2' });
+  res.json({ status: 'ok', service: 'Rezoro Backend', version: '1.0.3' });
 });
 
 /* ── Debug: check admin.html content on disk ────────────── */
