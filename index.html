@@ -129,6 +129,9 @@
       z-index: 1; opacity: 0; transition: opacity 1.5s ease;
     }
     .hero-video.playing { opacity: 1; }
+    /* Fallback: show video after CSS animation in case JS is slow */
+    @keyframes videoReveal { to { opacity: 1; } }
+    .hero-video { animation: videoReveal 0.1s 3s forwards; }
     .hero-reel {
       position: absolute; inset: 0; z-index: 0;
       background:
@@ -1043,16 +1046,23 @@
 (function(){
   const v = document.querySelector('.hero-video');
   if(!v) return;
+  const reel = document.querySelector('.hero-reel');
   const show = () => {
     v.classList.add('playing');
-    setTimeout(() => { const r = document.querySelector('.hero-reel'); if(r) r.style.opacity='0'; }, 1400);
+    setTimeout(() => { if(reel) reel.style.opacity='0'; }, 1400);
   };
-  if(v.readyState >= 3) show();
-  else {
-    v.addEventListener('playing', show, {once:true});
-    v.addEventListener('canplay', () => v.play().catch(()=>{}), {once:true});
-  }
-  v.addEventListener('error', () => v.style.display='none');
+  // Show immediately if already loaded
+  if(v.readyState >= 3){ show(); return; }
+  // Show on any of these events
+  v.addEventListener('playing',  show, {once:true});
+  v.addEventListener('canplay',  show, {once:true});
+  v.addEventListener('loadeddata', () => v.play().catch(()=>{}), {once:true});
+  // Force-show after 2s regardless — fallback for strict autoplay environments
+  setTimeout(() => { v.classList.add('playing'); }, 2000);
+  v.addEventListener('error', () => { v.style.display='none'; });
+  // Kick off playback
+  v.load();
+  v.play().catch(()=>{});
 })();
 
 /* ── NAV SCROLL ────────────────────────────────── */
