@@ -245,42 +245,50 @@
 
     /* ── ADMIN LOGIN GATE ──────────────────────────────── */
     #admin-gate {
-      position: fixed; inset: 0; z-index: 9999;
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      z-index: 9999;
       background: #000;
       display: flex; align-items: center; justify-content: center;
+      padding: 1.5rem;
+      -webkit-overflow-scrolling: touch;
     }
-    #admin-gate.unlocked { display: none; }
+    #admin-gate.unlocked { display: none !important; }
     .gate-card {
-      width: 100%; max-width: 420px; padding: 3rem 2.5rem;
+      width: 100%; max-width: 420px;
+      padding: 2.5rem 2rem;
       background: #07070A;
       border: 1px solid rgba(201,168,76,.22);
       border-radius: 16px;
       text-align: center;
+      box-sizing: border-box;
     }
     .gate-logo {
       font-family: 'Cormorant', serif;
-      font-size: 2.4rem; font-weight: 600; letter-spacing: .08em;
+      font-size: 2.2rem; font-weight: 600; letter-spacing: .08em;
       color: #fff; margin-bottom: .25rem;
     }
     .gate-logo span { color: var(--gold); }
     .gate-sub {
       font-family: 'Montserrat', sans-serif;
-      font-size: .72rem; font-weight: 500; letter-spacing: .25em;
+      font-size: .7rem; font-weight: 500; letter-spacing: .25em;
       color: rgba(255,255,255,.35); text-transform: uppercase;
-      margin-bottom: 2.5rem;
+      margin-bottom: 2rem;
     }
     .gate-label {
       font-family: 'Montserrat', sans-serif;
-      font-size: .72rem; font-weight: 600; letter-spacing: .18em;
+      font-size: .7rem; font-weight: 600; letter-spacing: .18em;
       color: rgba(201,168,76,.7); text-transform: uppercase;
       text-align: left; margin-bottom: .5rem;
     }
     .gate-input {
-      width: 100%; padding: .85rem 1.1rem;
+      width: 100%; padding: .9rem 1rem;
       background: #0E0E13; border: 1px solid rgba(201,168,76,.2);
       border-radius: 8px; color: #fff;
-      font-family: 'Montserrat', sans-serif; font-size: .95rem;
+      font-family: 'Montserrat', sans-serif;
+      font-size: 1rem; /* 1rem prevents iOS zoom-in on focus */
       outline: none; box-sizing: border-box;
+      -webkit-appearance: none;
       transition: border-color .2s;
     }
     .gate-input:focus { border-color: rgba(201,168,76,.55); }
@@ -296,15 +304,17 @@
       80%    { transform:translateX(6px); }
     }
     .gate-btn {
-      width: 100%; margin-top: 1.2rem; padding: .9rem;
+      width: 100%; margin-top: 1.2rem; padding: 1rem;
       background: var(--gold); color: #000;
       border: none; border-radius: 8px; cursor: pointer;
       font-family: 'Montserrat', sans-serif;
       font-size: .82rem; font-weight: 700; letter-spacing: .18em;
-      text-transform: uppercase; transition: background .2s, transform .1s;
+      text-transform: uppercase;
+      -webkit-appearance: none;
+      touch-action: manipulation;
+      transition: background .2s;
     }
-    .gate-btn:hover { background: var(--gold-l); }
-    .gate-btn:active { transform: scale(.97); }
+    .gate-btn:active { opacity: .85; }
     .gate-error {
       font-family: 'Montserrat', sans-serif;
       font-size: .78rem; color: #e05555;
@@ -322,6 +332,8 @@
     <div class="gate-label">Password</div>
     <input id="gate-pass" class="gate-input" type="password"
            placeholder="Enter admin password"
+           autocomplete="current-password"
+           autocorrect="off" autocapitalize="off" spellcheck="false"
            onkeydown="if(event.key==='Enter')gateUnlock()">
     <button class="gate-btn" onclick="gateUnlock()">Access Dashboard</button>
     <div class="gate-error" id="gate-err"></div>
