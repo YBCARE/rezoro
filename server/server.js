@@ -18,109 +18,7 @@ app.use(express.urlencoded({ extended: true }));
 
 const ROOT = path.join(__dirname, '..');
 
-// ── Admin auth (server-side session tokens) ──────────────
-const ADMIN_PASS   = 'Rezoro2025!';
-const adminSessions = new Set();
-
-function adminLoginPage() {
-  return `<!DOCTYPE html><html lang="en"><head>
-<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Rezoro — Admin Login</title>
-<link href="https://fonts.googleapis.com/css2?family=Cormorant:wght@600&family=Montserrat:wght@400;600;700&display=swap" rel="stylesheet">
-<style>
-*{box-sizing:border-box;margin:0;padding:0}
-body{background:#000;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:1.5rem;font-family:'Montserrat',sans-serif}
-.card{width:100%;max-width:420px;background:#07070A;border:1px solid rgba(201,168,76,.22);border-radius:16px;padding:2.5rem 2rem;text-align:center}
-.logo{font-family:'Cormorant',serif;font-size:2.2rem;font-weight:600;letter-spacing:.08em;color:#fff;margin-bottom:.2rem}
-.logo span{color:#C9A84C}
-.sub{font-size:.7rem;font-weight:500;letter-spacing:.25em;color:rgba(255,255,255,.35);text-transform:uppercase;margin-bottom:2rem}
-label{display:block;font-size:.7rem;font-weight:600;letter-spacing:.18em;color:rgba(201,168,76,.7);text-transform:uppercase;text-align:left;margin-bottom:.5rem}
-input{width:100%;padding:.9rem 1rem;background:#0E0E13;border:1px solid rgba(201,168,76,.2);border-radius:8px;color:#fff;font-family:'Montserrat',sans-serif;font-size:1rem;outline:none;-webkit-appearance:none}
-input:focus{border-color:rgba(201,168,76,.55)}
-button{width:100%;margin-top:1.2rem;padding:1rem;background:#C9A84C;color:#000;border:none;border-radius:8px;cursor:pointer;font-family:'Montserrat',sans-serif;font-size:.82rem;font-weight:700;letter-spacing:.18em;text-transform:uppercase;-webkit-appearance:none;touch-action:manipulation}
-button:active{opacity:.8}
-.err{margin-top:.75rem;font-size:.78rem;color:#e05555;min-height:1.1em}
-</style></head><body>
-<div class="card">
-  <div class="logo">Rez<span>oro</span></div>
-  <div class="sub">Admin Portal</div>
-  <label>Password</label>
-  <input id="pw" type="password" placeholder="Enter admin password"
-         autocomplete="current-password" autocorrect="off" autocapitalize="off">
-  <button onclick="doLogin()">Access Dashboard</button>
-  <div class="err" id="err"></div>
-</div>
-<script>
-document.getElementById('pw').addEventListener('keydown', function(e){
-  if(e.key==='Enter') doLogin();
-});
-function doLogin(){
-  var pw = document.getElementById('pw').value;
-  var btn = document.querySelector('button');
-  btn.textContent = 'Checking...';
-  btn.disabled = true;
-  fetch('/admin-auth', {
-    method: 'POST',
-    headers: {'Content-Type':'application/json'},
-    body: JSON.stringify({pass: pw})
-  })
-  .then(function(r){ return r.json(); })
-  .then(function(d){
-    if(d.ok){
-      sessionStorage.setItem('rz_tok', d.token);
-      sessionStorage.setItem('rz_admin_auth', '1');
-      window.location.href = '/admin.html?rzt=' + encodeURIComponent(d.token);
-    } else {
-      document.getElementById('err').textContent = 'Incorrect password. Try again.';
-      document.getElementById('pw').value = '';
-      document.getElementById('pw').focus();
-      btn.textContent = 'Access Dashboard';
-      btn.disabled = false;
-    }
-  })
-  .catch(function(){
-    document.getElementById('err').textContent = 'Connection error. Please try again.';
-    btn.textContent = 'Access Dashboard';
-    btn.disabled = false;
-  });
-}
-</script>
-</body></html>`;
-}
-
-// GET /admin.html — check token in query param or session
-app.get('/admin.html', (req, res) => {
-  const token = req.query.rzt || '';
-  if (token && adminSessions.has(token)) {
-    res.set('Cache-Control', 'no-store');
-    return res.sendFile(path.join(ROOT, 'admin.html'));
-  }
-  res.set('Cache-Control', 'no-store');
-  res.send(adminLoginPage());
-});
-
-// POST /admin-auth — validate password, return JSON token
-app.post('/admin-auth', (req, res) => {
-  const pass = (req.body && req.body.pass) || '';
-  if (pass === ADMIN_PASS) {
-    const token = uuidv4();
-    adminSessions.add(token);
-    res.json({ ok: true, token });
-  } else {
-    res.json({ ok: false });
-  }
-});
-
-// Serve HTML files with no-cache to prevent CDN caching
-['/index.html', '/fans.html', '/'].forEach(route => {
-  const file = route === '/' ? 'index.html' : route.slice(1);
-  app.get(route, (_req, res) => {
-    res.set('Cache-Control', 'no-store');
-    res.sendFile(path.join(ROOT, file));
-  });
-});
-
-// Serve all other static assets
+// Serve all static files — HTML, images, video, etc.
 app.use(express.static(ROOT, { acceptRanges: true }));
 
 // Explicit route for hero.mp4 — ensures video streaming works on all hosts
@@ -172,7 +70,7 @@ function makeRef() {
 
 /* ── Health check ───────────────────────────────────────── */
 app.get('/api/health', (_req, res) => {
-  res.json({ status: 'ok', service: 'Rezoro Backend', version: '1.0.4' });
+  res.json({ status: 'ok', service: 'Rezoro Backend', version: '1.0.5' });
 });
 
 /* ── Debug: check admin.html content on disk ────────────── */
