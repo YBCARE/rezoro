@@ -242,9 +242,119 @@
     @media(max-width:768px){ .mob-fab{display:flex;align-items:center;justify-content:center;} }
     .sb-overlay { position:fixed; inset:0; z-index:35; background:rgba(0,0,0,.6); opacity:0; pointer-events:none; transition:opacity .3s; }
     .sb-overlay.on { opacity:1; pointer-events:all; }
+
+    /* ── ADMIN LOGIN GATE ──────────────────────────────── */
+    #admin-gate {
+      position: fixed; inset: 0; z-index: 9999;
+      background: #000;
+      display: flex; align-items: center; justify-content: center;
+    }
+    #admin-gate.unlocked { display: none; }
+    .gate-card {
+      width: 100%; max-width: 420px; padding: 3rem 2.5rem;
+      background: #07070A;
+      border: 1px solid rgba(201,168,76,.22);
+      border-radius: 16px;
+      text-align: center;
+    }
+    .gate-logo {
+      font-family: 'Cormorant', serif;
+      font-size: 2.4rem; font-weight: 600; letter-spacing: .08em;
+      color: #fff; margin-bottom: .25rem;
+    }
+    .gate-logo span { color: var(--gold); }
+    .gate-sub {
+      font-family: 'Montserrat', sans-serif;
+      font-size: .72rem; font-weight: 500; letter-spacing: .25em;
+      color: rgba(255,255,255,.35); text-transform: uppercase;
+      margin-bottom: 2.5rem;
+    }
+    .gate-label {
+      font-family: 'Montserrat', sans-serif;
+      font-size: .72rem; font-weight: 600; letter-spacing: .18em;
+      color: rgba(201,168,76,.7); text-transform: uppercase;
+      text-align: left; margin-bottom: .5rem;
+    }
+    .gate-input {
+      width: 100%; padding: .85rem 1.1rem;
+      background: #0E0E13; border: 1px solid rgba(201,168,76,.2);
+      border-radius: 8px; color: #fff;
+      font-family: 'Montserrat', sans-serif; font-size: .95rem;
+      outline: none; box-sizing: border-box;
+      transition: border-color .2s;
+    }
+    .gate-input:focus { border-color: rgba(201,168,76,.55); }
+    .gate-input.shake {
+      animation: gateShake .4s ease;
+      border-color: #e05555 !important;
+    }
+    @keyframes gateShake {
+      0%,100%{ transform:translateX(0); }
+      20%    { transform:translateX(-8px); }
+      40%    { transform:translateX(8px); }
+      60%    { transform:translateX(-6px); }
+      80%    { transform:translateX(6px); }
+    }
+    .gate-btn {
+      width: 100%; margin-top: 1.2rem; padding: .9rem;
+      background: var(--gold); color: #000;
+      border: none; border-radius: 8px; cursor: pointer;
+      font-family: 'Montserrat', sans-serif;
+      font-size: .82rem; font-weight: 700; letter-spacing: .18em;
+      text-transform: uppercase; transition: background .2s, transform .1s;
+    }
+    .gate-btn:hover { background: var(--gold-l); }
+    .gate-btn:active { transform: scale(.97); }
+    .gate-error {
+      font-family: 'Montserrat', sans-serif;
+      font-size: .78rem; color: #e05555;
+      margin-top: .75rem; min-height: 1.1em;
+    }
   </style>
 </head>
 <body>
+
+<!-- ══ ADMIN LOGIN GATE ══════════════════════════════════ -->
+<div id="admin-gate">
+  <div class="gate-card">
+    <div class="gate-logo">Rez<span>oro</span></div>
+    <div class="gate-sub">Admin Portal</div>
+    <div class="gate-label">Password</div>
+    <input id="gate-pass" class="gate-input" type="password"
+           placeholder="Enter admin password"
+           onkeydown="if(event.key==='Enter')gateUnlock()">
+    <button class="gate-btn" onclick="gateUnlock()">Access Dashboard</button>
+    <div class="gate-error" id="gate-err"></div>
+  </div>
+</div>
+
+<script>
+(function(){
+  // Check if already authenticated this session
+  if(sessionStorage.getItem('rz_admin_auth') === '1'){
+    document.getElementById('admin-gate').classList.add('unlocked');
+  }
+})();
+
+function gateUnlock(){
+  const inp = document.getElementById('gate-pass');
+  const err = document.getElementById('gate-err');
+  // Hash check — password: Rezoro2025!
+  const HASH = '7f3b2e1a9c0d4f6e8b5a2d7c3e9f1b4a'; // placeholder
+  const entered = inp.value;
+  if(entered === 'Rezoro2025!'){
+    sessionStorage.setItem('rz_admin_auth','1');
+    document.getElementById('admin-gate').classList.add('unlocked');
+    err.textContent = '';
+  } else {
+    err.textContent = 'Incorrect password. Try again.';
+    inp.classList.add('shake');
+    inp.value = '';
+    setTimeout(() => inp.classList.remove('shake'), 500);
+    inp.focus();
+  }
+}
+</script>
 
 <div class="sb-overlay" id="sbOverlay" onclick="toggleSB(false)"></div>
 
