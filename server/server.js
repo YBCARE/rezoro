@@ -9,7 +9,7 @@ const { generateFanCard }   = require('./fancard');
 const { sendFanCardEmail }  = require('./mailer');
 
 const app  = express();
-const PORT = 3001;
+const PORT = process.env.PORT || 3001;
 
 /* ── Middleware ─────────────────────────────────────────── */
 app.use(cors({ origin: '*' }));
@@ -17,7 +17,38 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // Serve the static HTML site from the parent directory
-app.use(express.static(path.join(__dirname, '..')));
+app.use(express.static(path.join(__dirname, '..'), { acceptRanges: true }));
+
+// Explicit route for hero.mp4 — ensures video streaming works on all hosts
+app.get('/hero.mp4', (req, res) => {
+  const fs       = require('fs');
+  const filePath = path.join(__dirname, '..', 'hero.mp4');
+  const stat     = fs.statSync(filePath);
+  const total    = stat.size;
+  const range    = req.headers.range;
+
+  if (range) {
+    const [startStr, endStr] = range.replace(/bytes=/, '').split('-');
+    const start = parseInt(startStr, 10);
+    const end   = endStr ? parseInt(endStr, 10) : total - 1;
+    const chunk = end - start + 1;
+    const stream = fs.createReadStream(filePath, { start, end });
+    res.writeHead(206, {
+      'Content-Range':  `bytes ${start}-${end}/${total}`,
+      'Accept-Ranges':  'bytes',
+      'Content-Length': chunk,
+      'Content-Type':   'video/mp4',
+    });
+    stream.pipe(res);
+  } else {
+    res.writeHead(200, {
+      'Content-Length': total,
+      'Content-Type':   'video/mp4',
+      'Accept-Ranges':  'bytes',
+    });
+    fs.createReadStream(filePath).pipe(res);
+  }
+});
 
 // Photo uploads held in memory (max 5 MB)
 const upload = multer({
