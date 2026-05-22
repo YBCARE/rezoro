@@ -127,11 +127,10 @@
       position: absolute; inset: 0;
       width: 100%; height: 100%; object-fit: cover;
       z-index: 1; opacity: 0; transition: opacity 1.5s ease;
+      animation: videoReveal 0s 4s forwards;
     }
-    .hero-video.playing { opacity: 1; }
-    /* Fallback: show video after CSS animation in case JS is slow */
+    .hero-video.playing { opacity: 1; animation: none; }
     @keyframes videoReveal { to { opacity: 1; } }
-    .hero-video { animation: videoReveal 0.1s 3s forwards; }
     .hero-reel {
       position: absolute; inset: 0; z-index: 0;
       background:
@@ -596,7 +595,7 @@
 <!-- ══ HERO ═════════════════════════════════════════════ -->
 <section class="hero">
   <video class="hero-video" autoplay muted loop playsinline>
-    <source src="hero.mp4" type="video/mp4">
+    <source src="hero.mp4?v=3" type="video/mp4">
   </video>
   <div class="hero-reel"></div>
   <div class="hero-overlay"></div>
