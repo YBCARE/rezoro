@@ -68,7 +68,7 @@ function makeRef() {
 
 /* ── Health check ───────────────────────────────────────── */
 app.get('/api/health', (_req, res) => {
-  res.json({ status: 'ok', service: 'Rezoro Backend', version: '1.0.0' });
+  res.json({ status: 'ok', service: 'Rezoro Backend', version: '1.0.1' });
 });
 
 /* ── Debug: show what files are visible to the server ───── */
