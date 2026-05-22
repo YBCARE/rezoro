@@ -16,8 +16,19 @@ app.use(cors({ origin: '*' }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Serve the static HTML site from the parent directory
-app.use(express.static(path.join(__dirname, '..'), { acceptRanges: true }));
+// Serve HTML pages explicitly with no-cache headers so CDN never caches them
+const ROOT = path.join(__dirname, '..');
+['/', '/index.html', '/fans.html', '/admin.html'].forEach(route => {
+  const file = route === '/' ? 'index.html' : route.slice(1);
+  app.get(route, (_req, res) => {
+    res.set('Cache-Control', 'no-store, no-cache, must-revalidate');
+    res.set('Pragma', 'no-cache');
+    res.sendFile(path.join(ROOT, file));
+  });
+});
+
+// Serve all other static assets (CSS, JS, images, mp4, etc.)
+app.use(express.static(ROOT, { acceptRanges: true }));
 
 // Explicit route for hero.mp4 — ensures video streaming works on all hosts
 app.get('/hero.mp4', (req, res) => {
