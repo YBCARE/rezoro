@@ -82,6 +82,19 @@ app.get('/api/health', (_req, res) => {
   res.json({ status: 'ok', service: 'Rezoro Backend', version: '1.0.1' });
 });
 
+/* ── Debug: check admin.html content on disk ────────────── */
+app.get('/api/debug-admin', (_req, res) => {
+  const fs = require('fs');
+  const p  = path.join(__dirname, '..', 'admin.html');
+  try {
+    const content = fs.readFileSync(p, 'utf8');
+    const hasGate = content.includes('admin-gate');
+    const size    = content.length;
+    const snippet = content.slice(content.indexOf('</style>') - 200, content.indexOf('</style>') + 50);
+    res.json({ hasGate, size, snippet });
+  } catch(e) { res.json({ error: e.message }); }
+});
+
 /* ── Debug: show what files are visible to the server ───── */
 app.get('/api/debug-files', (_req, res) => {
   const fs   = require('fs');
