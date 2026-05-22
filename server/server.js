@@ -16,18 +16,78 @@ app.use(cors({ origin: '*' }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Serve HTML pages explicitly with no-cache headers so CDN never caches them
 const ROOT = path.join(__dirname, '..');
-['/', '/index.html', '/fans.html', '/admin.html'].forEach(route => {
+
+// ── Admin auth (server-side session tokens) ──────────────
+const ADMIN_PASS   = 'Rezoro2025!';
+const adminSessions = new Set();
+
+function adminLoginPage(err) {
+  return `<!DOCTYPE html><html lang="en"><head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Rezoro — Admin Login</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant:wght@600&family=Montserrat:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#000;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:1.5rem;font-family:'Montserrat',sans-serif}
+.card{width:100%;max-width:420px;background:#07070A;border:1px solid rgba(201,168,76,.22);border-radius:16px;padding:2.5rem 2rem;text-align:center}
+.logo{font-family:'Cormorant',serif;font-size:2.2rem;font-weight:600;letter-spacing:.08em;color:#fff;margin-bottom:.2rem}
+.logo span{color:#C9A84C}
+.sub{font-size:.7rem;font-weight:500;letter-spacing:.25em;color:rgba(255,255,255,.35);text-transform:uppercase;margin-bottom:2rem}
+label{display:block;font-size:.7rem;font-weight:600;letter-spacing:.18em;color:rgba(201,168,76,.7);text-transform:uppercase;text-align:left;margin-bottom:.5rem}
+input{width:100%;padding:.9rem 1rem;background:#0E0E13;border:1px solid rgba(201,168,76,.2);border-radius:8px;color:#fff;font-family:'Montserrat',sans-serif;font-size:1rem;outline:none;-webkit-appearance:none}
+input:focus{border-color:rgba(201,168,76,.55)}
+button{width:100%;margin-top:1.2rem;padding:1rem;background:#C9A84C;color:#000;border:none;border-radius:8px;cursor:pointer;font-family:'Montserrat',sans-serif;font-size:.82rem;font-weight:700;letter-spacing:.18em;text-transform:uppercase;-webkit-appearance:none;touch-action:manipulation}
+button:active{opacity:.8}
+.err{margin-top:.75rem;font-size:.78rem;color:#e05555;min-height:1.1em}
+</style></head><body>
+<div class="card">
+  <div class="logo">Rez<span>oro</span></div>
+  <div class="sub">Admin Portal</div>
+  <form method="POST" action="/admin-auth">
+    <label>Password</label>
+    <input type="password" name="pass" placeholder="Enter admin password"
+           autocomplete="current-password" autocorrect="off" autocapitalize="off" autofocus>
+    <button type="submit">Access Dashboard</button>
+    <div class="err">${err || ''}</div>
+  </form>
+</div></body></html>`;
+}
+
+// GET /admin.html — check session cookie, show login or dashboard
+app.get('/admin.html', (req, res) => {
+  const token = (req.headers.cookie || '').match(/rz_admin=([^;]+)/)?.[1];
+  if (token && adminSessions.has(token)) {
+    res.set('Cache-Control', 'no-store');
+    return res.sendFile(path.join(ROOT, 'admin.html'));
+  }
+  res.set('Cache-Control', 'no-store');
+  res.send(adminLoginPage());
+});
+
+// POST /admin-auth — validate password, set cookie
+app.post('/admin-auth', express.urlencoded({ extended: false }), (req, res) => {
+  if (req.body.pass === ADMIN_PASS) {
+    const token = uuidv4();
+    adminSessions.add(token);
+    res.set('Set-Cookie', `rz_admin=${token}; Path=/; HttpOnly; SameSite=Strict; Max-Age=86400`);
+    res.redirect(302, '/admin.html');
+  } else {
+    res.set('Cache-Control', 'no-store');
+    res.send(adminLoginPage('Incorrect password. Try again.'));
+  }
+});
+
+// Serve HTML files with no-cache to prevent CDN caching
+['/index.html', '/fans.html', '/'].forEach(route => {
   const file = route === '/' ? 'index.html' : route.slice(1);
   app.get(route, (_req, res) => {
-    res.set('Cache-Control', 'no-store, no-cache, must-revalidate');
-    res.set('Pragma', 'no-cache');
+    res.set('Cache-Control', 'no-store');
     res.sendFile(path.join(ROOT, file));
   });
 });
 
-// Serve all other static assets (CSS, JS, images, mp4, etc.)
+// Serve all other static assets
 app.use(express.static(ROOT, { acceptRanges: true }));
 
 // Explicit route for hero.mp4 — ensures video streaming works on all hosts
