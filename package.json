@@ -1,0 +1,12 @@
+{
+  "name": "rezoro",
+  "version": "1.0.0",
+  "description": "Rezoro — Premium Celebrity Booking Platform",
+  "scripts": {
+    "start": "node server/server.js",
+    "install-deps": "cd server && npm install"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
