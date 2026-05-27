@@ -1,6 +1,21 @@
 'use strict';
 const { createCanvas, loadImage, GlobalFonts } = require('@napi-rs/canvas');
+const https = require('https');
 const path = require('path');
+
+async function getWikiThumb(slug) {
+  return new Promise((resolve) => {
+    const url = `https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(slug)}`;
+    https.get(url, { headers: { 'User-Agent': 'Rezoro/1.0 (rezoro.pro)' } }, (res) => {
+      let data = '';
+      res.on('data', d => data += d);
+      res.on('end', () => {
+        try { const j = JSON.parse(data); resolve(j.thumbnail?.source || null); }
+        catch { resolve(null); }
+      });
+    }).on('error', () => resolve(null));
+  });
+}
 
 /* ── Register Windows system fonts for elegant typography ── */
 const FONTS_DIR = 'C:\\Windows\\Fonts';
@@ -101,6 +116,7 @@ async function generateFanCard({
   country    = '',
   celebName  = 'Celebrity',
   celebEmoji = '🎬',
+  celebWiki  = null,
   tier       = 'gold',
   ref        = 'RZ-000000',
   photoSrc   = null,
@@ -108,6 +124,12 @@ async function generateFanCard({
   const canvas = createCanvas(W, H);
   const ctx    = canvas.getContext('2d');
   const P      = PALETTE[tier] || PALETTE.gold;
+
+  // Fetch celebrity Wikipedia photo
+  let celebPhotoUrl = null;
+  if (celebWiki) {
+    celebPhotoUrl = await getWikiThumb(celebWiki);
+  }
 
   /* ── 1. Card background ───────────────────────────── */
   roundRect(ctx, 0, 0, W, H, 22);
@@ -287,7 +309,8 @@ async function generateFanCard({
   ctx.stroke();
 
   /* ── 8. Right panel — celebrity ───────────────────── */
-  const rX = 326;   // right panel left edge
+  const rX   = 326;   // right panel left edge
+  const rCx  = Math.round((rX + W - 44) / 2);  // center x of right panel ≈ 601
 
   // Micro label
   ctx.textAlign    = 'left';
@@ -298,35 +321,73 @@ async function generateFanCard({
   ctx.fillText('CELEBRITY', rX, 108);
   ctx.letterSpacing = '0px';
 
-  // Celebrity emoji
-  ctx.font         = '52px Arial';
-  ctx.textBaseline = 'top';
-  ctx.fillText(celebEmoji, rX, 128);
+  if (celebPhotoUrl) {
+    /* ── Photo mode: circular celebrity headshot ── */
+    const cpX = rCx, cpY = 230, cpR = 82;
 
-  // Celebrity name — large display
-  ctx.textBaseline = 'top';
-  const celebMaxW  = W - rX - 44;
+    // Outer decorative ring
+    const cRingG = ctx.createLinearGradient(cpX-cpR-6, cpY-cpR-6, cpX+cpR+6, cpY+cpR+6);
+    cRingG.addColorStop(0, P.accentL);
+    cRingG.addColorStop(0.5, `${P.accent}60`);
+    cRingG.addColorStop(1, P.accentL);
+    ctx.beginPath();
+    ctx.arc(cpX, cpY, cpR + 5, 0, Math.PI * 2);
+    ctx.strokeStyle = cRingG;
+    ctx.lineWidth   = 1.5;
+    ctx.stroke();
 
-  // Try to fit on one line, reduce font size if needed
-  ctx.font      = 'bold 42px Georgia';
-  ctx.fillStyle = '#F0ECE4';
-  if (ctx.measureText(celebName).width > celebMaxW) {
-    ctx.font = 'bold 34px Georgia';
+    const drewCelebPhoto = await drawCircularPhoto(ctx, celebPhotoUrl, cpX, cpY, cpR);
+    if (!drewCelebPhoto) {
+      ctx.font = '52px Arial'; ctx.textAlign = 'left'; ctx.textBaseline = 'top';
+      ctx.fillText(celebEmoji, rX, 128);
+    }
+
+    // Celebrity name centered below photo
+    const celebMaxW = W - rX - 44;
+    ctx.textAlign    = 'center';
+    ctx.textBaseline = 'top';
+    ctx.font         = 'bold 38px Georgia';
+    ctx.fillStyle    = '#F0ECE4';
+    if (ctx.measureText(celebName).width > celebMaxW) ctx.font = 'bold 30px Georgia';
+    if (ctx.measureText(celebName).width > celebMaxW) ctx.font = 'bold 24px Georgia';
+    const nameY = cpY + cpR + 16;
+    ctx.fillText(celebName, rCx, nameY);
+
+    // Accent underline (centered)
+    const nameW2 = Math.min(ctx.measureText(celebName).width, celebMaxW);
+    const lineY2 = nameY + parseInt(ctx.font) + 6;
+    const lineG2 = ctx.createLinearGradient(rCx - nameW2/2, 0, rCx + nameW2/2, 0);
+    lineG2.addColorStop(0, 'transparent');
+    lineG2.addColorStop(0.3, P.accentL);
+    lineG2.addColorStop(0.7, P.accent);
+    lineG2.addColorStop(1, 'transparent');
+    ctx.fillStyle = lineG2;
+    ctx.fillRect(rCx - nameW2/2, lineY2, nameW2, 2);
+
+  } else {
+    /* ── Emoji mode: original layout ── */
+    ctx.textAlign    = 'left';
+    ctx.font         = '52px Arial';
+    ctx.textBaseline = 'top';
+    ctx.fillText(celebEmoji, rX, 128);
+
+    const celebMaxW = W - rX - 44;
+    ctx.textBaseline = 'top';
+    ctx.font         = 'bold 42px Georgia';
+    ctx.fillStyle    = '#F0ECE4';
+    if (ctx.measureText(celebName).width > celebMaxW) ctx.font = 'bold 34px Georgia';
+    if (ctx.measureText(celebName).width > celebMaxW) ctx.font = 'bold 28px Georgia';
+    ctx.fillText(celebName, rX, 200);
+
+    const nameW = Math.min(ctx.measureText(celebName).width, celebMaxW);
+    const lineY = 200 + parseInt(ctx.font) + 8;
+    const lineG = ctx.createLinearGradient(rX, 0, rX + nameW, 0);
+    lineG.addColorStop(0, P.accentL);
+    lineG.addColorStop(0.6, P.accent);
+    lineG.addColorStop(1, 'transparent');
+    ctx.fillStyle = lineG;
+    ctx.fillRect(rX, lineY, nameW, 2);
   }
-  if (ctx.measureText(celebName).width > celebMaxW) {
-    ctx.font = 'bold 28px Georgia';
-  }
-  ctx.fillText(celebName, rX, 200);
-
-  // Gold accent underline
-  const nameW = Math.min(ctx.measureText(celebName).width, celebMaxW);
-  const lineY = 200 + parseInt(ctx.font) + 8;
-  const lineG = ctx.createLinearGradient(rX, 0, rX + nameW, 0);
-  lineG.addColorStop(0, P.accentL);
-  lineG.addColorStop(0.6, P.accent);
-  lineG.addColorStop(1, 'transparent');
-  ctx.fillStyle = lineG;
-  ctx.fillRect(rX, lineY, nameW, 2);
 
   /* ── 9. EMV-style chip (left panel, decorative) ───── */
   const chipX = 80, chipY = 128, chipW = 42, chipH = 32, chipR = 5;

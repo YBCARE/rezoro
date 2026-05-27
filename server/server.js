@@ -367,7 +367,7 @@ app.post('/api/newsletter/send', async (req, res) => {
 ═══════════════════════════════════════════════════════════ */
 app.post('/api/fancard', upload.single('photo'), async (req, res) => {
   try {
-    const { fanName, country, celebName, celebEmoji, tier, email, userId } = req.body;
+    const { fanName, country, celebName, celebEmoji, celebWiki, tier, email, userId } = req.body;
     if (!fanName || !celebName || !email) {
       return res.status(400).json({ error: 'fanName, celebName and email are required.' });
     }
@@ -377,7 +377,7 @@ app.post('/api/fancard', upload.single('photo'), async (req, res) => {
 
     const cardBuffer = await generateFanCard({
       fanName, country: country||'', celebName,
-      celebEmoji: celebEmoji||'🎬', tier: tierClean, ref, photoSrc
+      celebEmoji: celebEmoji||'🎬', celebWiki: celebWiki||'', tier: tierClean, ref, photoSrc
     });
 
     await sendFanCardEmail({ to: email, fanName, country: country||'', celebName, tier: tierClean, ref, cardBuffer });
