@@ -298,6 +298,14 @@
     .celeb-card:hover .celeb-glow { opacity: 2.5; }
     .celeb-emoji { font-size: 4.5rem; z-index: 1; transition: transform .35s; }
     .celeb-card:hover .celeb-emoji { transform: scale(1.08); }
+    .celeb-photo {
+      position: absolute; inset: 0;
+      width: 100%; height: 100%;
+      object-fit: cover; object-position: center top;
+      z-index: 0;
+    }
+    .strip-av { overflow: hidden; }
+    .strip-av img { width: 100%; height: 100%; object-fit: cover; object-position: center top; border-radius: 50%; }
     .celeb-tier-tag {
       position: absolute; top: .9rem; left: .9rem; z-index: 3;
       font-size: .58rem; font-weight: 700; letter-spacing: .1em; text-transform: uppercase;
@@ -655,7 +663,7 @@
   </div>
 
   <div class="hero-stats">
-    <div><div class="hstat-val">26+</div><div class="hstat-lbl">A-List Celebrities</div></div>
+    <div><div class="hstat-val">50+</div><div class="hstat-lbl">A-List Celebrities</div></div>
     <div><div class="hstat-val">$4.2M</div><div class="hstat-lbl">Deals Closed</div></div>
     <div><div class="hstat-val">100%</div><div class="hstat-lbl">Satisfaction</div></div>
   </div>
@@ -713,8 +721,7 @@
   </div>
   <div class="celeb-grid" id="celebGrid">
 
-    <!-- Each card: data-celeb-id matched in admin Celebrity Editor -->
-    <div class="celeb-card reveal" data-celeb-id="dicaprio">
+    <div class="celeb-card reveal" data-celeb-id="dicaprio" data-wiki="Leonardo_DiCaprio">
       <div class="celeb-visual">
         <div class="celeb-glow"></div>
         <div class="celeb-emoji">🎬</div>
@@ -735,7 +742,7 @@
       </div>
     </div>
 
-    <div class="celeb-card reveal rd1" data-celeb-id="zendaya">
+    <div class="celeb-card reveal rd1" data-celeb-id="zendaya" data-wiki="Zendaya">
       <div class="celeb-visual">
         <div class="celeb-glow"></div>
         <div class="celeb-emoji">⭐</div>
@@ -756,7 +763,7 @@
       </div>
     </div>
 
-    <div class="celeb-card reveal rd2" data-celeb-id="cruise">
+    <div class="celeb-card reveal rd2" data-celeb-id="cruise" data-wiki="Tom_Cruise">
       <div class="celeb-visual">
         <div class="celeb-glow"></div>
         <div class="celeb-emoji">🏆</div>
@@ -777,7 +784,7 @@
       </div>
     </div>
 
-    <div class="celeb-card reveal rd3" data-celeb-id="johnson">
+    <div class="celeb-card reveal rd3" data-celeb-id="johnson" data-wiki="Dwayne_Johnson">
       <div class="celeb-visual">
         <div class="celeb-glow"></div>
         <div class="celeb-emoji">💪</div>
@@ -798,7 +805,7 @@
       </div>
     </div>
 
-    <div class="celeb-card reveal" data-celeb-id="johansson">
+    <div class="celeb-card reveal" data-celeb-id="johansson" data-wiki="Scarlett_Johansson">
       <div class="celeb-visual">
         <div class="celeb-glow"></div>
         <div class="celeb-emoji">🎭</div>
@@ -819,7 +826,7 @@
       </div>
     </div>
 
-    <div class="celeb-card reveal rd1" data-celeb-id="rdj">
+    <div class="celeb-card reveal rd1" data-celeb-id="rdj" data-wiki="Robert_Downey_Jr.">
       <div class="celeb-visual">
         <div class="celeb-glow"></div>
         <div class="celeb-emoji">🦸</div>
@@ -840,7 +847,7 @@
       </div>
     </div>
 
-    <div class="celeb-card reveal rd2" data-celeb-id="depp">
+    <div class="celeb-card reveal rd2" data-celeb-id="depp" data-wiki="Johnny_Depp">
       <div class="celeb-visual">
         <div class="celeb-glow"></div>
         <div class="celeb-emoji">🎩</div>
@@ -861,7 +868,7 @@
       </div>
     </div>
 
-    <div class="celeb-card reveal rd3" data-celeb-id="momoa">
+    <div class="celeb-card reveal rd3" data-celeb-id="momoa" data-wiki="Jason_Momoa">
       <div class="celeb-visual">
         <div class="celeb-glow"></div>
         <div class="celeb-emoji">🌊</div>
@@ -882,6 +889,90 @@
       </div>
     </div>
 
+    <div class="celeb-card reveal" data-celeb-id="gadot" data-wiki="Gal_Gadot">
+      <div class="celeb-visual">
+        <div class="celeb-glow"></div>
+        <div class="celeb-emoji">👸</div>
+        <div class="celeb-tier-tag tier-gold">Gold</div>
+        <div class="celeb-hover-actions">
+          <button class="cha-btn cha-book" onclick="openBook(event)">Book Now</button>
+          <button class="cha-btn cha-trailer trailer-btn" data-trailer="https://www.youtube.com/watch?v=5DrTBpRDk5E">Watch Trailer</button>
+        </div>
+      </div>
+      <div class="celeb-info">
+        <div class="celeb-name">Gal Gadot</div>
+        <div class="celeb-genre">Film · Action</div>
+        <div class="celeb-prices">
+          <div class="cp hi-gold"><div class="cp-lbl">Gold</div><div class="cp-val">$5K</div></div>
+          <div class="cp"><div class="cp-lbl">Silver</div><div class="cp-val">$4.1K</div></div>
+          <div class="cp"><div class="cp-lbl">Bronze</div><div class="cp-val">$2.5K</div></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="celeb-card reveal rd1" data-celeb-id="pattinson" data-wiki="Robert_Pattinson">
+      <div class="celeb-visual">
+        <div class="celeb-glow"></div>
+        <div class="celeb-emoji">🦇</div>
+        <div class="celeb-tier-tag tier-gold">Gold</div>
+        <div class="celeb-hover-actions">
+          <button class="cha-btn cha-book" onclick="openBook(event)">Book Now</button>
+          <button class="cha-btn cha-trailer trailer-btn" data-trailer="https://www.youtube.com/watch?v=mqqft2x_Aa4">Watch Trailer</button>
+        </div>
+      </div>
+      <div class="celeb-info">
+        <div class="celeb-name">Robert Pattinson</div>
+        <div class="celeb-genre">Film · Drama</div>
+        <div class="celeb-prices">
+          <div class="cp hi-gold"><div class="cp-lbl">Gold</div><div class="cp-val">$5K</div></div>
+          <div class="cp"><div class="cp-lbl">Silver</div><div class="cp-val">$4.1K</div></div>
+          <div class="cp"><div class="cp-lbl">Bronze</div><div class="cp-val">$2.5K</div></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="celeb-card reveal rd2" data-celeb-id="farrell" data-wiki="Colin_Farrell">
+      <div class="celeb-visual">
+        <div class="celeb-glow"></div>
+        <div class="celeb-emoji">🎬</div>
+        <div class="celeb-tier-tag tier-silver">Silver</div>
+        <div class="celeb-hover-actions">
+          <button class="cha-btn cha-book" onclick="openBook(event)">Book Now</button>
+          <button class="cha-btn cha-trailer trailer-btn" data-trailer="https://www.youtube.com/watch?v=r9HfNVnp67s">Watch Trailer</button>
+        </div>
+      </div>
+      <div class="celeb-info">
+        <div class="celeb-name">Colin Farrell</div>
+        <div class="celeb-genre">Film · Drama</div>
+        <div class="celeb-prices">
+          <div class="cp"><div class="cp-lbl">Gold</div><div class="cp-val">$5K</div></div>
+          <div class="cp hi-silver"><div class="cp-lbl">Silver</div><div class="cp-val">$4.1K</div></div>
+          <div class="cp"><div class="cp-lbl">Bronze</div><div class="cp-val">$2.5K</div></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="celeb-card reveal rd3" data-celeb-id="mccartney" data-wiki="Paul_McCartney">
+      <div class="celeb-visual">
+        <div class="celeb-glow"></div>
+        <div class="celeb-emoji">🎸</div>
+        <div class="celeb-tier-tag tier-gold">Gold</div>
+        <div class="celeb-hover-actions">
+          <button class="cha-btn cha-book" onclick="openBook(event)">Book Now</button>
+          <button class="cha-btn cha-trailer trailer-btn" data-trailer="https://www.youtube.com/watch?v=oP3c1h8v2ZQ">Watch Trailer</button>
+        </div>
+      </div>
+      <div class="celeb-info">
+        <div class="celeb-name">Paul McCartney</div>
+        <div class="celeb-genre">Music · Legend</div>
+        <div class="celeb-prices">
+          <div class="cp hi-gold"><div class="cp-lbl">Gold</div><div class="cp-val">$5K</div></div>
+          <div class="cp"><div class="cp-lbl">Silver</div><div class="cp-val">$4.1K</div></div>
+          <div class="cp"><div class="cp-lbl">Bronze</div><div class="cp-val">$2.5K</div></div>
+        </div>
+      </div>
+    </div>
+
   </div>
 </section>
 
@@ -894,24 +985,44 @@
     </div>
   </div>
   <div class="strip-track" id="stripTrack">
-    <div class="strip-card" data-celeb-id="pitt"><div class="strip-av">🎬</div><div class="strip-name">Brad Pitt</div><div class="strip-genre">Film · Drama</div><span class="strip-tier tier-gold">Gold</span></div>
-    <div class="strip-card" data-celeb-id="robbie"><div class="strip-av">✨</div><div class="strip-name">Margot Robbie</div><div class="strip-genre">Film · Drama</div><span class="strip-tier tier-silver">Silver</span></div>
-    <div class="strip-card" data-celeb-id="reynolds"><div class="strip-av">😄</div><div class="strip-name">Ryan Reynolds</div><div class="strip-genre">Film · Comedy</div><span class="strip-tier tier-silver">Silver</span></div>
-    <div class="strip-card" data-celeb-id="hemsworth"><div class="strip-av">⚡</div><div class="strip-name">Chris Hemsworth</div><div class="strip-genre">Film · Action</div><span class="strip-tier tier-silver">Silver</span></div>
-    <div class="strip-card" data-celeb-id="cavill"><div class="strip-av">🦸</div><div class="strip-name">Henry Cavill</div><div class="strip-genre">Film · Action</div><span class="strip-tier tier-silver">Silver</span></div>
-    <div class="strip-card" data-celeb-id="wsmith"><div class="strip-av">🎤</div><div class="strip-name">Will Smith</div><div class="strip-genre">Film · Comedy</div><span class="strip-tier tier-gold">Gold</span></div>
-    <div class="strip-card" data-celeb-id="pascal"><div class="strip-av">🎭</div><div class="strip-name">Pedro Pascal</div><div class="strip-genre">Film · Drama</div><span class="strip-tier tier-bronze">Bronze</span></div>
-    <div class="strip-card" data-celeb-id="elba"><div class="strip-av">🎬</div><div class="strip-name">Idris Elba</div><div class="strip-genre">Film · Drama</div><span class="strip-tier tier-bronze">Bronze</span></div>
-    <div class="strip-card" data-celeb-id="hardy"><div class="strip-av">💪</div><div class="strip-name">Tom Hardy</div><div class="strip-genre">Film · Action</div><span class="strip-tier tier-bronze">Bronze</span></div>
-    <div class="strip-card" data-celeb-id="jordan"><div class="strip-av">🥊</div><div class="strip-name">Michael B Jordan</div><div class="strip-genre">Film · Drama</div><span class="strip-tier tier-bronze">Bronze</span></div>
-    <div class="strip-card" data-celeb-id="theron"><div class="strip-av">👑</div><div class="strip-name">Charlize Theron</div><div class="strip-genre">Film · Action</div><span class="strip-tier tier-silver">Silver</span></div>
-    <div class="strip-card" data-celeb-id="costner"><div class="strip-av">🤠</div><div class="strip-name">Kevin Costner</div><div class="strip-genre">Film · Drama</div><span class="strip-tier tier-silver">Silver</span></div>
-    <div class="strip-card" data-celeb-id="yaman"><div class="strip-av">🌟</div><div class="strip-name">Can Yaman</div><div class="strip-genre">TV · Drama</div><span class="strip-tier tier-silver">Silver</span></div>
-    <div class="strip-card" data-celeb-id="washington"><div class="strip-av">🎬</div><div class="strip-name">Denzel Washington</div><div class="strip-genre">Film · Drama</div><span class="strip-tier tier-gold">Gold</span></div>
-    <div class="strip-card" data-celeb-id="freeman"><div class="strip-av">🎙</div><div class="strip-name">Morgan Freeman</div><div class="strip-genre">Film · Drama</div><span class="strip-tier tier-gold">Gold</span></div>
-    <div class="strip-card" data-celeb-id="evans"><div class="strip-av">🛡</div><div class="strip-name">Chris Evans</div><div class="strip-genre">Film · Action</div><span class="strip-tier tier-silver">Silver</span></div>
-    <div class="strip-card" data-celeb-id="mescal"><div class="strip-av">🎭</div><div class="strip-name">Paul Mescal</div><div class="strip-genre">Film · Drama</div><span class="strip-tier tier-bronze">Bronze</span></div>
-    <div class="strip-card" data-celeb-id="murphy"><div class="strip-av">🎬</div><div class="strip-name">Cillian Murphy</div><div class="strip-genre">Film · Drama</div><span class="strip-tier tier-bronze">Bronze</span></div>
+    <div class="strip-card" data-celeb-id="pitt" data-wiki="Brad_Pitt"><div class="strip-av">🎬</div><div class="strip-name">Brad Pitt</div><div class="strip-genre">Film · Drama</div><span class="strip-tier tier-gold">Gold</span></div>
+    <div class="strip-card" data-celeb-id="robbie" data-wiki="Margot_Robbie"><div class="strip-av">✨</div><div class="strip-name">Margot Robbie</div><div class="strip-genre">Film · Drama</div><span class="strip-tier tier-silver">Silver</span></div>
+    <div class="strip-card" data-celeb-id="reynolds" data-wiki="Ryan_Reynolds"><div class="strip-av">😄</div><div class="strip-name">Ryan Reynolds</div><div class="strip-genre">Film · Comedy</div><span class="strip-tier tier-silver">Silver</span></div>
+    <div class="strip-card" data-celeb-id="hemsworth" data-wiki="Chris_Hemsworth"><div class="strip-av">⚡</div><div class="strip-name">Chris Hemsworth</div><div class="strip-genre">Film · Action</div><span class="strip-tier tier-silver">Silver</span></div>
+    <div class="strip-card" data-celeb-id="cavill" data-wiki="Henry_Cavill"><div class="strip-av">🦸</div><div class="strip-name">Henry Cavill</div><div class="strip-genre">Film · Action</div><span class="strip-tier tier-silver">Silver</span></div>
+    <div class="strip-card" data-celeb-id="wsmith" data-wiki="Will_Smith"><div class="strip-av">🎤</div><div class="strip-name">Will Smith</div><div class="strip-genre">Film · Comedy</div><span class="strip-tier tier-gold">Gold</span></div>
+    <div class="strip-card" data-celeb-id="pascal" data-wiki="Pedro_Pascal"><div class="strip-av">🎭</div><div class="strip-name">Pedro Pascal</div><div class="strip-genre">Film · Drama</div><span class="strip-tier tier-bronze">Bronze</span></div>
+    <div class="strip-card" data-celeb-id="elba" data-wiki="Idris_Elba"><div class="strip-av">🎬</div><div class="strip-name">Idris Elba</div><div class="strip-genre">Film · Drama</div><span class="strip-tier tier-bronze">Bronze</span></div>
+    <div class="strip-card" data-celeb-id="hardy" data-wiki="Tom_Hardy"><div class="strip-av">💪</div><div class="strip-name">Tom Hardy</div><div class="strip-genre">Film · Action</div><span class="strip-tier tier-bronze">Bronze</span></div>
+    <div class="strip-card" data-celeb-id="jordan" data-wiki="Michael_B._Jordan"><div class="strip-av">🥊</div><div class="strip-name">Michael B Jordan</div><div class="strip-genre">Film · Drama</div><span class="strip-tier tier-bronze">Bronze</span></div>
+    <div class="strip-card" data-celeb-id="theron" data-wiki="Charlize_Theron"><div class="strip-av">👑</div><div class="strip-name">Charlize Theron</div><div class="strip-genre">Film · Action</div><span class="strip-tier tier-silver">Silver</span></div>
+    <div class="strip-card" data-celeb-id="costner" data-wiki="Kevin_Costner"><div class="strip-av">🤠</div><div class="strip-name">Kevin Costner</div><div class="strip-genre">Film · Drama</div><span class="strip-tier tier-silver">Silver</span></div>
+    <div class="strip-card" data-celeb-id="yaman" data-wiki="Can_Yaman"><div class="strip-av">🌟</div><div class="strip-name">Can Yaman</div><div class="strip-genre">TV · Drama</div><span class="strip-tier tier-silver">Silver</span></div>
+    <div class="strip-card" data-celeb-id="washington" data-wiki="Denzel_Washington"><div class="strip-av">🎬</div><div class="strip-name">Denzel Washington</div><div class="strip-genre">Film · Drama</div><span class="strip-tier tier-gold">Gold</span></div>
+    <div class="strip-card" data-celeb-id="freeman" data-wiki="Morgan_Freeman"><div class="strip-av">🎙</div><div class="strip-name">Morgan Freeman</div><div class="strip-genre">Film · Drama</div><span class="strip-tier tier-gold">Gold</span></div>
+    <div class="strip-card" data-celeb-id="evans" data-wiki="Chris_Evans_(actor)"><div class="strip-av">🛡</div><div class="strip-name">Chris Evans</div><div class="strip-genre">Film · Action</div><span class="strip-tier tier-silver">Silver</span></div>
+    <div class="strip-card" data-celeb-id="mescal" data-wiki="Paul_Mescal"><div class="strip-av">🎭</div><div class="strip-name">Paul Mescal</div><div class="strip-genre">Film · Drama</div><span class="strip-tier tier-bronze">Bronze</span></div>
+    <div class="strip-card" data-celeb-id="murphy" data-wiki="Cillian_Murphy"><div class="strip-av">🎬</div><div class="strip-name">Cillian Murphy</div><div class="strip-genre">Film · Drama</div><span class="strip-tier tier-bronze">Bronze</span></div>
+    <div class="strip-card" data-celeb-id="hunnam" data-wiki="Charlie_Hunnam"><div class="strip-av">🏍️</div><div class="strip-name">Charlie Hunnam</div><div class="strip-genre">Film · Action</div><span class="strip-tier tier-silver">Silver</span></div>
+    <div class="strip-card" data-celeb-id="fraser" data-wiki="Brendan_Fraser"><div class="strip-av">🎬</div><div class="strip-name">Brendan Fraser</div><div class="strip-genre">Film · Drama</div><span class="strip-tier tier-silver">Silver</span></div>
+    <div class="strip-card" data-celeb-id="badbunny" data-wiki="Bad_Bunny"><div class="strip-av">🐰</div><div class="strip-name">Bad Bunny</div><div class="strip-genre">Music · Reggaeton</div><span class="strip-tier tier-gold">Gold</span></div>
+    <div class="strip-card" data-celeb-id="scrow" data-wiki="Sheryl_Crow"><div class="strip-av">🎵</div><div class="strip-name">Sheryl Crow</div><div class="strip-genre">Music · Rock</div><span class="strip-tier tier-silver">Silver</span></div>
+    <div class="strip-card" data-celeb-id="heughan" data-wiki="Sam_Heughan"><div class="strip-av">⚔️</div><div class="strip-name">Sam Heughan</div><div class="strip-genre">TV · Drama</div><span class="strip-tier tier-silver">Silver</span></div>
+    <div class="strip-card" data-celeb-id="methodman" data-wiki="Method_Man"><div class="strip-av">🎤</div><div class="strip-name">Method Man</div><div class="strip-genre">Music · Hip-Hop</div><span class="strip-tier tier-silver">Silver</span></div>
+    <div class="strip-card" data-celeb-id="mshort" data-wiki="Martin_Short"><div class="strip-av">😄</div><div class="strip-name">Martin Short</div><div class="strip-genre">Film · Comedy</div><span class="strip-tier tier-bronze">Bronze</span></div>
+    <div class="strip-card" data-celeb-id="chesney" data-wiki="Kenny_Chesney"><div class="strip-av">🤠</div><div class="strip-name">Kenny Chesney</div><div class="strip-genre">Music · Country</div><span class="strip-tier tier-silver">Silver</span></div>
+    <div class="strip-card" data-celeb-id="gstrait" data-wiki="George_Strait"><div class="strip-av">🎸</div><div class="strip-name">George Strait</div><div class="strip-genre">Music · Country</div><span class="strip-tier tier-silver">Silver</span></div>
+    <div class="strip-card" data-celeb-id="chandler" data-wiki="Chelsea_Handler"><div class="strip-av">😂</div><div class="strip-name">Chelsea Handler</div><div class="strip-genre">TV · Comedy</div><span class="strip-tier tier-bronze">Bronze</span></div>
+    <div class="strip-card" data-celeb-id="jparsons" data-wiki="Jim_Parsons"><div class="strip-av">🧪</div><div class="strip-name">Jim Parsons</div><div class="strip-genre">TV · Comedy</div><span class="strip-tier tier-silver">Silver</span></div>
+    <div class="strip-card" data-celeb-id="rsambora" data-wiki="Richie_Sambora"><div class="strip-av">🎸</div><div class="strip-name">Richie Sambora</div><div class="strip-genre">Music · Rock</div><span class="strip-tier tier-bronze">Bronze</span></div>
+    <div class="strip-card" data-celeb-id="fimmel" data-wiki="Travis_Fimmel"><div class="strip-av">⚔️</div><div class="strip-name">Travis Fimmel</div><div class="strip-genre">TV · Drama</div><span class="strip-tier tier-silver">Silver</span></div>
+    <div class="strip-card" data-celeb-id="dmcdermott" data-wiki="Dylan_McDermott"><div class="strip-av">🎬</div><div class="strip-name">Dylan McDermott</div><div class="strip-genre">TV · Drama</div><span class="strip-tier tier-bronze">Bronze</span></div>
+    <div class="strip-card" data-celeb-id="ascott" data-wiki="Alex_Scott_(presenter)"><div class="strip-av">⚽</div><div class="strip-name">Alex Scott</div><div class="strip-genre">Sports · TV</div><span class="strip-tier tier-bronze">Bronze</span></div>
+    <div class="strip-card" data-celeb-id="thynes" data-wiki="Tyler_Hynes"><div class="strip-av">🎬</div><div class="strip-name">Tyler Hynes</div><div class="strip-genre">TV · Drama</div><span class="strip-tier tier-bronze">Bronze</span></div>
+    <div class="strip-card" data-celeb-id="mgrulfo" data-wiki="Manuel_Garcia-Rulfo"><div class="strip-av">🎬</div><div class="strip-name">Manuel Garcia-Rulfo</div><div class="strip-genre">Film · Drama</div><span class="strip-tier tier-silver">Silver</span></div>
+    <div class="strip-card" data-celeb-id="pgadiot" data-wiki="Peter_Gadiot"><div class="strip-av">🎬</div><div class="strip-name">Peter Gadiot</div><div class="strip-genre">TV · Drama</div><span class="strip-tier tier-bronze">Bronze</span></div>
+    <div class="strip-card" data-celeb-id="shauser" data-wiki="Stjepan_Hauser"><div class="strip-av">🎻</div><div class="strip-name">Stjepan Hauser</div><div class="strip-genre">Music · Classical</div><span class="strip-tier tier-bronze">Bronze</span></div>
+    <div class="strip-card" data-celeb-id="arudolph" data-wiki="Adeline_Rudolph"><div class="strip-av">🎬</div><div class="strip-name">Adeline Rudolph</div><div class="strip-genre">TV · Drama</div><span class="strip-tier tier-bronze">Bronze</span></div>
   </div>
 </section>
 
@@ -1434,6 +1545,49 @@ window.addEventListener('storage', e => { if(e.key==='rezoro_celeb_data') applyA
 
 /* ── ESCAPE ─────────────────────────────────────── */
 document.addEventListener('keydown', e => { if(e.key==='Escape'){ closeBook(); closeTrailer(); } });
+
+/* ── WIKIPEDIA CELEB PHOTOS ─────────────────────── */
+(async function loadCelebPhotos() {
+  const delay = ms => new Promise(r => setTimeout(r, ms));
+
+  async function getThumb(slug) {
+    try {
+      const r = await fetch(`https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(slug)}`);
+      if (!r.ok) return null;
+      const d = await r.json();
+      return (d.thumbnail && d.thumbnail.source) ? d.thumbnail.source : null;
+    } catch { return null; }
+  }
+
+  // Main grid cards — inject real photo, hide emoji
+  for (const card of document.querySelectorAll('.celeb-card[data-wiki]')) {
+    const src = await getThumb(card.dataset.wiki);
+    if (src) {
+      const visual = card.querySelector('.celeb-visual');
+      const img = document.createElement('img');
+      img.src = src; img.className = 'celeb-photo';
+      img.alt = card.dataset.wiki.replace(/_/g, ' ');
+      visual.insertBefore(img, visual.firstChild);
+      const emoji = visual.querySelector('.celeb-emoji');
+      if (emoji) emoji.style.display = 'none';
+    }
+    await delay(40);
+  }
+
+  // Strip avatar circles
+  for (const card of document.querySelectorAll('.strip-card[data-wiki]')) {
+    const src = await getThumb(card.dataset.wiki);
+    if (src) {
+      const av = card.querySelector('.strip-av');
+      const img = document.createElement('img');
+      img.src = src;
+      img.alt = card.dataset.wiki.replace(/_/g, ' ');
+      av.innerHTML = '';
+      av.appendChild(img);
+    }
+    await delay(40);
+  }
+})();
 </script>
 </body>
 </html>
