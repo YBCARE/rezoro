@@ -431,6 +431,47 @@
     }
     .cat-desc { font-size: .8rem; color: var(--t2); line-height: 1.7; }
 
+    /* ─── SERVICES ────────────────────────────────────── */
+    #services { background: var(--bg); }
+    .services-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1rem;
+    }
+    .svc-card {
+      background: var(--bg2); border: 1px solid var(--border);
+      border-radius: var(--r-lg); padding: 2.2rem 1.8rem;
+      cursor: pointer; position: relative; overflow: hidden;
+      transition: border-color .28s, transform .28s, box-shadow .28s;
+    }
+    .svc-card::before {
+      content: ''; position: absolute; inset: 0;
+      background: radial-gradient(ellipse 80% 60% at 50% 0%, rgba(201,168,76,.06) 0%, transparent 70%);
+      opacity: 0; transition: opacity .28s;
+    }
+    .svc-card:hover { border-color: var(--gold-border); transform: translateY(-5px); box-shadow: 0 24px 64px rgba(0,0,0,.6), 0 0 40px var(--gold-glow); }
+    .svc-card:hover::before { opacity: 1; }
+    .svc-icon {
+      width: 52px; height: 52px; border-radius: var(--r-sm);
+      background: var(--bg3); border: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.4rem; margin-bottom: 1.4rem;
+      transition: border-color .28s, background .28s;
+    }
+    .svc-card:hover .svc-icon { border-color: var(--gold-border); background: var(--gold-bg); }
+    .svc-name {
+      font-family: var(--font-d); font-size: 1.22rem; font-weight: 600;
+      color: var(--t1); margin-bottom: .5rem; line-height: 1.3;
+    }
+    .svc-desc { font-size: .8rem; color: var(--t2); line-height: 1.78; margin-bottom: 1.5rem; }
+    .svc-cta {
+      display: inline-flex; align-items: center; gap: .45rem;
+      font-size: .63rem; font-weight: 700; letter-spacing: .14em;
+      text-transform: uppercase; color: var(--gold); cursor: pointer;
+    }
+    .svc-cta-arrow { display: inline-block; transition: transform .22s; }
+    .svc-card:hover .svc-cta-arrow { transform: translateX(5px); }
+
     /* ─── HOW IT WORKS ────────────────────────────────── */
     #how { background: var(--black); }
     .steps-grid { display: grid; grid-template-columns: repeat(4,1fr); gap: 1rem; }
@@ -553,6 +594,7 @@
       .cat-bento { grid-template-columns: 1fr 1fr; }
       .cat-cell.span2 { grid-column: span 1; }
       .steps-grid { grid-template-columns: repeat(2,1fr); }
+      .services-grid { grid-template-columns: repeat(2, 1fr); }
     }
     @media (max-width: 900px) {
       .nav-links { display: none; }
@@ -564,6 +606,7 @@
       .testi-grid { grid-template-columns: 1fr; }
       .cat-bento { grid-template-columns: 1fr; }
       .steps-grid { grid-template-columns: 1fr; }
+      .services-grid { grid-template-columns: 1fr; }
       .hero-ctas { flex-direction: column; }
     }
     @media (max-width: 400px) {
@@ -581,7 +624,7 @@
   <a href="#" class="logo">Rez<span>oro</span></a>
   <ul class="nav-links">
     <li><a href="#talent">Celebrities</a></li>
-    <li><a href="#categories">Categories</a></li>
+    <li><a href="#services">Services</a></li>
     <li><a href="#how">How It Works</a></li>
     <li><a href="#testimonials">Reviews</a></li>
     <li><a href="fans.html" class="nav-fan">Fan Cards</a></li>
@@ -872,47 +915,81 @@
   </div>
 </section>
 
-<!-- ══ CATEGORIES ════════════════════════════════════════ -->
-<section class="section" id="categories">
+<!-- ══ SERVICES ═══════════════════════════════════════════ -->
+<section class="section" id="services">
   <div class="sec-head">
     <div>
-      <div class="sec-eyebrow">Booking Types</div>
-      <h2 class="sec-title">What Can You Book?</h2>
-      <p class="sec-sub">From global brand campaigns to intimate private events — Rezoro covers every format.</p>
+      <div class="sec-eyebrow">What We Offer</div>
+      <h2 class="sec-title">Celebrity Services</h2>
+      <p class="sec-sub">Every format, every occasion — handled with absolute discretion and white-glove care.</p>
     </div>
+    <button class="btn-outline" onclick="openBook(event)">Book a Service →</button>
   </div>
-  <div class="cat-bento">
-    <div class="cat-cell reveal">
-      <span class="cat-badge">Most Popular</span>
-      <div class="cat-icon-wrap">📢</div>
-      <div class="cat-name">Brand Campaigns</div>
-      <p class="cat-desc">Long-term partnerships, product launches, ambassador deals and social media campaigns with the world's biggest names.</p>
+  <div class="services-grid">
+
+    <div class="svc-card reveal" onclick="openBook(event)">
+      <div class="svc-icon">✍️</div>
+      <div class="svc-name">Autograph Signing</div>
+      <p class="svc-desc">Personalised autographs from your favourite celebrity — on memorabilia, merchandise, or custom items. Comes with a certificate of authenticity and private delivery.</p>
+      <span class="svc-cta">Book Now <span class="svc-cta-arrow">→</span></span>
     </div>
-    <div class="cat-cell reveal rd1">
-      <div class="cat-icon-wrap">🎬</div>
-      <div class="cat-name">Film & TV</div>
-      <p class="cat-desc">Cameos, appearances, and entertainment bookings for productions worldwide.</p>
+
+    <div class="svc-card reveal rd1" onclick="openBook(event)">
+      <div class="svc-icon">🔑</div>
+      <div class="svc-name">Private Reservations</div>
+      <p class="svc-desc">Exclusive private access — intimate dinners, personal visits, and one-of-a-kind experiences arranged entirely at your discretion with full confidentiality guaranteed.</p>
+      <span class="svc-cta">Book Now <span class="svc-cta-arrow">→</span></span>
     </div>
-    <div class="cat-cell reveal rd2">
-      <div class="cat-icon-wrap">🎤</div>
-      <div class="cat-name">Private Events</div>
-      <p class="cat-desc">Exclusive galas, VIP dinners, and ultra-premium corporate experiences.</p>
+
+    <div class="svc-card reveal rd2" onclick="openBook(event)">
+      <div class="svc-icon">🤝</div>
+      <div class="svc-name">Celebrity Meet & Greet</div>
+      <p class="svc-desc">Face-to-face time with A-list talent in a private, secure setting. Includes professional photos, personal conversation, and a keepsake you'll never forget.</p>
+      <span class="svc-cta">Book Now <span class="svc-cta-arrow">→</span></span>
     </div>
-    <div class="cat-cell reveal">
-      <div class="cat-icon-wrap">✍️</div>
-      <div class="cat-name">Meet & Greet</div>
-      <p class="cat-desc">Private fan meetings, signings, and intimate Q&A sessions.</p>
+
+    <div class="svc-card reveal" onclick="openBook(event)">
+      <div class="svc-icon">❤️</div>
+      <div class="svc-name">Charity & Foundation Events</div>
+      <p class="svc-desc">Elevate your cause with celebrity support. From high-profile galas to awareness campaigns — we connect world-class talent with the causes that matter most.</p>
+      <span class="svc-cta">Book Now <span class="svc-cta-arrow">→</span></span>
     </div>
-    <div class="cat-cell reveal rd1">
-      <div class="cat-icon-wrap">📱</div>
-      <div class="cat-name">Digital Content</div>
-      <p class="cat-desc">Social posts, video messages, live streams, and personalised shoutouts.</p>
+
+    <div class="svc-card reveal rd1" onclick="openBook(event)">
+      <div class="svc-icon">📢</div>
+      <div class="svc-name">Product Endorsements</div>
+      <p class="svc-desc">Authentic brand partnerships that move markets. Long-term ambassador deals, product launches, and social media campaigns with faces the world already trusts.</p>
+      <span class="svc-cta">Book Now <span class="svc-cta-arrow">→</span></span>
     </div>
-    <div class="cat-cell reveal rd2">
-      <div class="cat-icon-wrap">🎴</div>
-      <div class="cat-name">Fan Cards</div>
-      <p class="cat-desc">Premium collectible fan cards — Gold, Silver and Bronze — signed and personalised.</p>
+
+    <div class="svc-card reveal rd2" onclick="openBook(event)">
+      <div class="svc-icon">🎉</div>
+      <div class="svc-name">Nightclub Appearances</div>
+      <p class="svc-desc">Make any venue unforgettable. High-profile celebrity appearances for clubs, private parties, and VIP nights that create lasting memories and serious buzz.</p>
+      <span class="svc-cta">Book Now <span class="svc-cta-arrow">→</span></span>
     </div>
+
+    <div class="svc-card reveal" onclick="openBook(event)">
+      <div class="svc-icon">📺</div>
+      <div class="svc-name">Business Promotion & Adverts</div>
+      <p class="svc-desc">TV spots, digital campaigns, and commercial shoots featuring globally recognised talent. Built to convert audiences and elevate your brand above the competition.</p>
+      <span class="svc-cta">Book Now <span class="svc-cta-arrow">→</span></span>
+    </div>
+
+    <div class="svc-card reveal rd1" onclick="openBook(event)">
+      <div class="svc-icon">🏛️</div>
+      <div class="svc-name">Tradeshow Appearances</div>
+      <p class="svc-desc">Draw record crowds and dominate the floor. A celebrity presence at tradeshows and expos turns heads, drives foot traffic, and seals deals that matter.</p>
+      <span class="svc-cta">Book Now <span class="svc-cta-arrow">→</span></span>
+    </div>
+
+    <div class="svc-card reveal rd2" onclick="openBook(event)">
+      <div class="svc-icon">🏢</div>
+      <div class="svc-name">Corporate Events</div>
+      <p class="svc-desc">Award ceremonies, product launches, executive dinners, and team events — elevated by the presence of a globally recognised name that commands attention and respect.</p>
+      <span class="svc-cta">Book Now <span class="svc-cta-arrow">→</span></span>
+    </div>
+
   </div>
 </section>
 
@@ -1003,7 +1080,7 @@
       <h4>Platform</h4>
       <a href="#talent">Browse Talent</a>
       <a href="fans.html">Fan Cards</a>
-      <a href="#categories">Categories</a>
+      <a href="#services">Services</a>
       <a href="#how">How It Works</a>
     </div>
     <div class="footer-col">
