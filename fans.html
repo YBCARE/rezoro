@@ -541,7 +541,12 @@ async function purchaseCard(){
     const photo = document.getElementById('fanPhotoInput').files[0];
     if(photo) fd.append('photo', photo);
 
-    const res  = await fetch('/api/fancard', { method:'POST', body:fd });
+    const authToken = localStorage.getItem('rz_token');
+    const res  = await fetch('/api/fancard', {
+      method:'POST',
+      headers: authToken ? { Authorization: 'Bearer ' + authToken } : {},
+      body:fd
+    });
     const data = await res.json();
 
     if(!res.ok) throw new Error(data.error || 'Server error');

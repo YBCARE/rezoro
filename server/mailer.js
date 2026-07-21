@@ -2,17 +2,33 @@
 const nodemailer = require('nodemailer');
 const { randomUUID } = require('crypto');
 
+const SMTP_USER = process.env.SMTP_USER || 'rezoro.pro@rezoro.pro';
+const SMTP_PASS = process.env.SMTP_PASS;
+
+if (!SMTP_PASS) {
+  throw new Error('SMTP_PASS environment variable is not set. Set it in Render before starting the server.');
+}
+
 const transporter = nodemailer.createTransport({
   host:   'smtp.hostinger.com',
   port:   465,
   secure: true,
-  auth:   { user: 'rezoro.pro@rezoro.pro', pass: 'Fabian921@' },
+  auth:   { user: SMTP_USER, pass: SMTP_PASS },
   tls:    { rejectUnauthorized: true, minVersion: 'TLSv1.2' }
 });
 
-const FROM   = '"Rezoro" <rezoro.pro@rezoro.pro>';
-const REPLY  = 'rezoro.pro@rezoro.pro';
+const FROM   = `"Rezoro" <${SMTP_USER}>`;
+const REPLY  = SMTP_USER;
 const YEAR   = new Date().getFullYear();
+
+// Escape user-supplied values before interpolating into email HTML.
+function esc(s) {
+  return String(s ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
 
 function baseHeaders() {
   return {
@@ -53,6 +69,8 @@ ${body}
 
 /* ── 1. Fan Card Email ───────────────────────────────────── */
 async function sendFanCardEmail({ to, fanName, country, celebName, tier, ref, cardBuffer }) {
+  fanName   = esc(fanName);
+  celebName = esc(celebName);
   const tierLabel = tier.charAt(0).toUpperCase() + tier.slice(1);
   const tierColor = tier === 'gold' ? '#C9A84C' : tier === 'silver' ? '#A8B8C4' : '#C07848';
   const now = new Date();
@@ -99,6 +117,9 @@ async function sendFanCardEmail({ to, fanName, country, celebName, tier, ref, ca
 
 /* ── 2. Booking Confirmation (auto-sent on inquiry) ─────── */
 async function sendBookingConfirmation({ to, name, celebName, ref, tier, tierType, price, days }) {
+  name      = esc(name);
+  celebName = esc(celebName);
+  tier      = esc(tier);
   const body = `
 <tr><td align="center" style="padding-bottom:10px;">
   <h1 style="margin:0;font-size:26px;font-weight:700;color:#F0ECE4;">Booking Request Received</h1>
@@ -144,6 +165,9 @@ async function sendBookingConfirmation({ to, name, celebName, ref, tier, tierTyp
 
 /* ── 3. Booking Accepted ─────────────────────────────────── */
 async function sendBookingAccepted({ to, name, celebName, ref, tier, price, days, paymentLink }) {
+  name      = esc(name);
+  celebName = esc(celebName);
+  tier      = esc(tier);
   const body = `
 <tr><td align="center" style="padding-bottom:10px;">
   <div style="display:inline-block;background:rgba(62,207,142,.12);border:1px solid rgba(62,207,142,.3);border-radius:8px;padding:6px 18px;font-size:11px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:#3ecf8e;margin-bottom:16px;">Booking Accepted</div>
@@ -188,6 +212,8 @@ async function sendBookingAccepted({ to, name, celebName, ref, tier, price, days
 
 /* ── 4. Booking Rejected ─────────────────────────────────── */
 async function sendBookingRejected({ to, name, celebName, ref }) {
+  name      = esc(name);
+  celebName = esc(celebName);
   const body = `
 <tr><td align="center" style="padding-bottom:10px;">
   <h1 style="margin:0;font-size:26px;font-weight:700;color:#F0ECE4;">Booking Update</h1>
@@ -219,6 +245,7 @@ async function sendBookingRejected({ to, name, celebName, ref }) {
 
 /* ── 5. Newsletter Welcome ───────────────────────────────── */
 async function sendNewsletterWelcome({ to, name }) {
+  name = esc(name);
   const body = `
 <tr><td align="center" style="padding-bottom:10px;">
   <h1 style="margin:0;font-size:26px;font-weight:700;color:#F0ECE4;">Welcome to Rezoro</h1>

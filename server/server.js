@@ -20,9 +20,18 @@ const {
 const app  = express();
 const PORT = process.env.PORT || 3001;
 const ROOT = path.join(__dirname, '..');
-const JWT_SECRET = process.env.JWT_SECRET || 'rezoro-jwt-secret-change-in-prod';
-const FW_SECRET  = process.env.FLUTTERWAVE_SECRET_KEY || '';
-const FW_PUBLIC  = process.env.FLUTTERWAVE_PUBLIC_KEY || '';
+const JWT_SECRET      = process.env.JWT_SECRET;
+const ADMIN_PASSWORD  = process.env.ADMIN_PASSWORD;
+const FW_SECRET        = process.env.FLUTTERWAVE_SECRET_KEY || '';
+const FW_PUBLIC        = process.env.FLUTTERWAVE_PUBLIC_KEY || '';
+const FW_WEBHOOK_SECRET = process.env.FW_WEBHOOK_SECRET || '';
+
+if (!JWT_SECRET) {
+  throw new Error('JWT_SECRET environment variable is not set. Set it in Render before starting the server.');
+}
+if (!ADMIN_PASSWORD) {
+  throw new Error('ADMIN_PASSWORD environment variable is not set. Set it in Render before starting the server.');
+}
 
 /* ══════════════════════════════════════════════════════════
    IN-MEMORY STORES  (swap to DB for production)
@@ -63,6 +72,49 @@ function authMiddleware(req, res, next) {
   } catch {
     res.status(401).json({ error: 'Invalid or expired token' });
   }
+}
+
+// Populates req.user if a valid token is present, but never blocks the request.
+function optionalAuthMiddleware(req, _res, next) {
+  const header = req.headers.authorization || '';
+  const token  = header.startsWith('Bearer ') ? header.slice(7) : null;
+  if (token) {
+    try { req.user = jwt.verify(token, JWT_SECRET); } catch { /* ignore invalid token */ }
+  }
+  next();
+}
+
+function adminAuthMiddleware(req, res, next) {
+  const header = req.headers.authorization || '';
+  const token  = header.startsWith('Bearer ') ? header.slice(7) : null;
+  if (!token) return res.status(401).json({ error: 'Not authenticated' });
+  try {
+    const payload = jwt.verify(token, JWT_SECRET);
+    if (payload.role !== 'admin') throw new Error('not admin');
+    req.admin = payload;
+    next();
+  } catch {
+    res.status(401).json({ error: 'Invalid or expired admin session' });
+  }
+}
+
+// Minimal in-memory fixed-window rate limiter (per IP, per bucket).
+const rateBuckets = new Map(); // key → { count, resetAt }
+function rateLimit(key, max, windowMs) {
+  return (req, res, next) => {
+    const id  = `${key}:${req.ip}`;
+    const now = Date.now();
+    let bucket = rateBuckets.get(id);
+    if (!bucket || bucket.resetAt < now) {
+      bucket = { count: 0, resetAt: now + windowMs };
+      rateBuckets.set(id, bucket);
+    }
+    bucket.count++;
+    if (bucket.count > max) {
+      return res.status(429).json({ error: 'Too many requests. Please try again later.' });
+    }
+    next();
+  };
 }
 
 /* ══════════════════════════════════════════════════════════
@@ -116,7 +168,7 @@ const TIERS = {
   }
 };
 
-app.post('/api/booking-inquiry', async (req, res) => {
+app.post('/api/booking-inquiry', rateLimit('booking', 5, 60 * 60 * 1000), async (req, res) => {
   try {
     const { name, email, phone, company, celebName, tier, tierType, message } = req.body;
     if (!name || !email || !celebName || !tier || !tierType) {
@@ -161,13 +213,22 @@ app.post('/api/booking-inquiry', async (req, res) => {
 });
 
 /* ══════════════════════════════════════════════════════════
-   ADMIN — BOOKINGS
+   ADMIN — AUTH + BOOKINGS
 ═══════════════════════════════════════════════════════════ */
-app.get('/api/admin/bookings', (_req, res) => {
+app.post('/api/admin/login', rateLimit('admin-login', 10, 15 * 60 * 1000), (req, res) => {
+  const { password } = req.body || {};
+  if (!password || password !== ADMIN_PASSWORD) {
+    return res.status(401).json({ error: 'Incorrect password.' });
+  }
+  const token = jwt.sign({ role: 'admin' }, JWT_SECRET, { expiresIn: '12h' });
+  res.json({ token });
+});
+
+app.get('/api/admin/bookings', adminAuthMiddleware, (_req, res) => {
   res.json([...bookings.values()].sort((a,b) => new Date(b.createdAt)-new Date(a.createdAt)));
 });
 
-app.post('/api/admin/bookings/:id/accept', async (req, res) => {
+app.post('/api/admin/bookings/:id/accept', adminAuthMiddleware, async (req, res) => {
   const booking = bookings.get(req.params.id);
   if (!booking) return res.status(404).json({ error: 'Booking not found' });
 
@@ -210,7 +271,7 @@ app.post('/api/admin/bookings/:id/accept', async (req, res) => {
   res.json({ success: true, booking });
 });
 
-app.post('/api/admin/bookings/:id/reject', async (req, res) => {
+app.post('/api/admin/bookings/:id/reject', adminAuthMiddleware, async (req, res) => {
   const booking = bookings.get(req.params.id);
   if (!booking) return res.status(404).json({ error: 'Booking not found' });
 
@@ -224,7 +285,7 @@ app.post('/api/admin/bookings/:id/reject', async (req, res) => {
   res.json({ success: true, booking });
 });
 
-app.post('/api/admin/bookings/:id/status', (req, res) => {
+app.post('/api/admin/bookings/:id/status', adminAuthMiddleware, (req, res) => {
   const booking = bookings.get(req.params.id);
   if (!booking) return res.status(404).json({ error: 'Booking not found' });
   const allowed = ['pending','accepted','payment_sent','confirmed','completed','rejected'];
@@ -237,8 +298,9 @@ app.post('/api/admin/bookings/:id/status', (req, res) => {
    FLUTTERWAVE WEBHOOK
 ═══════════════════════════════════════════════════════════ */
 app.post('/api/payment/webhook', (req, res) => {
+  // Reject all webhooks unless the shared secret is configured AND matches.
   const secret = req.headers['verif-hash'] || '';
-  if (FW_SECRET && secret !== process.env.FW_WEBHOOK_SECRET) {
+  if (!FW_WEBHOOK_SECRET || secret !== FW_WEBHOOK_SECRET) {
     return res.status(401).json({ error: 'Unauthorized' });
   }
   const { data } = req.body;
@@ -332,7 +394,7 @@ app.get('/api/user/fancards', authMiddleware, (req, res) => {
 /* ══════════════════════════════════════════════════════════
    NEWSLETTER
 ═══════════════════════════════════════════════════════════ */
-app.post('/api/newsletter/subscribe', async (req, res) => {
+app.post('/api/newsletter/subscribe', rateLimit('subscribe', 5, 60 * 60 * 1000), async (req, res) => {
   const { email, name } = req.body;
   if (!email || !email.includes('@')) return res.status(400).json({ error: 'Valid email required.' });
   const key = email.toLowerCase();
@@ -342,11 +404,11 @@ app.post('/api/newsletter/subscribe', async (req, res) => {
   res.json({ success: true, message: 'Subscribed successfully!' });
 });
 
-app.get('/api/newsletter/subscribers', (_req, res) => {
+app.get('/api/newsletter/subscribers', adminAuthMiddleware, (_req, res) => {
   res.json([...subscribers.values()].sort((a,b) => new Date(b.createdAt)-new Date(a.createdAt)));
 });
 
-app.post('/api/newsletter/send', async (req, res) => {
+app.post('/api/newsletter/send', adminAuthMiddleware, async (req, res) => {
   try {
     const { subject, html, text } = req.body;
     if (!subject || !html) return res.status(400).json({ error: 'subject and html are required.' });
@@ -365,9 +427,9 @@ app.post('/api/newsletter/send', async (req, res) => {
 /* ══════════════════════════════════════════════════════════
    FAN CARD  (existing + link to user account)
 ═══════════════════════════════════════════════════════════ */
-app.post('/api/fancard', upload.single('photo'), async (req, res) => {
+app.post('/api/fancard', rateLimit('fancard', 5, 60 * 60 * 1000), optionalAuthMiddleware, upload.single('photo'), async (req, res) => {
   try {
-    const { fanName, country, celebName, celebEmoji, celebWiki, tier, email, userId } = req.body;
+    const { fanName, country, celebName, celebEmoji, celebWiki, tier, email } = req.body;
     if (!fanName || !celebName || !email) {
       return res.status(400).json({ error: 'fanName, celebName and email are required.' });
     }
@@ -382,41 +444,18 @@ app.post('/api/fancard', upload.single('photo'), async (req, res) => {
 
     await sendFanCardEmail({ to: email, fanName, country: country||'', celebName, tier: tierClean, ref, cardBuffer });
 
-    // Save to user's fancard collection if logged in
-    if (userId) {
-      const existing = fancards.get(userId) || [];
+    // Save to the authenticated user's collection (identity from the verified JWT, never the request body)
+    if (req.user) {
+      const existing = fancards.get(req.user.id) || [];
       existing.unshift({ ref, celebName, tier: tierClean, fanName, country: country||'', createdAt: new Date().toISOString() });
-      fancards.set(userId, existing);
+      fancards.set(req.user.id, existing);
     }
 
     console.log(`[FANCARD] ${ref} — ${celebName} for ${fanName}`);
     res.json({ success: true, ref, message: `Fan card sent to ${email}` });
   } catch (err) {
     console.error('[fancard]', err.message);
-    res.status(500).json({ error: 'Failed to process fan card.', detail: err.message });
-  }
-});
-
-app.post('/api/booking', upload.single('photo'), async (req, res) => {
-  // Legacy alias → fancard
-  req.url = '/api/fancard';
-  app.handle(req, res);
-});
-
-app.post('/api/preview-card', upload.single('photo'), async (req, res) => {
-  try {
-    const { fanName, country, celebName, celebEmoji, tier } = req.body;
-    const tierClean = ['gold','silver','bronze'].includes(tier) ? tier : 'gold';
-    const cardBuffer = await generateFanCard({
-      fanName: fanName||'Preview Fan', country: country||'',
-      celebName: celebName||'Celebrity', celebEmoji: celebEmoji||'🎬',
-      tier: tierClean, ref: makeRef(), photoSrc: req.file?.buffer||null
-    });
-    res.set('Content-Type', 'image/png');
-    res.set('Cache-Control', 'no-store');
-    res.send(cardBuffer);
-  } catch (err) {
-    res.status(500).json({ error: 'Preview failed.', detail: err.message });
+    res.status(500).json({ error: 'Failed to process fan card.' });
   }
 });
 

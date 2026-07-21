@@ -159,6 +159,9 @@ function switchTab(id, el) {
   if (id === 'fancards' && !fancardsLoaded) loadFanCards();
 }
 
+/* ── Escaping for user-supplied values ──────────────────── */
+function esc(s){ return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
 /* ── Bookings ───────────────────────────────────────────── */
 let bookingsLoaded = false;
 const statusLabels = {
@@ -189,9 +192,9 @@ async function loadBookings() {
       return `<div class="card">
         <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:1rem;flex-wrap:wrap;">
           <div>
-            <div class="bk-ref">${b.ref}</div>
-            <div class="bk-celeb">${b.celebName}</div>
-            <div class="bk-meta">${b.tier} · ${b.tierType} · ${b.days} days</div>
+            <div class="bk-ref">${esc(b.ref)}</div>
+            <div class="bk-celeb">${esc(b.celebName)}</div>
+            <div class="bk-meta">${esc(b.tier)} · ${esc(b.tierType)} · ${esc(b.days)} days</div>
             <div><span class="badge ${badge}">${statusText}</span></div>
           </div>
           <div style="text-align:right;">
@@ -200,7 +203,7 @@ async function loadBookings() {
             ${payBtn ? `<div style="margin-top:.6rem;">${payBtn}</div>` : ''}
           </div>
         </div>
-        ${b.message ? `<div style="margin-top:.8rem;font-size:.8rem;color:var(--t3);border-top:1px solid var(--border);padding-top:.8rem;">${b.message}</div>` : ''}
+        ${b.message ? `<div style="margin-top:.8rem;font-size:.8rem;color:var(--t3);border-top:1px solid var(--border);padding-top:.8rem;">${esc(b.message)}</div>` : ''}
       </div>`;
     }).join('');
   } catch {
@@ -226,10 +229,10 @@ async function loadFanCards() {
     el.innerHTML = `<div class="fc-grid">${data.map(fc=>`
       <div class="fc-card">
         <div class="fc-emoji">${tierEmoji[fc.tier]||'🎬'}</div>
-        <div class="fc-celeb">${fc.celebName}</div>
-        <div class="fc-tier">${fc.tier} tier</div>
-        ${fc.country ? `<div style="font-size:.75rem;color:var(--t3);margin-top:.2rem;">📍 ${fc.country}</div>` : ''}
-        <div class="fc-ref">${fc.ref}</div>
+        <div class="fc-celeb">${esc(fc.celebName)}</div>
+        <div class="fc-tier">${esc(fc.tier)} tier</div>
+        ${fc.country ? `<div style="font-size:.75rem;color:var(--t3);margin-top:.2rem;">📍 ${esc(fc.country)}</div>` : ''}
+        <div class="fc-ref">${esc(fc.ref)}</div>
         <div style="font-size:.65rem;color:var(--t3);margin-top:.3rem;">${new Date(fc.createdAt).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})}</div>
       </div>`).join('')}</div>`;
   } catch {

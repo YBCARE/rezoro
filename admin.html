@@ -351,30 +351,44 @@
 </div>
 
 <script>
+function adminToken(){ return sessionStorage.getItem('rz_admin_token') || ''; }
+function adminHeaders(extra){ return Object.assign({ Authorization: 'Bearer ' + adminToken() }, extra || {}); }
+function adminSignOut(){
+  sessionStorage.removeItem('rz_admin_token');
+  document.getElementById('admin-gate').classList.remove('unlocked');
+}
+
 (function(){
-  // Check if already authenticated this session
-  if(sessionStorage.getItem('rz_admin_auth') === '1'){
+  if(adminToken()){
     document.getElementById('admin-gate').classList.add('unlocked');
   }
 })();
 
-function gateUnlock(){
+async function gateUnlock(){
   const inp = document.getElementById('gate-pass');
   const err = document.getElementById('gate-err');
-  // Hash check — password: Rezoro2025!
-  const HASH = '7f3b2e1a9c0d4f6e8b5a2d7c3e9f1b4a'; // placeholder
-  const entered = inp.value;
-  if(entered === 'Rezoro2025!'){
-    sessionStorage.setItem('rz_admin_auth','1');
-    document.getElementById('admin-gate').classList.add('unlocked');
-    err.textContent = '';
-  } else {
-    err.textContent = 'Incorrect password. Try again.';
-    inp.classList.add('shake');
-    inp.value = '';
-    setTimeout(() => inp.classList.remove('shake'), 500);
-    inp.focus();
+  err.textContent = '';
+  try {
+    const r = await fetch('/api/admin/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ password: inp.value })
+    });
+    const d = await r.json();
+    if (r.ok && d.token) {
+      sessionStorage.setItem('rz_admin_token', d.token);
+      document.getElementById('admin-gate').classList.add('unlocked');
+      inp.value = '';
+      return;
+    }
+    err.textContent = d.error || 'Incorrect password. Try again.';
+  } catch {
+    err.textContent = 'Connection error. Try again.';
   }
+  inp.classList.add('shake');
+  inp.value = '';
+  setTimeout(() => inp.classList.remove('shake'), 500);
+  inp.focus();
 }
 </script>
 
@@ -1228,7 +1242,8 @@ async function loadIncoming() {
   if (!el) return;
   el.innerHTML = '<div style="text-align:center;padding:3rem;color:var(--t3);font-size:.85rem;">Loading…</div>';
   try {
-    const r = await fetch('/api/admin/bookings');
+    const r = await fetch('/api/admin/bookings', { headers: adminHeaders() });
+    if (r.status === 401) { adminSignOut(); return; }
     allIncomingBookings = await r.json();
     // Update pending badge
     const pending = allIncomingBookings.filter(b=>b.status==='pending').length;
@@ -1295,7 +1310,8 @@ function renderIncoming() {
 async function acceptBooking(id) {
   if (!confirm('Accept this booking? A payment link will be generated and sent to the customer.')) return;
   try {
-    const r = await fetch(`/api/admin/bookings/${id}/accept`, { method:'POST' });
+    const r = await fetch(`/api/admin/bookings/${id}/accept`, { method:'POST', headers: adminHeaders() });
+    if (r.status === 401) { adminSignOut(); return; }
     const d = await r.json();
     if (d.success) { showToast('✦ Booking accepted. Payment email sent.'); loadIncoming(); }
     else showToast(d.error || 'Failed to accept.', 'error');
@@ -1305,7 +1321,8 @@ async function acceptBooking(id) {
 async function rejectBooking(id) {
   if (!confirm('Reject this booking? The customer will be notified by email.')) return;
   try {
-    const r = await fetch(`/api/admin/bookings/${id}/reject`, { method:'POST' });
+    const r = await fetch(`/api/admin/bookings/${id}/reject`, { method:'POST', headers: adminHeaders() });
+    if (r.status === 401) { adminSignOut(); return; }
     const d = await r.json();
     if (d.success) { showToast('Booking rejected. Customer notified.'); loadIncoming(); }
     else showToast(d.error || 'Failed to reject.', 'error');
@@ -1322,7 +1339,8 @@ async function loadSubscribers() {
   if (!tbody) return;
   tbody.innerHTML = '<tr><td colspan="3" style="text-align:center;color:var(--t3);padding:2rem;">Loading…</td></tr>';
   try {
-    const r = await fetch('/api/newsletter/subscribers');
+    const r = await fetch('/api/newsletter/subscribers', { headers: adminHeaders() });
+    if (r.status === 401) { adminSignOut(); return; }
     const data = await r.json();
     if (total) total.textContent = data.length;
     if (meta) meta.textContent = data.length + ' subscriber' + (data.length===1?'':'s');
@@ -1351,9 +1369,10 @@ async function sendNewsletter() {
   try {
     const r = await fetch('/api/newsletter/send', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: adminHeaders({ 'Content-Type': 'application/json' }),
       body: JSON.stringify({ subject, html: bodyTxt.replace(/\n/g,'<br>'), text: bodyTxt })
     });
+    if (r.status === 401) { adminSignOut(); return; }
     const d = await r.json();
     if (d.success) {
       showToast(`✦ Sent to ${d.sent} subscriber${d.sent===1?'':'s'}!`);
