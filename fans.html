@@ -4,6 +4,8 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Rezoro — Fan Cards</title>
+  <meta name="description" content="Choose a tier, pick your favourite star, and receive a personalised collectible fan card by email.">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%2307070A'/%3E%3Ctext x='32' y='44' font-family='Georgia,serif' font-size='38' font-weight='700' fill='%23C9A84C' text-anchor='middle'%3ER%3C/text%3E%3C/svg%3E">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Cormorant:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400;1,600&family=Montserrat:wght@300;400;500;600;700&display=swap" rel="stylesheet">
@@ -27,7 +29,7 @@
       --border2: rgba(255,255,255,.14);
       --font-d: 'Cormorant', Georgia, serif;
       --font-s: 'Montserrat', system-ui, sans-serif;
-      --r-xs:6px; --r-sm:10px; --r-md:16px; --r-lg:22px; --r-xl:30px;
+      --r-xs:2px; --r-sm:3px; --r-md:5px; --r-lg:6px; --r-xl:8px;
     }
     *, *::before, *::after { box-sizing:border-box; margin:0; padding:0; }
     html { scroll-behavior:smooth; }
@@ -43,7 +45,7 @@
     .nav-back:hover { color:var(--t1); border-color:var(--border2); }
 
     /* PAGE HERO */
-    .page-hero { padding:5rem 6% 4rem; text-align:center; background:radial-gradient(ellipse 80% 60% at 50% 0%, rgba(201,168,76,.07) 0%, transparent 70%); border-bottom:1px solid var(--border); }
+    .page-hero { padding:7rem 6% 5.5rem; text-align:center; border-bottom:1px solid var(--border); }
     .ph-eyebrow { font-size:.62rem; font-weight:700; letter-spacing:.22em; text-transform:uppercase; color:var(--gold); margin-bottom:1rem; }
     .page-hero h1 { font-family:var(--font-d); font-size:clamp(2.4rem,5vw,4.4rem); font-weight:500; line-height:1.1; color:var(--t1); margin-bottom:.9rem; }
     .page-hero h1 em { font-style:italic; color:var(--gold); }
@@ -58,13 +60,12 @@
 
     /* TIER CARDS */
     .tier-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:.9rem; margin-bottom:2.5rem; }
-    .tier-card { background:var(--bg2); border:2px solid var(--border); border-radius:var(--r-lg); padding:1.6rem 1.2rem; cursor:pointer; text-align:center; transition:border-color .25s,transform .25s,box-shadow .25s; }
-    .tier-card:hover { transform:translateY(-3px); }
-    .tier-card.active-gold   { border-color:var(--gold-border); box-shadow:0 0 40px var(--gold-glow); background:rgba(201,168,76,.04); }
-    .tier-card.active-silver { border-color:rgba(168,184,196,.4); box-shadow:0 0 40px rgba(168,184,196,.12); background:rgba(168,184,196,.03); }
-    .tier-card.active-bronze { border-color:rgba(192,120,72,.4); box-shadow:0 0 40px rgba(192,120,72,.14); background:rgba(192,120,72,.03); }
-    .tier-icon { font-size:2.2rem; margin-bottom:.7rem; }
-    .tier-name { font-family:var(--font-d); font-size:1.2rem; font-weight:600; color:var(--t1); margin-bottom:.3rem; }
+    .tier-card { background:var(--bg2); border:1px solid var(--border); border-radius:var(--r-lg); padding:2rem 1.4rem; cursor:pointer; text-align:center; transition:border-color .25s; }
+    .tier-card:hover { border-color:var(--border2); }
+    .tier-card.active-gold   { border-color:var(--gold-border); background:rgba(201,168,76,.04); }
+    .tier-card.active-silver { border-color:rgba(168,184,196,.4); background:rgba(168,184,196,.03); }
+    .tier-card.active-bronze { border-color:rgba(192,120,72,.4); background:rgba(192,120,72,.03); }
+    .tier-name { font-family:var(--font-d); font-size:1.5rem; font-weight:600; color:var(--t1); margin-bottom:.3rem; }
     .tier-price { font-size:1.05rem; font-weight:700; margin-bottom:.75rem; }
     .tier-price.gold { color:var(--gold); }
     .tier-price.silver { color:var(--silver); }
@@ -72,7 +73,7 @@
     .tier-features { text-align:left; }
     .tier-feat { font-size:.72rem; color:var(--t2); padding:.28rem 0; border-bottom:1px solid var(--border); line-height:1.5; }
     .tier-feat:last-child { border:none; }
-    .tier-feat::before { content:'✦ '; color:var(--gold); font-size:.6rem; }
+    .tier-feat::before { content:'— '; color:var(--gold); }
     .tier-select-badge { display:inline-block; font-size:.6rem; font-weight:700; letter-spacing:.1em; text-transform:uppercase; padding:.3rem .7rem; border-radius:4px; margin-top:.9rem; background:var(--bg3); color:var(--t3); border:1px solid var(--border); transition:all .2s; }
     .tier-card.active-gold   .tier-select-badge { background:var(--gold-bg); color:var(--gold); border-color:var(--gold-border); }
     .tier-card.active-silver .tier-select-badge { background:rgba(168,184,196,.1); color:var(--silver); border-color:rgba(168,184,196,.3); }
@@ -86,7 +87,7 @@
     .pick-card { background:var(--bg2); border:1px solid var(--border); border-radius:var(--r-md); padding:1rem .8rem; display:flex; flex-direction:column; align-items:center; gap:.4rem; cursor:pointer; text-align:center; transition:border-color .2s,transform .2s; }
     .pick-card:hover { border-color:rgba(255,255,255,.2); transform:translateY(-2px); }
     .pick-card.selected { border-color:var(--gold-border); background:var(--gold-bg); }
-    .pick-av { font-size:1.8rem; width:52px; height:52px; border-radius:50%; overflow:hidden; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+    .pick-av { font-family:var(--font-d); font-size:1rem; font-weight:600; color:var(--gold); background:var(--bg3); border:1px solid var(--border); width:52px; height:52px; border-radius:50%; overflow:hidden; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
     .pick-av img { width:100%; height:100%; object-fit:cover; object-position:center top; border-radius:50%; }
     .pick-name { font-family:var(--font-d); font-size:.82rem; font-weight:600; color:var(--t1); line-height:1.2; }
     .pick-genre { font-size:.56rem; font-weight:600; letter-spacing:.08em; text-transform:uppercase; color:var(--t3); }
@@ -99,8 +100,8 @@
     .f-inp:focus { border-color:var(--gold-border); }
 
     /* BUY BUTTON */
-    .buy-btn { width:100%; padding:1rem; border:none; border-radius:var(--r-sm); font-family:var(--font-s); font-size:.75rem; font-weight:700; letter-spacing:.14em; text-transform:uppercase; color:#000; background:var(--gold); transition:background .2s,transform .15s; }
-    .buy-btn:hover { background:var(--gold-l); transform:translateY(-2px); }
+    .buy-btn { width:100%; padding:1.05rem; border:none; border-radius:var(--r-xs); font-family:var(--font-s); font-size:.75rem; font-weight:700; letter-spacing:.14em; text-transform:uppercase; color:#000; background:var(--gold); transition:background .2s; }
+    .buy-btn:hover { background:var(--gold-l); }
 
     /* FAN CARD PREVIEW */
     .preview-wrap { border-radius:var(--r-xl); overflow:hidden; position:relative; aspect-ratio:2.5/3.5; display:flex; flex-direction:column; }
@@ -129,7 +130,7 @@
     .fc-fan-name { font-family:var(--font-d); font-size:1rem; font-style:italic; color:rgba(255,255,255,.5); }
     .fc-serial { font-size:.58rem; font-weight:600; letter-spacing:.1em; color:rgba(255,255,255,.2); margin-top:.5rem; }
     .fc-placeholder { display:flex; flex-direction:column; align-items:center; justify-content:center; height:100%; min-height:320px; gap:1rem; padding:2rem; text-align:center; background:var(--bg2); border:1px solid var(--border); border-radius:var(--r-xl); }
-    .fc-ph-icon { font-size:3rem; opacity:.2; }
+    .fc-ph-icon { font-family:var(--font-d); font-size:3rem; font-weight:600; color:var(--gold); opacity:.25; }
     .fc-ph-text { font-size:.82rem; color:var(--t3); line-height:1.6; }
 
     /* PREVIEW SUMMARY */
@@ -180,7 +181,6 @@
     <div class="step-label">Step 1 — Choose Your Tier</div>
     <div class="tier-grid">
       <div class="tier-card" id="tier-gold" onclick="selectTier('gold')">
-        <div class="tier-icon">🥇</div>
         <div class="tier-name">Gold</div>
         <div class="tier-price gold">$5,000</div>
         <div class="tier-features">
@@ -193,7 +193,6 @@
         <span class="tier-select-badge" id="badge-gold">Select Gold</span>
       </div>
       <div class="tier-card" id="tier-silver" onclick="selectTier('silver')">
-        <div class="tier-icon">🥈</div>
         <div class="tier-name">Silver</div>
         <div class="tier-price silver">$4,100</div>
         <div class="tier-features">
@@ -206,7 +205,6 @@
         <span class="tier-select-badge" id="badge-silver">Select Silver</span>
       </div>
       <div class="tier-card" id="tier-bronze" onclick="selectTier('bronze')">
-        <div class="tier-icon">🥉</div>
         <div class="tier-name">Bronze</div>
         <div class="tier-price bronze">$2,500</div>
         <div class="tier-features">
@@ -250,7 +248,7 @@
     <div class="step-label" style="justify-content:center;">Live Preview</div>
     <div id="fanCardWrap">
       <div class="fc-placeholder">
-        <div class="fc-ph-icon">🎴</div>
+        <div class="fc-ph-icon">R</div>
         <div class="fc-ph-text">Select a tier and celebrity<br>to preview your fan card.</div>
       </div>
     </div>
@@ -267,8 +265,7 @@
 <!-- SUCCESS MODAL -->
 <div class="overlay" id="successOverlay" onclick="closeSuccess(event)">
   <div class="modal-box">
-    <div class="modal-icon">🎉</div>
-    <div class="modal-title">Fan Card Sent!</div>
+    <div class="modal-title">Fan Card Sent</div>
     <p class="modal-sub">Your <strong id="suc-tier"></strong> fan card featuring <strong id="suc-celeb"></strong> has been generated and emailed to <strong id="suc-email"></strong>.<br><br>Reference: <strong id="suc-ref" style="color:var(--gold);letter-spacing:.05em;"></strong></p>
     <button class="modal-btn" onclick="closeSuccess()">Done</button>
   </div>
@@ -395,6 +392,7 @@ const DEFAULT_CELEBS = [
   {id:'reggold',     name:'Ryan Eggold',         tier:'bronze', emoji:'🎬', genre:'TV · Drama',      wiki:'Ryan_Eggold'},
 ];
 const TIER_PRICES = {gold:'$5,000', silver:'$4,100', bronze:'$2,500'};
+const initialsOf = name => String(name||'').trim().split(/\s+/).map(w=>w[0]).slice(0,2).join('').toUpperCase();
 let currentTier=null, currentCeleb=null, allCelebs=[], searchQ='';
 
 function loadAllCelebs(){
@@ -468,7 +466,7 @@ function renderPickGrid(){
   if(!filtered.length){ grid.innerHTML='<div class="pick-empty">No celebrities found.</div>'; return; }
   grid.innerHTML=filtered.map(c=>`
     <div class="pick-card ${currentCeleb?.id===c.id?'selected':''}" onclick="selectCeleb('${c.id}')" data-id="${c.id}" data-wiki="${c.wiki||''}">
-      <div class="pick-av">${c.emoji}</div>
+      <div class="pick-av">${initialsOf(c.name)}</div>
       <div class="pick-name">${c.name}</div>
       <div class="pick-genre">${c.genre}</div>
     </div>`).join('');
@@ -497,7 +495,7 @@ function updatePreview(){
           <div class="fc-badge ${t}">${t.charAt(0).toUpperCase()+t.slice(1)} Tier</div>
         </div>
         <div class="fc-body">
-          <div class="fc-avatar" id="fc-avatar-live">${c.emoji}</div>
+          <div class="fc-avatar" id="fc-avatar-live">${initialsOf(c.name)}</div>
           <div class="fc-celeb ${t}">${c.name}</div>
         </div>
         <div class="fc-foot">
