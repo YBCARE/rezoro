@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>My Account — Rezoro</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%2307070A'/%3E%3Ctext x='32' y='44' font-family='Georgia,serif' font-size='38' font-weight='700' fill='%23C9A84C' text-anchor='middle'%3ER%3C/text%3E%3C/svg%3E">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Cormorant:ital,wght@0,400;0,600;0,700;1,400&family=Montserrat:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <style>
@@ -29,7 +30,7 @@
     .tab-panel{display:none;}
     .tab-panel.active{display:block;}
     /* Cards */
-    .card{background:var(--bg2);border:1px solid var(--gold-border);border-radius:16px;padding:2rem;}
+    .card{background:var(--bg2);border:1px solid var(--gold-border);border-radius:6px;padding:2rem;}
     .card+.card{margin-top:1.2rem;}
     .card-title{font-size:.68rem;font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:var(--t3);margin-bottom:1.2rem;}
     /* Booking rows */
@@ -48,8 +49,8 @@
     .bk-price{font-size:1rem;font-weight:700;color:var(--gold);white-space:nowrap;}
     /* Fan cards */
     .fc-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:1rem;}
-    .fc-card{background:var(--bg3);border:1px solid var(--gold-border);border-radius:10px;padding:1.2rem;}
-    .fc-emoji{font-size:1.8rem;margin-bottom:.6rem;}
+    .fc-card{background:var(--bg3);border:1px solid var(--gold-border);border-radius:4px;padding:1.2rem;}
+    .fc-emoji{font-family:'Cormorant',serif;font-size:1.6rem;font-weight:600;color:var(--gold);margin-bottom:.6rem;}
     .fc-celeb{font-size:.9rem;font-weight:600;color:var(--t1);}
     .fc-tier{font-size:.68rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--gold);margin-top:.2rem;}
     .fc-ref{font-size:.65rem;color:var(--t3);margin-top:.4rem;font-family:'Courier New',monospace;}
@@ -64,12 +65,12 @@
     .nl-info p{font-size:.8rem;color:var(--t3);}
     /* Empty state */
     .empty{text-align:center;padding:3rem 1rem;color:var(--t3);}
-    .empty-icon{font-size:2.5rem;margin-bottom:.8rem;}
+    .empty-icon{font-family:'Cormorant',serif;font-size:2.5rem;font-weight:600;color:var(--gold);opacity:.3;margin-bottom:.5rem;}
     .empty-text{font-size:.85rem;}
     /* Loading */
     .loading{text-align:center;padding:2.5rem;color:var(--t3);font-size:.85rem;}
     /* Payment CTA */
-    .pay-btn{display:inline-block;background:var(--gold);color:#000;font-weight:700;font-size:.7rem;letter-spacing:.1em;text-transform:uppercase;padding:.5rem 1.2rem;border-radius:6px;text-decoration:none;white-space:nowrap;}
+    .pay-btn{display:inline-block;background:var(--gold);color:#000;font-weight:700;font-size:.7rem;letter-spacing:.1em;text-transform:uppercase;padding:.5rem 1.2rem;border-radius:2px;text-decoration:none;white-space:nowrap;}
     /* Responsive */
     @media(max-width:560px){
       nav{padding:1rem 1.2rem;}
@@ -181,7 +182,7 @@ async function loadBookings() {
     if (r.status === 401) { signOut(); return; }
     const data = await r.json();
     if (!data.length) {
-      el.innerHTML = `<div class="empty"><div class="empty-icon">📋</div><div class="empty-text">No bookings yet. <a href="index.html" style="color:var(--gold)">Make your first booking →</a></div></div>`;
+      el.innerHTML = `<div class="empty"><div class="empty-icon">R</div><div class="empty-text">No bookings yet. <a href="index.html" style="color:var(--gold)">Make your first booking →</a></div></div>`;
       return;
     }
     el.innerHTML = data.map(b => {
@@ -222,16 +223,16 @@ async function loadFanCards() {
     if (r.status === 401) { signOut(); return; }
     const data = await r.json();
     if (!data.length) {
-      el.innerHTML = `<div class="empty"><div class="empty-icon">🎬</div><div class="empty-text">No fan cards yet. <a href="index.html#fancard" style="color:var(--gold)">Create one →</a></div></div>`;
+      el.innerHTML = `<div class="empty"><div class="empty-icon">R</div><div class="empty-text">No fan cards yet. <a href="fans.html" style="color:var(--gold)">Create one →</a></div></div>`;
       return;
     }
-    const tierEmoji = { gold:'🥇', silver:'🥈', bronze:'🥉' };
+    const initialsOf = n => String(n||'').trim().split(/\s+/).map(w=>w[0]).slice(0,2).join('').toUpperCase();
     el.innerHTML = `<div class="fc-grid">${data.map(fc=>`
       <div class="fc-card">
-        <div class="fc-emoji">${tierEmoji[fc.tier]||'🎬'}</div>
+        <div class="fc-emoji">${initialsOf(fc.celebName)}</div>
         <div class="fc-celeb">${esc(fc.celebName)}</div>
         <div class="fc-tier">${esc(fc.tier)} tier</div>
-        ${fc.country ? `<div style="font-size:.75rem;color:var(--t3);margin-top:.2rem;">📍 ${esc(fc.country)}</div>` : ''}
+        ${fc.country ? `<div style="font-size:.75rem;color:var(--t3);margin-top:.2rem;">${esc(fc.country)}</div>` : ''}
         <div class="fc-ref">${esc(fc.ref)}</div>
         <div style="font-size:.65rem;color:var(--t3);margin-top:.3rem;">${new Date(fc.createdAt).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})}</div>
       </div>`).join('')}</div>`;
