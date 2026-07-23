@@ -240,7 +240,6 @@
       <input type="file" class="f-inp" id="fanPhotoInput" accept="image/*" style="padding:.5rem .8rem;cursor:pointer;">
     </div>
 
-    <button class="buy-btn" id="purchaseBtn" onclick="purchaseCard()">Purchase Fan Card →</button>
   </div>
 
   <!-- PREVIEW COLUMN -->
@@ -258,7 +257,7 @@
       <div class="ps-row"><span class="ps-lbl">Fan Name</span><span class="ps-val" id="sum-fan">—</span></div>
       <div class="ps-row"><span class="ps-lbl">Total</span><span class="ps-price" id="sum-price">—</span></div>
     </div>
-    <button class="buy-btn" onclick="purchaseCard()">Purchase Fan Card →</button>
+    <button class="buy-btn" id="purchaseBtn" onclick="purchaseCard()">Purchase Fan Card →</button>
   </div>
 </div>
 
@@ -482,7 +481,7 @@ function updatePreview(){
   const summary=document.getElementById('previewSummary');
   const fanName=document.getElementById('fanNameInput').value.trim()||'Your Name';
   if(!currentTier||!currentCeleb){
-    wrap.innerHTML='<div class="fc-placeholder"><div class="fc-ph-icon">🎴</div><div class="fc-ph-text">Select a tier and celebrity<br>to preview your fan card.</div></div>';
+    wrap.innerHTML='<div class="fc-placeholder"><div class="fc-ph-icon">R</div><div class="fc-ph-text">Select a tier and celebrity<br>to preview your fan card.</div></div>';
     summary.style.display='none'; return;
   }
   const t=currentTier, c=currentCeleb;
