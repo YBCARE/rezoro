@@ -8,6 +8,7 @@ const jwt       = require('jsonwebtoken');
 const { v4: uuidv4 } = require('uuid');
 
 const { generateFanCard }          = require('./fancard');
+const { createStore }              = require('./store');
 const {
   sendFanCardEmail,
   sendBookingConfirmation,
@@ -34,12 +35,9 @@ if (!ADMIN_PASSWORD) {
 }
 
 /* ══════════════════════════════════════════════════════════
-   IN-MEMORY STORES  (swap to DB for production)
+   DATA STORE  (Postgres when DATABASE_URL is set, else memory)
 ═══════════════════════════════════════════════════════════ */
-const bookings    = new Map();   // id → booking
-const users       = new Map();   // email → user
-const fancards    = new Map();   // userId → [fancard, ...]
-const subscribers = new Map();   // email → { email, name, createdAt }
+let store; // assigned before the server starts listening
 
 /* ── Middleware ─────────────────────────────────────────── */
 app.use(cors({ origin: '*' }));
@@ -194,7 +192,7 @@ app.post('/api/booking-inquiry', rateLimit('booking', 5, 60 * 60 * 1000), async 
       createdAt: new Date().toISOString(),
       paymentLink: null
     };
-    bookings.set(booking.id, booking);
+    await store.bookings.create(booking);
 
     console.log(`[BOOKING] ${ref} — ${celebName} for ${name} (${email})`);
 
@@ -224,12 +222,12 @@ app.post('/api/admin/login', rateLimit('admin-login', 10, 15 * 60 * 1000), (req,
   res.json({ token });
 });
 
-app.get('/api/admin/bookings', adminAuthMiddleware, (_req, res) => {
-  res.json([...bookings.values()].sort((a,b) => new Date(b.createdAt)-new Date(a.createdAt)));
+app.get('/api/admin/bookings', adminAuthMiddleware, async (_req, res) => {
+  res.json(await store.bookings.all());
 });
 
 app.post('/api/admin/bookings/:id/accept', adminAuthMiddleware, async (req, res) => {
-  const booking = bookings.get(req.params.id);
+  const booking = await store.bookings.getById(req.params.id);
   if (!booking) return res.status(404).json({ error: 'Booking not found' });
 
   // Generate Flutterwave payment link
@@ -257,8 +255,7 @@ app.post('/api/admin/bookings/:id/accept', adminAuthMiddleware, async (req, res)
     } catch (e) { console.error('[flutterwave]', e.message); }
   }
 
-  booking.status      = 'accepted';
-  booking.paymentLink = paymentLink;
+  const updated = await store.bookings.update(booking.id, { status: 'accepted', paymentLink });
 
   sendBookingAccepted({
     to: booking.email, name: booking.name,
@@ -268,36 +265,36 @@ app.post('/api/admin/bookings/:id/accept', adminAuthMiddleware, async (req, res)
     paymentLink
   }).catch(e => console.error('[email] accepted:', e.message));
 
-  res.json({ success: true, booking });
+  res.json({ success: true, booking: updated });
 });
 
 app.post('/api/admin/bookings/:id/reject', adminAuthMiddleware, async (req, res) => {
-  const booking = bookings.get(req.params.id);
+  const booking = await store.bookings.getById(req.params.id);
   if (!booking) return res.status(404).json({ error: 'Booking not found' });
 
-  booking.status = 'rejected';
+  const updated = await store.bookings.update(booking.id, { status: 'rejected' });
 
   sendBookingRejected({
     to: booking.email, name: booking.name,
     celebName: booking.celebName, ref: booking.ref
   }).catch(e => console.error('[email] rejected:', e.message));
 
-  res.json({ success: true, booking });
+  res.json({ success: true, booking: updated });
 });
 
-app.post('/api/admin/bookings/:id/status', adminAuthMiddleware, (req, res) => {
-  const booking = bookings.get(req.params.id);
+app.post('/api/admin/bookings/:id/status', adminAuthMiddleware, async (req, res) => {
+  const booking = await store.bookings.getById(req.params.id);
   if (!booking) return res.status(404).json({ error: 'Booking not found' });
   const allowed = ['pending','accepted','payment_sent','confirmed','completed','rejected'];
   if (!allowed.includes(req.body.status)) return res.status(400).json({ error: 'Invalid status' });
-  booking.status = req.body.status;
-  res.json({ success: true, booking });
+  const updated = await store.bookings.update(booking.id, { status: req.body.status });
+  res.json({ success: true, booking: updated });
 });
 
 /* ══════════════════════════════════════════════════════════
    FLUTTERWAVE WEBHOOK
 ═══════════════════════════════════════════════════════════ */
-app.post('/api/payment/webhook', (req, res) => {
+app.post('/api/payment/webhook', async (req, res) => {
   // Reject all webhooks unless the shared secret is configured AND matches.
   const secret = req.headers['verif-hash'] || '';
   if (!FW_WEBHOOK_SECRET || secret !== FW_WEBHOOK_SECRET) {
@@ -305,10 +302,7 @@ app.post('/api/payment/webhook', (req, res) => {
   }
   const { data } = req.body;
   if (data && data.status === 'successful') {
-    const ref = data.tx_ref;
-    for (const [, b] of bookings) {
-      if (b.ref === ref) { b.status = 'confirmed'; break; }
-    }
+    await store.bookings.updateByRef(data.tx_ref, { status: 'confirmed' });
   }
   res.json({ status: 'ok' });
 });
@@ -320,12 +314,12 @@ app.post('/api/auth/register', async (req, res) => {
   try {
     const { name, email, password } = req.body;
     if (!name || !email || !password) return res.status(400).json({ error: 'All fields required.' });
-    if (users.has(email.toLowerCase())) return res.status(409).json({ error: 'Email already registered.' });
+    if (await store.users.findByEmail(email.toLowerCase())) return res.status(409).json({ error: 'Email already registered.' });
     if (password.length < 6) return res.status(400).json({ error: 'Password must be at least 6 characters.' });
 
     const hash = await bcrypt.hash(password, 10);
     const user = { id: uuidv4(), name, email: email.toLowerCase(), hash, createdAt: new Date().toISOString() };
-    users.set(user.email, user);
+    await store.users.create(user);
 
     const token = jwt.sign({ id: user.id, email: user.email, name: user.name }, JWT_SECRET, { expiresIn: '7d' });
     res.json({ token, user: { id: user.id, name: user.name, email: user.email, createdAt: user.createdAt } });
@@ -337,7 +331,7 @@ app.post('/api/auth/register', async (req, res) => {
 app.post('/api/auth/login', async (req, res) => {
   try {
     const { email, password } = req.body;
-    const user = users.get((email||'').toLowerCase());
+    const user = await store.users.findByEmail((email||'').toLowerCase());
     if (!user) return res.status(401).json({ error: 'Invalid email or password.' });
     const ok = await bcrypt.compare(password, user.hash);
     if (!ok) return res.status(401).json({ error: 'Invalid email or password.' });
@@ -348,8 +342,8 @@ app.post('/api/auth/login', async (req, res) => {
   }
 });
 
-app.get('/api/auth/me', authMiddleware, (req, res) => {
-  const user = users.get(req.user.email);
+app.get('/api/auth/me', authMiddleware, async (req, res) => {
+  const user = await store.users.findByEmail(req.user.email);
   if (!user) return res.status(404).json({ error: 'User not found' });
   res.json({ id: user.id, name: user.name, email: user.email, createdAt: user.createdAt });
 });
@@ -365,10 +359,10 @@ app.post('/api/auth/google', async (req, res) => {
     if (gData.error || !gData.email) return res.status(401).json({ error: 'Invalid Google token' });
 
     const email = gData.email.toLowerCase();
-    let user = users.get(email);
+    let user = await store.users.findByEmail(email);
     if (!user) {
       user = { id: uuidv4(), name: gData.name || email, email, hash: '', createdAt: new Date().toISOString(), google: true };
-      users.set(email, user);
+      await store.users.create(user);
     }
     const token = jwt.sign({ id: user.id, email: user.email, name: user.name }, JWT_SECRET, { expiresIn: '7d' });
     res.json({ token, user: { id: user.id, name: user.name, email: user.email, createdAt: user.createdAt } });
@@ -380,15 +374,12 @@ app.post('/api/auth/google', async (req, res) => {
 /* ══════════════════════════════════════════════════════════
    USER — PROFILE DATA
 ═══════════════════════════════════════════════════════════ */
-app.get('/api/user/bookings', authMiddleware, (req, res) => {
-  const userBookings = [...bookings.values()]
-    .filter(b => b.email === req.user.email)
-    .sort((a,b) => new Date(b.createdAt)-new Date(a.createdAt));
-  res.json(userBookings);
+app.get('/api/user/bookings', authMiddleware, async (req, res) => {
+  res.json(await store.bookings.byEmail(req.user.email));
 });
 
-app.get('/api/user/fancards', authMiddleware, (req, res) => {
-  res.json(fancards.get(req.user.id) || []);
+app.get('/api/user/fancards', authMiddleware, async (req, res) => {
+  res.json(await store.fancards.byUser(req.user.id));
 });
 
 /* ══════════════════════════════════════════════════════════
@@ -398,21 +389,21 @@ app.post('/api/newsletter/subscribe', rateLimit('subscribe', 5, 60 * 60 * 1000),
   const { email, name } = req.body;
   if (!email || !email.includes('@')) return res.status(400).json({ error: 'Valid email required.' });
   const key = email.toLowerCase();
-  if (subscribers.has(key)) return res.json({ success: true, message: 'Already subscribed.' });
-  subscribers.set(key, { email: key, name: name||'', createdAt: new Date().toISOString() });
+  if (await store.subscribers.has(key)) return res.json({ success: true, message: 'Already subscribed.' });
+  await store.subscribers.add({ email: key, name: name||'', createdAt: new Date().toISOString() });
   sendNewsletterWelcome({ to: key, name: name||'' }).catch(e => console.error('[email] welcome:', e.message));
   res.json({ success: true, message: 'Subscribed successfully!' });
 });
 
-app.get('/api/newsletter/subscribers', adminAuthMiddleware, (_req, res) => {
-  res.json([...subscribers.values()].sort((a,b) => new Date(b.createdAt)-new Date(a.createdAt)));
+app.get('/api/newsletter/subscribers', adminAuthMiddleware, async (_req, res) => {
+  res.json(await store.subscribers.all());
 });
 
 app.post('/api/newsletter/send', adminAuthMiddleware, async (req, res) => {
   try {
     const { subject, html, text } = req.body;
     if (!subject || !html) return res.status(400).json({ error: 'subject and html are required.' });
-    const list = [...subscribers.keys()];
+    const list = await store.subscribers.emails();
     if (list.length === 0) return res.json({ success: true, sent: 0 });
     let sent = 0;
     for (const to of list) {
@@ -446,9 +437,7 @@ app.post('/api/fancard', rateLimit('fancard', 5, 60 * 60 * 1000), optionalAuthMi
 
     // Save to the authenticated user's collection (identity from the verified JWT, never the request body)
     if (req.user) {
-      const existing = fancards.get(req.user.id) || [];
-      existing.unshift({ ref, celebName, tier: tierClean, fanName, country: country||'', createdAt: new Date().toISOString() });
-      fancards.set(req.user.id, existing);
+      await store.fancards.add(req.user.id, { ref, celebName, tier: tierClean, fanName, country: country||'', createdAt: new Date().toISOString() });
     }
 
     console.log(`[FANCARD] ${ref} — ${celebName} for ${fanName}`);
@@ -460,10 +449,18 @@ app.post('/api/fancard', rateLimit('fancard', 5, 60 * 60 * 1000), optionalAuthMi
 });
 
 /* ── Start ──────────────────────────────────────────────── */
-app.listen(PORT, () => {
-  console.log(`\n  ╔══════════════════════════════════════╗`);
-  console.log(`  ║   R E Z O R O   B A C K E N D  v2    ║`);
-  console.log(`  ╠══════════════════════════════════════╣`);
-  console.log(`  ║  http://localhost:${PORT}                ║`);
-  console.log(`  ╚══════════════════════════════════════╝\n`);
-});
+createStore()
+  .then(s => {
+    store = s;
+    app.listen(PORT, () => {
+      console.log(`\n  ╔══════════════════════════════════════╗`);
+      console.log(`  ║   R E Z O R O   B A C K E N D  v2    ║`);
+      console.log(`  ╠══════════════════════════════════════╣`);
+      console.log(`  ║  http://localhost:${PORT}                ║`);
+      console.log(`  ╚══════════════════════════════════════╝\n`);
+    });
+  })
+  .catch(err => {
+    console.error('[startup] Failed to initialise data store:', err.message);
+    process.exit(1);
+  });
