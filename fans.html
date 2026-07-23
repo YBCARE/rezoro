@@ -83,14 +83,14 @@
     .celeb-picker { margin-bottom:2.5rem; }
     .pick-search { width:100%; background:var(--bg2); border:1px solid var(--border); border-radius:var(--r-sm); color:var(--t1); font-family:var(--font-s); font-size:.82rem; padding:.65rem 1rem; outline:none; transition:border-color .2s; margin-bottom:1rem; }
     .pick-search:focus { border-color:var(--gold-border); }
-    .pick-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(118px,1fr)); gap:.7rem; }
-    .pick-card { background:var(--bg2); border:1px solid var(--border); border-radius:var(--r-md); padding:1rem .8rem; display:flex; flex-direction:column; align-items:center; gap:.4rem; cursor:pointer; text-align:center; transition:border-color .2s,transform .2s; }
-    .pick-card:hover { border-color:rgba(255,255,255,.2); transform:translateY(-2px); }
+    .pick-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(140px,1fr)); gap:.9rem; }
+    .pick-card { background:var(--bg2); border:1px solid var(--border); border-radius:var(--r-md); overflow:hidden; display:flex; flex-direction:column; cursor:pointer; text-align:left; transition:border-color .2s; }
+    .pick-card:hover { border-color:rgba(255,255,255,.2); }
     .pick-card.selected { border-color:var(--gold-border); background:var(--gold-bg); }
-    .pick-av { font-family:var(--font-d); font-size:1rem; font-weight:600; color:var(--gold); background:var(--bg3); border:1px solid var(--border); width:52px; height:52px; border-radius:50%; overflow:hidden; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
-    .pick-av img { width:100%; height:100%; object-fit:cover; object-position:center top; border-radius:50%; }
-    .pick-name { font-family:var(--font-d); font-size:.82rem; font-weight:600; color:var(--t1); line-height:1.2; }
-    .pick-genre { font-size:.56rem; font-weight:600; letter-spacing:.08em; text-transform:uppercase; color:var(--t3); }
+    .pick-av { font-family:var(--font-d); font-size:1.6rem; font-weight:600; color:var(--gold); background:var(--bg3); width:100%; aspect-ratio:3/4; overflow:hidden; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+    .pick-av img { width:100%; height:100%; object-fit:cover; object-position:center top; }
+    .pick-name { font-family:var(--font-d); font-size:.92rem; font-weight:600; color:var(--t1); line-height:1.25; padding:.65rem .75rem .1rem; }
+    .pick-genre { font-size:.54rem; font-weight:600; letter-spacing:.08em; text-transform:uppercase; color:var(--t3); padding:0 .75rem .7rem; }
     .pick-empty { grid-column:1/-1; text-align:center; padding:3rem; color:var(--t3); font-size:.85rem; }
 
     /* FAN NAME */
