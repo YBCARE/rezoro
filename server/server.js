@@ -5,7 +5,7 @@ const multer    = require('multer');
 const path      = require('path');
 const bcrypt    = require('bcryptjs');
 const jwt       = require('jsonwebtoken');
-const { v4: uuidv4 } = require('uuid');
+const { randomUUID } = require('crypto');
 
 const { generatePrintCard }        = require('./fancard-print');
 const { generateCertificate }      = require('./certificate');
@@ -58,7 +58,7 @@ function makeRef() {
   const yy = String(d.getFullYear()).slice(-2);
   const mm = String(d.getMonth()+1).padStart(2,'0');
   const dd = String(d.getDate()).padStart(2,'0');
-  return `RZ-${yy}${mm}${dd}-${uuidv4().replace(/-/g,'').slice(0,6).toUpperCase()}`;
+  return `RZ-${yy}${mm}${dd}-${randomUUID().replace(/-/g,'').slice(0,6).toUpperCase()}`;
 }
 
 function authMiddleware(req, res, next) {
@@ -180,7 +180,7 @@ app.post('/api/booking-inquiry', rateLimit('booking', 5, 60 * 60 * 1000), async 
 
     const ref = makeRef();
     const booking = {
-      id: uuidv4(), ref,
+      id: randomUUID(), ref,
       status: 'pending',
       name, email, phone: phone||'',
       company: company||'',
@@ -319,7 +319,7 @@ app.post('/api/auth/register', async (req, res) => {
     if (password.length < 6) return res.status(400).json({ error: 'Password must be at least 6 characters.' });
 
     const hash = await bcrypt.hash(password, 10);
-    const user = { id: uuidv4(), name, email: email.toLowerCase(), hash, createdAt: new Date().toISOString() };
+    const user = { id: randomUUID(), name, email: email.toLowerCase(), hash, createdAt: new Date().toISOString() };
     await store.users.create(user);
 
     const token = jwt.sign({ id: user.id, email: user.email, name: user.name }, JWT_SECRET, { expiresIn: '7d' });
@@ -362,7 +362,7 @@ app.post('/api/auth/google', async (req, res) => {
     const email = gData.email.toLowerCase();
     let user = await store.users.findByEmail(email);
     if (!user) {
-      user = { id: uuidv4(), name: gData.name || email, email, hash: '', createdAt: new Date().toISOString(), google: true };
+      user = { id: randomUUID(), name: gData.name || email, email, hash: '', createdAt: new Date().toISOString(), google: true };
       await store.users.create(user);
     }
     const token = jwt.sign({ id: user.id, email: user.email, name: user.name }, JWT_SECRET, { expiresIn: '7d' });
