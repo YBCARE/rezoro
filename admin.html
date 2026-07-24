@@ -902,6 +902,9 @@ async function gateUnlock(){
       <div class="f-grp"><label class="f-lbl">Fan Count</label><input class="f-in" type="text" id="fc-fans" placeholder="e.g. 45.2M"></div>
     </div>
     <div class="f-grp"><label class="f-lbl">Known For</label><input class="f-in" type="text" id="fc-known" placeholder="e.g. No Time to Die, Blade Runner 2049"></div>
+    <div class="f-grp"><label class="f-lbl">Photo <span style="color:var(--t3);font-weight:400;">(shown on the fan card &amp; picker — required to look real)</span></label>
+      <input class="f-in" type="file" id="fc-photo" accept="image/*" style="padding:.5rem .8rem;cursor:pointer;">
+    </div>
     <div class="f-grp"><label class="f-lbl">YouTube Trailer URL <span style="color:var(--t3);font-weight:400;">(optional)</span></label><input class="f-in" type="text" id="fc-trailer" placeholder="https://youtube.com/watch?v=..."></div>
     <div class="f-grp"><label class="f-lbl">Visibility</label>
       <select class="f-sel" id="fc-visible">
@@ -909,7 +912,7 @@ async function gateUnlock(){
         <option value="0">○ Hidden</option>
       </select>
     </div>
-    <button class="f-sub" onclick="submitAddFanCeleb()">✦ Add to Fan Cards</button>
+    <button class="f-sub" id="fc-submit-btn" onclick="submitAddFanCeleb()">✦ Add to Fan Cards</button>
   </div>
 </div>
 
@@ -1159,19 +1162,19 @@ function renderCelebEditor(){
 /* ════════════════════════════════════════════
    FAN CARDS MANAGEMENT
 ════════════════════════════════════════════ */
-const FC_KEY = 'rezoro_fan_celebs';
 let fanCelebs = [];
+let editingCelebId = null;
 
-function loadFanCelebs(){
-  try { fanCelebs=JSON.parse(localStorage.getItem(FC_KEY)||'[]'); } catch(e){ fanCelebs=[]; }
+async function loadFanCelebs(){
+  try {
+    const r = await fetch('/api/admin/celebrities', { headers: adminHeaders() });
+    if (r.status === 401) { adminSignOut(); return; }
+    fanCelebs = await r.json();
+  } catch(e){ fanCelebs=[]; }
 }
 
-function saveFanCelebs(){
-  localStorage.setItem(FC_KEY, JSON.stringify(fanCelebs));
-}
-
-function renderFanTable(){
-  loadFanCelebs();
+async function renderFanTable(){
+  await loadFanCelebs();
   const tbody=document.getElementById('fanCelebTable');
   const empty=document.getElementById('fc-empty');
   const counter=document.getElementById('fc-total-count');
@@ -1181,35 +1184,74 @@ function renderFanTable(){
   if(empty) empty.style.display='none';
   const ts={gold:'b-gold',silver:'b-silver',bronze:'b-bronze'};
   const tl={gold:'🥇 Gold',silver:'🥈 Silver',bronze:'🥉 Bronze'};
-  tbody.innerHTML=fanCelebs.map((c,i)=>`
+  tbody.innerHTML=fanCelebs.map((c)=>`
     <tr>
-      <td><div class="td-row"><div class="td-av">${c.emoji||'🎬'}</div><div><div class="td-p">${esc(c.name)}</div><div class="td-s">${esc(c.knownFor||'—')}</div></div></div></td>
+      <td><div class="td-row"><div class="td-av" style="overflow:hidden;">${c.hasPhoto?`<img src="/api/celebrities/${c.id}/photo" alt="${esc(c.name)}" style="width:100%;height:100%;object-fit:cover;object-position:center top;">`:(c.emoji||'🎬')}</div><div><div class="td-p">${esc(c.name)}</div><div class="td-s">${esc(c.knownFor||'—')}</div></div></div></td>
       <td><span class="badge ${ts[c.tier]||'b-gold'}">${tl[c.tier]||c.tier}</span></td>
       <td style="color:var(--t2);font-size:.78rem;">${esc(c.knownFor||'—')}</td>
-      <td style="font-weight:700;color:var(--t1);">${esc(c.fans||'—')}</td>
-      <td><button class="td-btn ${c.visible!==false?'gold':''}" onclick="toggleFanVis(${i})">${c.visible!==false?'● Visible':'○ Hidden'}</button></td>
-      <td><button class="td-btn danger" onclick="removeFanCeleb(${i})">Remove</button></td>
+      <td>${c.hasPhoto?'<span style="color:#3ecf8e;">● Photo set</span>':'<span style="color:#f87171;">○ No photo</span>'}</td>
+      <td><button class="td-btn ${c.visible!==false?'gold':''}" onclick="toggleFanVis('${c.id}')">${c.visible!==false?'● Visible':'○ Hidden'}</button></td>
+      <td><button class="td-btn danger" onclick="removeFanCeleb('${c.id}')">Remove</button></td>
     </tr>`).join('');
 }
 
-function toggleFanVis(i){ fanCelebs[i].visible=fanCelebs[i].visible===false?true:false; saveFanCelebs(); renderFanTable(); showToast(`${fanCelebs[i].name} is now ${fanCelebs[i].visible!==false?'visible':'hidden'}.`); }
-function removeFanCeleb(i){ const n=fanCelebs[i]?.name||'Celebrity'; fanCelebs.splice(i,1); saveFanCelebs(); renderFanTable(); showToast(`${n} removed from Fan Cards.`); }
+async function toggleFanVis(id){
+  const c = fanCelebs.find(x=>x.id===id);
+  if(!c) return;
+  const nextVisible = c.visible===false;
+  const fd = new FormData(); fd.append('visible', nextVisible ? 'true' : 'false');
+  const r = await fetch(`/api/admin/celebrities/${id}`, { method:'PUT', headers: adminHeaders(), body: fd });
+  if (r.status === 401) { adminSignOut(); return; }
+  await renderFanTable();
+  showToast(`${c.name} is now ${nextVisible?'visible':'hidden'}.`);
+}
+
+async function removeFanCeleb(id){
+  const c = fanCelebs.find(x=>x.id===id);
+  const name = c?.name || 'Celebrity';
+  if(!confirm(`Remove ${name} from Fan Cards?`)) return;
+  const r = await fetch(`/api/admin/celebrities/${id}`, { method:'DELETE', headers: adminHeaders() });
+  if (r.status === 401) { adminSignOut(); return; }
+  await renderFanTable();
+  showToast(`${name} removed from Fan Cards.`);
+}
 
 function openAddFanCeleb(){ document.getElementById('addFanCelebOverlay').classList.add('open'); document.body.style.overflow='hidden'; }
 function closeAddFanCeleb(){ document.getElementById('addFanCelebOverlay').classList.remove('open'); document.body.style.overflow=''; }
 function closeAddFanCelebOutside(e){ if(e.target===document.getElementById('addFanCelebOverlay')) closeAddFanCeleb(); }
-function submitAddFanCeleb(){
+async function submitAddFanCeleb(){
   const name=document.getElementById('fc-name').value.trim();
   const tier=document.getElementById('fc-tier').value;
-  const emoji=document.getElementById('fc-emoji').value.trim()||'🎬';
-  const fans=document.getElementById('fc-fans').value.trim();
   const known=document.getElementById('fc-known').value.trim();
+  const trailer=document.getElementById('fc-trailer').value.trim();
   const visible=document.getElementById('fc-visible').value==='1';
+  const photoFile=document.getElementById('fc-photo').files[0];
   if(!name){ showToast('⚠ Please enter a celebrity name.','error'); return; }
-  fanCelebs.push({id:'custom_'+Date.now(), name, tier, emoji, fans, knownFor:known, visible});
-  saveFanCelebs(); renderFanTable(); closeAddFanCeleb();
-  showToast(`✦ ${name} added to Fan Cards!`);
-  ['fc-name','fc-emoji','fc-fans','fc-known'].forEach(id=>document.getElementById(id).value='');
+
+  const btn=document.getElementById('fc-submit-btn');
+  btn.disabled=true; btn.textContent='Adding…';
+
+  const fd=new FormData();
+  fd.append('name', name); fd.append('tier', tier);
+  fd.append('knownFor', known); fd.append('trailerUrl', trailer);
+  fd.append('visible', visible ? 'true' : 'false');
+  if(photoFile) fd.append('photo', photoFile);
+
+  try {
+    const r = await fetch('/api/admin/celebrities', { method:'POST', headers: adminHeaders(), body: fd });
+    if (r.status === 401) { adminSignOut(); return; }
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.error || 'Failed to add celebrity.');
+    await renderFanTable(); closeAddFanCeleb();
+    showToast(`✦ ${name} added to Fan Cards!`);
+  } catch(e) {
+    showToast('⚠ ' + e.message, 'error');
+  } finally {
+    btn.disabled=false; btn.textContent='✦ Add to Fan Cards';
+  }
+
+  ['fc-name','fc-fans','fc-known','fc-trailer'].forEach(id=>{ const el=document.getElementById(id); if(el) el.value=''; });
+  document.getElementById('fc-photo').value='';
   document.getElementById('fc-tier').selectedIndex=0;
   document.getElementById('fc-visible').selectedIndex=0;
 }

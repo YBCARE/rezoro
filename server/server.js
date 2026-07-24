@@ -417,11 +417,77 @@ app.post('/api/newsletter/send', adminAuthMiddleware, async (req, res) => {
 });
 
 /* ══════════════════════════════════════════════════════════
+   CELEBRITIES  (roster shown on index.html / fans.html)
+═══════════════════════════════════════════════════════════ */
+
+// Public — only visible celebrities, no photo bytes (use /photo route)
+app.get('/api/celebrities', async (_req, res) => {
+  res.json(await store.celebrities.all({ onlyVisible: true }));
+});
+
+// Public — serves the actual photo bytes for a celebrity
+app.get('/api/celebrities/:id/photo', async (req, res) => {
+  const photo = await store.celebrities.getPhoto(req.params.id);
+  if (!photo) return res.status(404).end();
+  res.set('Content-Type', photo.mime || 'image/jpeg');
+  res.set('Cache-Control', 'public, max-age=86400');
+  res.send(photo.buffer);
+});
+
+// Admin — full list including hidden entries
+app.get('/api/admin/celebrities', adminAuthMiddleware, async (_req, res) => {
+  res.json(await store.celebrities.all());
+});
+
+app.post('/api/admin/celebrities', adminAuthMiddleware, upload.single('photo'), async (req, res) => {
+  try {
+    const { name, tier, knownFor, trailerUrl, wiki } = req.body;
+    if (!name) return res.status(400).json({ error: 'name is required.' });
+    const tierClean = ['gold', 'silver', 'bronze'].includes(tier) ? tier : 'gold';
+    const visible = req.body.visible !== 'false';
+    const photo = req.file ? { buffer: req.file.buffer, mime: req.file.mimetype } : null;
+    const row = await store.celebrities.create({
+      name, tier: tierClean, knownFor: knownFor || '', trailerUrl: trailerUrl || '', wiki: wiki || '', visible, photo
+    });
+    res.json({ success: true, celebrity: row });
+  } catch (err) {
+    console.error('[celebrities create]', err.message);
+    res.status(500).json({ error: 'Failed to add celebrity.' });
+  }
+});
+
+app.put('/api/admin/celebrities/:id', adminAuthMiddleware, upload.single('photo'), async (req, res) => {
+  try {
+    const existing = await store.celebrities.getById(req.params.id);
+    if (!existing) return res.status(404).json({ error: 'Celebrity not found.' });
+    const patch = {};
+    if (req.body.name !== undefined)       patch.name = req.body.name;
+    if (req.body.tier !== undefined)       patch.tier = ['gold', 'silver', 'bronze'].includes(req.body.tier) ? req.body.tier : existing.tier;
+    if (req.body.knownFor !== undefined)   patch.knownFor = req.body.knownFor;
+    if (req.body.trailerUrl !== undefined) patch.trailerUrl = req.body.trailerUrl;
+    if (req.body.wiki !== undefined)       patch.wiki = req.body.wiki;
+    if (req.body.visible !== undefined)    patch.visible = req.body.visible !== 'false';
+    if (req.file)                          patch.photo = { buffer: req.file.buffer, mime: req.file.mimetype };
+    const row = await store.celebrities.update(req.params.id, patch);
+    res.json({ success: true, celebrity: row });
+  } catch (err) {
+    console.error('[celebrities update]', err.message);
+    res.status(500).json({ error: 'Failed to update celebrity.' });
+  }
+});
+
+app.delete('/api/admin/celebrities/:id', adminAuthMiddleware, async (req, res) => {
+  const ok = await store.celebrities.remove(req.params.id);
+  if (!ok) return res.status(404).json({ error: 'Celebrity not found.' });
+  res.json({ success: true });
+});
+
+/* ══════════════════════════════════════════════════════════
    FAN CARD  (existing + link to user account)
 ═══════════════════════════════════════════════════════════ */
 app.post('/api/fancard', rateLimit('fancard', 5, 60 * 60 * 1000), optionalAuthMiddleware, upload.single('photo'), async (req, res) => {
   try {
-    const { fanName, country, celebName, celebEmoji, celebWiki, tier, email } = req.body;
+    const { fanName, country, celebName, celebEmoji, celebWiki, celebId, tier, email } = req.body;
     if (!fanName || !celebName || !email) {
       return res.status(400).json({ error: 'fanName, celebName and email are required.' });
     }
@@ -433,9 +499,16 @@ app.post('/api/fancard', rateLimit('fancard', 5, 60 * 60 * 1000), optionalAuthMi
     const edNum   = await store.editions.next(`${tierClean}:${celebName.toLowerCase()}`);
     const edition = `No. ${String(edNum).padStart(3, '0')}`;
 
+    // Admin-uploaded celebrity photo takes priority over the Wikipedia lookup
+    let celebImageSrc = null;
+    if (celebId) {
+      const photo = await store.celebrities.getPhoto(celebId);
+      if (photo) celebImageSrc = photo.buffer;
+    }
+
     const cardBuffer = await generatePrintCard({
       fanName, country: country||'', celebName,
-      celebWiki: celebWiki||'', tier: tierClean, ref, edition, photoSrc
+      celebWiki: celebWiki||'', celebImageSrc, tier: tierClean, ref, edition, photoSrc
     });
     const certBuffer = generateCertificate({
       fanName, celebName, tier: tierClean, ref, edition, issued: new Date()

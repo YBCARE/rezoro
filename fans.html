@@ -392,9 +392,10 @@ const DEFAULT_CELEBS = [
 ];
 const TIER_PRICES = {gold:'$5,000', silver:'$4,100', bronze:'$2,500'};
 const initialsOf = name => String(name||'').trim().split(/\s+/).map(w=>w[0]).slice(0,2).join('').toUpperCase();
+const esc = s => String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 let currentTier=null, currentCeleb=null, allCelebs=[], searchQ='';
 
-function loadAllCelebs(){
+async function loadAllCelebs(){
   allCelebs = DEFAULT_CELEBS.map(c=>({...c}));
   try {
     const edits = JSON.parse(localStorage.getItem('rezoro_celeb_data')||'[]');
@@ -403,10 +404,15 @@ function loadAllCelebs(){
       if(idx>-1){ if(ov.name) allCelebs[idx].name=ov.name; if(ov.tier) allCelebs[idx].tier=ov.tier; }
     });
   } catch(e){}
+  // Celebrities added via the admin panel — real photos, served by the backend
   try {
-    const custom = JSON.parse(localStorage.getItem('rezoro_fan_celebs')||'[]');
-    custom.filter(c=>c.visible!==false).forEach(c=>{
-      allCelebs.push({id:c.id||'custom_'+c.name.replace(/\s/g,'_'), name:c.name, tier:c.tier, emoji:c.emoji||'🎬', genre:c.knownFor||''});
+    const res = await fetch('/api/celebrities');
+    const custom = res.ok ? await res.json() : [];
+    custom.forEach(c=>{
+      allCelebs.push({
+        id: 'admin_'+c.id, celebId: c.id, name: c.name, tier: c.tier,
+        genre: c.knownFor || '', photoUrl: c.hasPhoto ? `/api/celebrities/${c.id}/photo` : null
+      });
     });
   } catch(e){}
 }
@@ -465,7 +471,7 @@ function renderPickGrid(){
   if(!filtered.length){ grid.innerHTML='<div class="pick-empty">No celebrities found.</div>'; return; }
   grid.innerHTML=filtered.map(c=>`
     <div class="pick-card ${currentCeleb?.id===c.id?'selected':''}" onclick="selectCeleb('${c.id}')" data-id="${c.id}" data-wiki="${c.wiki||''}">
-      <div class="pick-av">${initialsOf(c.name)}</div>
+      <div class="pick-av">${c.photoUrl ? `<img src="${c.photoUrl}" alt="${esc(c.name)}">` : initialsOf(c.name)}</div>
       <div class="pick-name">${c.name}</div>
       <div class="pick-genre">${c.genre}</div>
     </div>`).join('');
@@ -494,7 +500,7 @@ function updatePreview(){
           <div class="fc-badge ${t}">${t.charAt(0).toUpperCase()+t.slice(1)} Tier</div>
         </div>
         <div class="fc-body">
-          <div class="fc-avatar" id="fc-avatar-live">${initialsOf(c.name)}</div>
+          <div class="fc-avatar" id="fc-avatar-live">${c.photoUrl ? `<img src="${c.photoUrl}" alt="${esc(c.name)}">` : initialsOf(c.name)}</div>
           <div class="fc-celeb ${t}">${c.name}</div>
         </div>
         <div class="fc-foot">
@@ -509,7 +515,7 @@ function updatePreview(){
   document.getElementById('sum-tier').textContent=t.charAt(0).toUpperCase()+t.slice(1);
   document.getElementById('sum-fan').textContent=fanName!=='Your Name'?fanName:'—';
   document.getElementById('sum-price').textContent=TIER_PRICES[t];
-  if(c.wiki) loadCelebPreviewPhoto(c.wiki);
+  if(!c.photoUrl && c.wiki) loadCelebPreviewPhoto(c.wiki);
 }
 
 async function purchaseCard(){
@@ -533,6 +539,7 @@ async function purchaseCard(){
     fd.append('celebName',  currentCeleb.name);
     fd.append('celebEmoji', currentCeleb.emoji || '🎬');
     fd.append('celebWiki',  currentCeleb.wiki  || '');
+    if (currentCeleb.celebId) fd.append('celebId', currentCeleb.celebId);
     fd.append('tier',       currentTier);
     fd.append('email',      email);
     const photo = document.getElementById('fanPhotoInput').files[0];
@@ -586,10 +593,10 @@ function showFanToast(msg, type='info'){
   t._t = setTimeout(()=>{ t.style.opacity='0'; t.style.transform='translateX(-50%) translateY(20px)'; }, 4000);
 }
 
-loadAllCelebs();
+loadAllCelebs().then(()=>{ if(currentTier) renderPickGrid(); });
 window.addEventListener('storage', e=>{
-  if(e.key==='rezoro_celeb_data'||e.key==='rezoro_fan_celebs'){
-    loadAllCelebs(); if(currentTier) renderPickGrid(); updatePreview();
+  if(e.key==='rezoro_celeb_data'){
+    loadAllCelebs().then(()=>{ if(currentTier) renderPickGrid(); updatePreview(); });
   }
 });
 document.addEventListener('keydown', e=>{ if(e.key==='Escape') closeSuccess(); });

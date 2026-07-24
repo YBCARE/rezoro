@@ -10,8 +10,16 @@
  * Postgres connection string) in production.
  */
 
+const { randomUUID } = require('crypto');
+
 const DATABASE_URL = process.env.DATABASE_URL;
 const byCreatedDesc = (a, b) => new Date(b.createdAt) - new Date(a.createdAt);
+
+// Omit the raw photo bytes from list/detail JSON — the photo is served by its own route.
+function stripPhoto(row) {
+  const { photo, ...rest } = row;
+  return { ...rest, hasPhoto: !!photo };
+}
 
 /* ── In-memory backend ──────────────────────────────────── */
 function memoryStore() {
@@ -20,11 +28,33 @@ function memoryStore() {
   const fancards = new Map();    // userId → [card, ...]
   const subscribers = new Map(); // email → subscriber
   const editions = new Map();    // key → running count
+  const celebrities = new Map(); // id → { id, name, tier, knownFor, trailerUrl, visible, wiki, photo:{buffer,mime}|null, createdAt }
 
   return {
     persistent: false,
     editions: {
       async next(key) { const n = (editions.get(key) || 0) + 1; editions.set(key, n); return n; },
+    },
+    celebrities: {
+      async all({ onlyVisible = false } = {}) {
+        let list = [...celebrities.values()];
+        if (onlyVisible) list = list.filter(c => c.visible !== false);
+        return list.sort(byCreatedDesc).map(stripPhoto);
+      },
+      async getById(id) { return celebrities.get(id) || null; },
+      async getPhoto(id) { return celebrities.get(id)?.photo || null; },
+      async create(c) {
+        const row = { id: randomUUID(), createdAt: new Date().toISOString(), ...c };
+        celebrities.set(row.id, row);
+        return stripPhoto(row);
+      },
+      async update(id, patch) {
+        const row = celebrities.get(id);
+        if (!row) return null;
+        Object.assign(row, patch);
+        return stripPhoto(row);
+      },
+      async remove(id) { return celebrities.delete(id); },
     },
     users: {
       async findByEmail(email) { return users.get(email) || null; },
@@ -103,6 +133,13 @@ async function postgresStore() {
       k TEXT PRIMARY KEY,
       n INTEGER NOT NULL DEFAULT 0
     );
+    CREATE TABLE IF NOT EXISTS celebrities (
+      id         TEXT PRIMARY KEY,
+      created_at TIMESTAMPTZ DEFAULT now(),
+      data       JSONB NOT NULL,
+      photo      BYTEA,
+      photo_mime TEXT
+    );
   `);
 
   const q = (text, params) => pool.query(text, params);
@@ -180,6 +217,50 @@ async function postgresStore() {
       async emails() {
         const r = await q('SELECT email FROM subscribers');
         return r.rows.map(row => row.email);
+      },
+    },
+    celebrities: {
+      async all({ onlyVisible = false } = {}) {
+        const r = await q(
+          `SELECT id, data, (photo IS NOT NULL) AS has_photo FROM celebrities
+           ${onlyVisible ? "WHERE (data->>'visible') IS DISTINCT FROM 'false'" : ''}
+           ORDER BY created_at DESC`
+        );
+        return r.rows.map(row => ({ id: row.id, ...row.data, hasPhoto: row.has_photo }));
+      },
+      async getById(id) {
+        const r = await q('SELECT id, data, (photo IS NOT NULL) AS has_photo FROM celebrities WHERE id = $1', [id]);
+        if (!r.rows[0]) return null;
+        return { id: r.rows[0].id, ...r.rows[0].data, hasPhoto: r.rows[0].has_photo };
+      },
+      async getPhoto(id) {
+        const r = await q('SELECT photo, photo_mime FROM celebrities WHERE id = $1', [id]);
+        if (!r.rows[0]?.photo) return null;
+        return { buffer: r.rows[0].photo, mime: r.rows[0].photo_mime || 'image/jpeg' };
+      },
+      async create(c) {
+        const id = randomUUID();
+        const createdAt = new Date().toISOString();
+        const { photo, ...data } = c;
+        await q(
+          'INSERT INTO celebrities(id, data, photo, photo_mime) VALUES($1, $2, $3, $4)',
+          [id, { ...data, createdAt }, photo?.buffer || null, photo?.mime || null]
+        );
+        return { id, ...data, createdAt, hasPhoto: !!photo };
+      },
+      async update(id, patch) {
+        const { photo, ...rest } = patch;
+        if (photo !== undefined) {
+          await q('UPDATE celebrities SET photo = $2, photo_mime = $3 WHERE id = $1', [id, photo?.buffer || null, photo?.mime || null]);
+        }
+        if (Object.keys(rest).length) {
+          await q('UPDATE celebrities SET data = data || $2::jsonb WHERE id = $1', [id, JSON.stringify(rest)]);
+        }
+        return this.getById(id);
+      },
+      async remove(id) {
+        const r = await q('DELETE FROM celebrities WHERE id = $1', [id]);
+        return r.rowCount > 0;
       },
     },
   };
