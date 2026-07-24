@@ -491,20 +491,26 @@ app.post('/api/fancard', rateLimit('fancard', 5, 60 * 60 * 1000), optionalAuthMi
     if (!fanName || !celebName || !email) {
       return res.status(400).json({ error: 'fanName, celebName and email are required.' });
     }
-    const ref       = makeRef();
-    const photoSrc  = req.file ? req.file.buffer : null;
+    const ref = makeRef();
+    const photoSrc = req.file ? req.file.buffer : null;
+
+    // The buyer picks the tier (Gold/Silver/Bronze) for any celebrity — an
+    // admin-added celebrity isn't locked to one tier. We only confirm the
+    // celebrity exists and is currently visible before honoring the request.
     const tierClean = ['gold','silver','bronze'].includes(tier) ? tier : 'gold';
+    let celebImageSrc = null;
+    if (celebId) {
+      const celeb = await store.celebrities.getById(celebId);
+      if (!celeb || celeb.visible === false) {
+        return res.status(400).json({ error: 'This celebrity is not currently available.' });
+      }
+      const photo = await store.celebrities.getPhoto(celebId);
+      if (photo) celebImageSrc = photo.buffer;
+    }
 
     // Real, sequential edition number per celebrity + tier
     const edNum   = await store.editions.next(`${tierClean}:${celebName.toLowerCase()}`);
     const edition = `No. ${String(edNum).padStart(3, '0')}`;
-
-    // Admin-uploaded celebrity photo takes priority over the Wikipedia lookup
-    let celebImageSrc = null;
-    if (celebId) {
-      const photo = await store.celebrities.getPhoto(celebId);
-      if (photo) celebImageSrc = photo.buffer;
-    }
 
     const cardBuffer = await generatePrintCard({
       fanName, country: country||'', celebName,

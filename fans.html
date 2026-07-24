@@ -466,7 +466,9 @@ async function loadCelebPreviewPhoto(wiki){
 function renderPickGrid(){
   const grid=document.getElementById('pickGrid');
   const q=searchQ.toLowerCase();
-  const filtered=allCelebs.filter(c=>c.tier===currentTier&&(q===''||c.name.toLowerCase().includes(q)));
+  // Admin-added celebrities (celebId set) are available at every tier the buyer picks;
+  // the built-in roster keeps its assigned tier.
+  const filtered=allCelebs.filter(c=>(c.celebId||c.tier===currentTier)&&(q===''||c.name.toLowerCase().includes(q)));
   if(!currentTier){ grid.innerHTML='<div class="pick-empty">Select a tier above to see available celebrities.</div>'; return; }
   if(!filtered.length){ grid.innerHTML='<div class="pick-empty">No celebrities found.</div>'; return; }
   grid.innerHTML=filtered.map(c=>`
