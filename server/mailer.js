@@ -68,12 +68,12 @@ ${body}
 }
 
 /* ── 1. Fan Card Email ───────────────────────────────────── */
-async function sendFanCardEmail({ to, fanName, country, celebName, tier, ref, cardBuffer }) {
+async function sendFanCardEmail({ to, fanName, country, celebName, tier, ref, edition, cardBuffer, certBuffer }) {
   fanName   = esc(fanName);
   celebName = esc(celebName);
   const tierLabel = tier.charAt(0).toUpperCase() + tier.slice(1);
   const tierColor = tier === 'gold' ? '#C9A84C' : tier === 'silver' ? '#A8B8C4' : '#C07848';
-  const now = new Date();
+  const editionLabel = edition ? esc(edition) : 'Limited Edition';
 
   const body = `
 <tr><td align="center" style="padding-bottom:10px;">
@@ -82,36 +82,52 @@ async function sendFanCardEmail({ to, fanName, country, celebName, tier, ref, ca
 <tr><td align="center" style="padding-bottom:32px;">
   <p style="margin:0;font-size:15px;color:#9A9490;line-height:1.7;">
     Congratulations <strong style="color:#F0ECE4;">${fanName}</strong> —
-    your exclusive <span style="color:${tierColor};font-weight:700;">${tierLabel} Tier</span>
-    fan card featuring <strong style="color:#F0ECE4;">${celebName}</strong> is ready.
+    your <span style="color:${tierColor};font-weight:700;">${tierLabel} Tier</span>
+    collectible featuring <strong style="color:#F0ECE4;">${celebName}</strong> is ready,
+    numbered <strong style="color:${tierColor};">${editionLabel}</strong>.
   </p>
 </td></tr>
+<tr><td align="center" style="padding-bottom:24px;">
+  <img src="cid:fancard" alt="Rezoro Fan Card" width="380"
+    style="width:100%;max-width:380px;border-radius:10px;display:block;border:1px solid rgba(201,168,76,.28);">
+</td></tr>
 <tr><td align="center" style="padding-bottom:32px;">
-  <img src="cid:fancard" alt="Rezoro Fan Card" width="560"
-    style="width:100%;max-width:560px;border-radius:14px;display:block;border:1px solid rgba(201,168,76,.28);">
+  <p style="margin:0;font-size:13px;color:#9A9490;line-height:1.7;">
+    Attached are two print-ready files: your <strong style="color:#F0ECE4;">collectible card</strong>
+    and its matching <strong style="color:#F0ECE4;">Certificate of Authenticity</strong>.
+  </p>
 </td></tr>
 <tr><td align="center" style="padding-bottom:32px;">
   <table role="presentation" cellpadding="0" cellspacing="0">
     <tr><td style="background:#0E0E13;border:1px solid rgba(201,168,76,.22);border-radius:10px;padding:16px 28px;text-align:center;">
-      <div style="font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:#5C5852;margin-bottom:6px;">Booking Reference</div>
+      <div style="font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:#5C5852;margin-bottom:6px;">Reference</div>
       <div style="font-size:20px;font-weight:800;letter-spacing:.1em;color:#C9A84C;font-family:'Courier New',monospace;">${ref}</div>
     </td></tr>
   </table>
 </td></tr>`;
+
+  const attachments = [{
+    filename: `rezoro-fancard-${ref}.png`,
+    content: cardBuffer,
+    cid: 'fancard',
+    contentType: 'image/png'
+  }];
+  if (certBuffer) {
+    attachments.push({
+      filename: `rezoro-certificate-${ref}.png`,
+      content: certBuffer,
+      contentType: 'image/png'
+    });
+  }
 
   await transporter.sendMail({
     from: FROM, to, replyTo: REPLY,
     subject: `Your ${tierLabel} Fan Card — ${celebName} · ${ref}`,
     messageId: `<${randomUUID()}@rezoro.pro>`,
     headers: baseHeaders(),
-    text: `Hi ${fanName},\n\nYour ${tierLabel} fan card for ${celebName} is attached.\nRef: ${ref}\n\n— Rezoro`,
+    text: `Hi ${fanName},\n\nYour ${tierLabel} fan card for ${celebName} (${editionLabel}) is attached, along with its Certificate of Authenticity.\nRef: ${ref}\n\n— Rezoro`,
     html: emailWrap(`Your ${tierLabel} fan card for ${celebName} · Ref: ${ref}`, body),
-    attachments: [{
-      filename: `rezoro-fancard-${ref}.png`,
-      content: cardBuffer,
-      cid: 'fancard',
-      contentType: 'image/png'
-    }]
+    attachments
   });
 }
 

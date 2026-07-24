@@ -19,9 +19,13 @@ function memoryStore() {
   const bookings = new Map();    // id → booking
   const fancards = new Map();    // userId → [card, ...]
   const subscribers = new Map(); // email → subscriber
+  const editions = new Map();    // key → running count
 
   return {
     persistent: false,
+    editions: {
+      async next(key) { const n = (editions.get(key) || 0) + 1; editions.set(key, n); return n; },
+    },
     users: {
       async findByEmail(email) { return users.get(email) || null; },
       async create(u) { users.set(u.email, u); return u; },
@@ -95,12 +99,25 @@ async function postgresStore() {
       created_at TIMESTAMPTZ DEFAULT now(),
       data       JSONB NOT NULL
     );
+    CREATE TABLE IF NOT EXISTS editions (
+      k TEXT PRIMARY KEY,
+      n INTEGER NOT NULL DEFAULT 0
+    );
   `);
 
   const q = (text, params) => pool.query(text, params);
 
   return {
     persistent: true,
+    editions: {
+      async next(key) {
+        const r = await q(
+          'INSERT INTO editions(k, n) VALUES($1, 1) ON CONFLICT(k) DO UPDATE SET n = editions.n + 1 RETURNING n',
+          [key]
+        );
+        return r.rows[0].n;
+      },
+    },
     users: {
       async findByEmail(email) {
         const r = await q('SELECT data FROM users WHERE email = $1', [email]);

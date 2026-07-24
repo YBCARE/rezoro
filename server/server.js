@@ -7,7 +7,8 @@ const bcrypt    = require('bcryptjs');
 const jwt       = require('jsonwebtoken');
 const { v4: uuidv4 } = require('uuid');
 
-const { generateFanCard }          = require('./fancard');
+const { generatePrintCard }        = require('./fancard-print');
+const { generateCertificate }      = require('./certificate');
 const { createStore }              = require('./store');
 const {
   sendFanCardEmail,
@@ -428,16 +429,23 @@ app.post('/api/fancard', rateLimit('fancard', 5, 60 * 60 * 1000), optionalAuthMi
     const photoSrc  = req.file ? req.file.buffer : null;
     const tierClean = ['gold','silver','bronze'].includes(tier) ? tier : 'gold';
 
-    const cardBuffer = await generateFanCard({
+    // Real, sequential edition number per celebrity + tier
+    const edNum   = await store.editions.next(`${tierClean}:${celebName.toLowerCase()}`);
+    const edition = `No. ${String(edNum).padStart(3, '0')}`;
+
+    const cardBuffer = await generatePrintCard({
       fanName, country: country||'', celebName,
-      celebEmoji: celebEmoji||'🎬', celebWiki: celebWiki||'', tier: tierClean, ref, photoSrc
+      celebWiki: celebWiki||'', tier: tierClean, ref, edition, photoSrc
+    });
+    const certBuffer = generateCertificate({
+      fanName, celebName, tier: tierClean, ref, edition, issued: new Date()
     });
 
-    await sendFanCardEmail({ to: email, fanName, country: country||'', celebName, tier: tierClean, ref, cardBuffer });
+    await sendFanCardEmail({ to: email, fanName, country: country||'', celebName, tier: tierClean, ref, edition, cardBuffer, certBuffer });
 
     // Save to the authenticated user's collection (identity from the verified JWT, never the request body)
     if (req.user) {
-      await store.fancards.add(req.user.id, { ref, celebName, tier: tierClean, fanName, country: country||'', createdAt: new Date().toISOString() });
+      await store.fancards.add(req.user.id, { ref, celebName, tier: tierClean, fanName, country: country||'', edition, createdAt: new Date().toISOString() });
     }
 
     console.log(`[FANCARD] ${ref} — ${celebName} for ${fanName}`);
