@@ -261,15 +261,6 @@
   </div>
 </div>
 
-<!-- SUCCESS MODAL -->
-<div class="overlay" id="successOverlay" onclick="closeSuccess(event)">
-  <div class="modal-box">
-    <div class="modal-title">Fan Card Sent</div>
-    <p class="modal-sub">Your <strong id="suc-tier"></strong> fan card featuring <strong id="suc-celeb"></strong> has been generated and emailed to <strong id="suc-email"></strong>.<br><br>Reference: <strong id="suc-ref" style="color:var(--gold);letter-spacing:.05em;"></strong></p>
-    <button class="modal-btn" onclick="closeSuccess()">Done</button>
-  </div>
-</div>
-
 <script>
 const DEFAULT_CELEBS = [
   {id:'dicaprio',    name:'Leonardo DiCaprio',   tier:'gold',   emoji:'🎬', genre:'Film · Drama',    wiki:'Leonardo_DiCaprio'},
@@ -548,14 +539,13 @@ async function purchaseCard(){
 
   const btn = document.getElementById('purchaseBtn');
   btn.disabled = true;
-  btn.textContent = 'Generating your card…';
+  btn.textContent = 'Starting checkout…';
 
   try {
     const fd = new FormData();
     fd.append('fanName',    fanName);
     fd.append('country',    country);
     fd.append('celebName',  currentCeleb.name);
-    fd.append('celebEmoji', currentCeleb.emoji || '🎬');
     fd.append('celebWiki',  currentCeleb.wiki  || '');
     if (currentCeleb.celebId) fd.append('celebId', currentCeleb.celebId);
     fd.append('tier',       currentTier);
@@ -564,7 +554,7 @@ async function purchaseCard(){
     if(photo) fd.append('photo', photo);
 
     const authToken = localStorage.getItem('rz_token');
-    const res  = await fetch('/api/fancard', {
+    const res  = await fetch('/api/fancard/checkout', {
       method:'POST',
       headers: authToken ? { Authorization: 'Bearer ' + authToken } : {},
       body:fd
@@ -573,26 +563,15 @@ async function purchaseCard(){
 
     if(!res.ok) throw new Error(data.error || 'Server error');
 
-    // Show success modal
-    document.getElementById('suc-tier').textContent  = currentTier.charAt(0).toUpperCase()+currentTier.slice(1);
-    document.getElementById('suc-celeb').textContent = currentCeleb.name;
-    document.getElementById('suc-email').textContent = email;
-    document.getElementById('suc-ref').textContent   = data.ref;
-    document.getElementById('successOverlay').classList.add('open');
-    document.body.style.overflow='hidden';
+    // Hand off to Flutterwave to collect payment. On success, Flutterwave
+    // redirects back to payment-success.html, which verifies and delivers.
+    window.location.href = data.paymentLink;
 
   } catch(err) {
     showFanToast('Something went wrong: ' + err.message, 'error');
-  } finally {
     btn.disabled = false;
     btn.textContent = 'Purchase Fan Card →';
   }
-}
-
-function closeSuccess(e){
-  if(e&&e.target!==document.getElementById('successOverlay')) return;
-  document.getElementById('successOverlay').classList.remove('open');
-  document.body.style.overflow='';
 }
 
 function showFanToast(msg, type='info'){
@@ -618,7 +597,7 @@ window.addEventListener('storage', e=>{
     loadAllCelebs().then(()=>{ if(currentTier) renderPickGrid(); updatePreview(); });
   }
 });
-document.addEventListener('keydown', e=>{ if(e.key==='Escape') closeSuccess(); });
+
 </script>
 </body>
 </html>

@@ -27,6 +27,7 @@ const ADMIN_PASSWORD  = process.env.ADMIN_PASSWORD;
 const FW_SECRET        = process.env.FLUTTERWAVE_SECRET_KEY || '';
 const FW_PUBLIC        = process.env.FLUTTERWAVE_PUBLIC_KEY || '';
 const FW_WEBHOOK_SECRET = process.env.FW_WEBHOOK_SECRET || '';
+const SITE_URL = process.env.SITE_URL || 'https://rezoro.pro';
 
 if (!JWT_SECRET) {
   throw new Error('JWT_SECRET environment variable is not set. Set it in Render before starting the server.');
@@ -269,7 +270,7 @@ app.post('/api/admin/bookings/:id/accept', adminAuthMiddleware, async (req, res)
           tx_ref:       booking.ref,
           amount:       booking.price,
           currency:     'USD',
-          redirect_url: `https://rezoro.pro/payment-success.html?ref=${booking.ref}`,
+          redirect_url: `${SITE_URL}/payment-success.html?type=booking&ref=${booking.ref}`,
           customer: { email: booking.email, name: booking.name },
           customizations: {
             title:       'Rezoro — Celebrity Booking',
@@ -329,8 +330,19 @@ app.post('/api/payment/webhook', async (req, res) => {
     return res.status(401).json({ error: 'Unauthorized' });
   }
   const { data } = req.body;
-  if (data && data.status === 'successful') {
-    await store.bookings.updateByRef(data.tx_ref, { status: 'confirmed' });
+  if (data && data.status === 'successful' && data.tx_ref) {
+    // Redundant confirmation path in case the buyer never lands back on
+    // payment-success.html — covers both bookings and fan card orders.
+    const booking = [...await store.bookings.all()].find(b => b.ref === data.tx_ref);
+    if (booking) {
+      await store.bookings.updateByRef(data.tx_ref, { status: 'confirmed' });
+    } else {
+      const order = await store.fancardOrders.getByRef(data.tx_ref);
+      if (order && order.status !== 'paid') {
+        try { await fulfillFancardOrder(order); }
+        catch (e) { console.error('[webhook] fulfill failed:', e.message); }
+      }
+    }
   }
   res.json({ status: 'ok' });
 });
@@ -536,53 +548,153 @@ app.put('/api/admin/settings/fancard-pricing', adminAuthMiddleware, async (req, 
 /* ══════════════════════════════════════════════════════════
    FAN CARD  (existing + link to user account)
 ═══════════════════════════════════════════════════════════ */
-app.post('/api/fancard', rateLimit('fancard', 5, 60 * 60 * 1000), optionalAuthMiddleware, upload.single('photo'), async (req, res) => {
+
+// Generates the print-ready card + certificate, emails them, and records
+// the order as delivered. Called only after payment is verified. Safe to
+// call twice for the same order — it's guarded by order.status at the
+// call sites (checked before invoking).
+async function fulfillFancardOrder(order) {
+  let celebImageSrc = null;
+  if (order.celebId) {
+    const photo = await store.celebrities.getPhoto(order.celebId);
+    if (photo) celebImageSrc = photo.buffer;
+  }
+
+  const edNum   = await store.editions.next(`${order.tier}:${order.celebName.toLowerCase()}`);
+  const edition = `No. ${String(edNum).padStart(3, '0')}`;
+
+  const photoSrc = order.photo ? order.photo.buffer : null;
+
+  const cardBuffer = await generatePrintCard({
+    fanName: order.fanName, country: order.country || '', celebName: order.celebName,
+    celebWiki: order.celebWiki || '', celebImageSrc, tier: order.tier, ref: order.ref, edition, photoSrc
+  });
+  const certBuffer = generateCertificate({
+    fanName: order.fanName, celebName: order.celebName, tier: order.tier, ref: order.ref, edition, issued: new Date()
+  });
+
+  await sendFanCardEmail({
+    to: order.email, fanName: order.fanName, country: order.country || '', celebName: order.celebName,
+    tier: order.tier, ref: order.ref, edition, cardBuffer, certBuffer
+  });
+
+  if (order.userId) {
+    await store.fancards.add(order.userId, {
+      ref: order.ref, celebName: order.celebName, tier: order.tier, fanName: order.fanName,
+      country: order.country || '', edition, createdAt: new Date().toISOString()
+    });
+  }
+
+  await store.fancardOrders.markPaid(order.ref, { edition, delivered: true });
+  console.log(`[FANCARD] ${order.ref} — ${order.celebName} for ${order.fanName} (paid, delivered)`);
+}
+
+app.post('/api/fancard/checkout', rateLimit('fancard', 8, 60 * 60 * 1000), optionalAuthMiddleware, upload.single('photo'), async (req, res) => {
   try {
-    const { fanName, country, celebName, celebEmoji, celebWiki, celebId, tier, email } = req.body;
+    const { fanName, country, celebName, celebWiki, celebId, tier, email } = req.body;
     if (!fanName || !celebName || !email) {
       return res.status(400).json({ error: 'fanName, celebName and email are required.' });
     }
-    const ref = makeRef();
-    const photoSrc = req.file ? req.file.buffer : null;
+    if (!FW_SECRET) {
+      return res.status(503).json({ error: 'Payments are not configured yet. Contact the site owner.' });
+    }
 
-    // The buyer picks the tier (Gold/Silver/Bronze) for any celebrity — an
-    // admin-added celebrity isn't locked to one tier. We only confirm the
-    // celebrity exists and is currently visible before honoring the request.
     const tierClean = ['gold','silver','bronze'].includes(tier) ? tier : 'gold';
-    let celebImageSrc = null;
     if (celebId) {
       const celeb = await store.celebrities.getById(celebId);
       if (!celeb || celeb.visible === false) {
         return res.status(400).json({ error: 'This celebrity is not currently available.' });
       }
-      const photo = await store.celebrities.getPhoto(celebId);
-      if (photo) celebImageSrc = photo.buffer;
     }
 
-    // Real, sequential edition number per celebrity + tier
-    const edNum   = await store.editions.next(`${tierClean}:${celebName.toLowerCase()}`);
-    const edition = `No. ${String(edNum).padStart(3, '0')}`;
+    // Price comes from admin-set settings — never trust a client-submitted amount.
+    const pricing = await store.settings.get('fancard-pricing', { gold: 5000, silver: 4100, bronze: 2500 });
+    const price = pricing[tierClean];
 
-    const cardBuffer = await generatePrintCard({
-      fanName, country: country||'', celebName,
-      celebWiki: celebWiki||'', celebImageSrc, tier: tierClean, ref, edition, photoSrc
+    const ref = makeRef();
+    const photo = req.file ? { buffer: req.file.buffer, mime: req.file.mimetype } : null;
+
+    await store.fancardOrders.create({
+      ref, fanName, country: country || '', celebName, celebWiki: celebWiki || '', celebId: celebId || null,
+      tier: tierClean, price, email, userId: req.user ? req.user.id : null, photo
     });
-    const certBuffer = generateCertificate({
-      fanName, celebName, tier: tierClean, ref, edition, issued: new Date()
-    });
 
-    await sendFanCardEmail({ to: email, fanName, country: country||'', celebName, tier: tierClean, ref, edition, cardBuffer, certBuffer });
+    let paymentLink = null;
+    try {
+      const fwRes = await fetch('https://api.flutterwave.com/v3/payments', {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${FW_SECRET}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          tx_ref: ref, amount: price, currency: 'USD',
+          redirect_url: `${SITE_URL}/payment-success.html?type=fancard&ref=${ref}`,
+          customer: { email, name: fanName },
+          customizations: {
+            title: 'Rezoro — Fan Card',
+            description: `${tierClean} fan card — ${celebName}`,
+            logo: `${SITE_URL}/logo.png`
+          }
+        })
+      });
+      const fwData = await fwRes.json();
+      if (fwData.status === 'success') paymentLink = fwData.data.link;
+    } catch (e) { console.error('[flutterwave]', e.message); }
 
-    // Save to the authenticated user's collection (identity from the verified JWT, never the request body)
-    if (req.user) {
-      await store.fancards.add(req.user.id, { ref, celebName, tier: tierClean, fanName, country: country||'', edition, createdAt: new Date().toISOString() });
+    if (!paymentLink) {
+      return res.status(502).json({ error: 'Could not start payment. Please try again shortly.' });
     }
 
-    console.log(`[FANCARD] ${ref} — ${celebName} for ${fanName}`);
-    res.json({ success: true, ref, message: `Fan card sent to ${email}` });
+    res.json({ success: true, ref, paymentLink });
   } catch (err) {
-    console.error('[fancard]', err.message);
-    res.status(500).json({ error: 'Failed to process fan card.' });
+    console.error('[fancard/checkout]', err.message);
+    res.status(500).json({ error: 'Failed to start checkout.' });
+  }
+});
+
+app.get('/api/payment/verify', rateLimit('verify', 30, 60 * 60 * 1000), async (req, res) => {
+  try {
+    const { type, ref, transaction_id } = req.query;
+    if (!type || !ref) return res.status(400).json({ error: 'type and ref are required.' });
+
+    if (type === 'fancard') {
+      const order = await store.fancardOrders.getByRef(ref);
+      if (!order) return res.status(404).json({ error: 'Order not found.' });
+      if (order.status === 'paid') {
+        return res.json({ success: true, alreadyProcessed: true, celebName: order.celebName, tier: order.tier, email: order.email, ref });
+      }
+      if (!FW_SECRET || !transaction_id) return res.status(400).json({ error: 'Cannot verify this payment.' });
+
+      const vRes = await fetch(`https://api.flutterwave.com/v3/transactions/${transaction_id}/verify`, {
+        headers: { 'Authorization': `Bearer ${FW_SECRET}` }
+      });
+      const vData = await vRes.json();
+      const tx = vData?.data;
+      const ok = vData.status === 'success' && tx?.status === 'successful' && tx?.tx_ref === ref
+        && Number(tx?.amount) >= Number(order.price) && tx?.currency === 'USD';
+      if (!ok) return res.status(402).json({ error: 'Payment could not be verified.' });
+
+      await fulfillFancardOrder(order);
+      return res.json({ success: true, celebName: order.celebName, tier: order.tier, email: order.email, ref });
+    }
+
+    if (type === 'booking') {
+      const booking = [...await store.bookings.all()].find(b => b.ref === ref);
+      if (!booking) return res.status(404).json({ error: 'Booking not found.' });
+      if (booking.status !== 'confirmed' && FW_SECRET && transaction_id) {
+        const vRes = await fetch(`https://api.flutterwave.com/v3/transactions/${transaction_id}/verify`, {
+          headers: { 'Authorization': `Bearer ${FW_SECRET}` }
+        });
+        const vData = await vRes.json();
+        const tx = vData?.data;
+        const ok = vData.status === 'success' && tx?.status === 'successful' && tx?.tx_ref === ref;
+        if (ok) await store.bookings.updateByRef(ref, { status: 'confirmed' });
+      }
+      return res.json({ success: true, celebName: booking.celebName, tier: booking.tier, email: booking.email, ref });
+    }
+
+    res.status(400).json({ error: 'Unknown payment type.' });
+  } catch (err) {
+    console.error('[payment/verify]', err.message);
+    res.status(500).json({ error: 'Verification failed.' });
   }
 });
 

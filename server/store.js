@@ -30,6 +30,7 @@ function memoryStore() {
   const editions = new Map();    // key → running count
   const celebrities = new Map(); // id → { id, name, tier, knownFor, trailerUrl, visible, wiki, photo:{buffer,mime}|null, createdAt }
   const settings = new Map();    // key → value
+  const fancardOrders = new Map(); // ref → order
 
   return {
     persistent: false,
@@ -56,6 +57,21 @@ function memoryStore() {
         return stripPhoto(row);
       },
       async remove(id) { return celebrities.delete(id); },
+    },
+    fancardOrders: {
+      async create(o) {
+        const row = { status: 'pending', createdAt: new Date().toISOString(), ...o };
+        fancardOrders.set(row.ref, row);
+        return stripPhoto(row);
+      },
+      async getByRef(ref) { return fancardOrders.get(ref) || null; },
+      async getPhoto(ref) { return fancardOrders.get(ref)?.photo || null; },
+      async markPaid(ref, patch) {
+        const row = fancardOrders.get(ref);
+        if (!row) return null;
+        Object.assign(row, { status: 'paid', paidAt: new Date().toISOString() }, patch);
+        return stripPhoto(row);
+      },
     },
     users: {
       async findByEmail(email) { return users.get(email) || null; },
@@ -148,6 +164,15 @@ async function postgresStore() {
     CREATE TABLE IF NOT EXISTS settings (
       key   TEXT PRIMARY KEY,
       value JSONB NOT NULL
+    );
+    CREATE TABLE IF NOT EXISTS fancard_orders (
+      ref        TEXT PRIMARY KEY,
+      status     TEXT NOT NULL DEFAULT 'pending',
+      created_at TIMESTAMPTZ DEFAULT now(),
+      paid_at    TIMESTAMPTZ,
+      data       JSONB NOT NULL,
+      photo      BYTEA,
+      photo_mime TEXT
     );
   `);
 
@@ -270,6 +295,40 @@ async function postgresStore() {
       async remove(id) {
         const r = await q('DELETE FROM celebrities WHERE id = $1', [id]);
         return r.rowCount > 0;
+      },
+    },
+    fancardOrders: {
+      async create(o) {
+        const { photo, ref, ...data } = o;
+        const createdAt = new Date().toISOString();
+        await q(
+          'INSERT INTO fancard_orders(ref, status, data, photo, photo_mime) VALUES($1, $2, $3, $4, $5)',
+          [ref, 'pending', { ...data, ref, createdAt }, photo?.buffer || null, photo?.mime || null]
+        );
+        return { ref, status: 'pending', createdAt, ...data, hasPhoto: !!photo };
+      },
+      async getByRef(ref) {
+        const r = await q('SELECT status, data, paid_at, photo, photo_mime FROM fancard_orders WHERE ref = $1', [ref]);
+        if (!r.rows[0]) return null;
+        const row = r.rows[0];
+        return {
+          ...row.data, ref, status: row.status, paidAt: row.paid_at,
+          photo: row.photo ? { buffer: row.photo, mime: row.photo_mime || 'image/jpeg' } : null,
+        };
+      },
+      async getPhoto(ref) {
+        const r = await q('SELECT photo, photo_mime FROM fancard_orders WHERE ref = $1', [ref]);
+        if (!r.rows[0]?.photo) return null;
+        return { buffer: r.rows[0].photo, mime: r.rows[0].photo_mime || 'image/jpeg' };
+      },
+      async markPaid(ref, patch = {}) {
+        await q(
+          `UPDATE fancard_orders
+           SET status = 'paid', paid_at = now(), data = data || $2::jsonb
+           WHERE ref = $1`,
+          [ref, JSON.stringify(patch)]
+        );
+        return this.getByRef(ref);
       },
     },
     settings: {

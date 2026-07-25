@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Payment — Rezoro</title>
+  <meta name="robots" content="noindex">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%2307070A'/%3E%3Ctext x='32' y='44' font-family='Georgia,serif' font-size='38' font-weight='700' fill='%23C9A84C' text-anchor='middle'%3ER%3C/text%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant:ital,wght@0,400;0,600;0,700;1,400&family=Montserrat:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --black:  #000000;
+      --bg:     #07070A;
+      --bg2:    #0E0E13;
+      --gold:   #C9A84C;
+      --gold-l: #E4C870;
+      --gold-border: rgba(201,168,76,.28);
+      --t1: #F0ECE4;
+      --t2: #9A9490;
+      --t3: #5C5852;
+      --red: #f87171;
+      --border: rgba(255,255,255,.07);
+      --font-d: 'Cormorant', Georgia, serif;
+      --font-s: 'Montserrat', system-ui, sans-serif;
+    }
+    *, *::before, *::after { box-sizing:border-box; margin:0; padding:0; }
+    body {
+      background:var(--black); color:var(--t1); font-family:var(--font-s);
+      min-height:100vh; display:flex; flex-direction:column; align-items:center; justify-content:center;
+      padding:2rem 1.5rem; text-align:center; -webkit-font-smoothing:antialiased;
+    }
+    a { color:inherit; text-decoration:none; }
+    .logo { font-family:var(--font-d); font-size:1.5rem; font-weight:600; letter-spacing:.04em; position:fixed; top:1.4rem; left:1.6rem; }
+    .logo span { color:var(--gold); }
+    .card {
+      width:100%; max-width:440px; background:var(--bg2); border:1px solid var(--gold-border);
+      border-radius:8px; padding:3rem 2.4rem;
+    }
+    .icon { width:56px; height:56px; margin:0 auto 1.6rem; border-radius:50%; display:flex; align-items:center; justify-content:center; border:1px solid var(--gold-border); }
+    .icon svg { width:24px; height:24px; stroke:var(--gold); fill:none; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round; }
+    .icon.err { border-color:rgba(248,113,113,.35); }
+    .icon.err svg { stroke:var(--red); }
+    h1 { font-family:var(--font-d); font-size:1.8rem; font-weight:600; margin-bottom:.7rem; }
+    p { font-size:.88rem; color:var(--t2); line-height:1.75; }
+    .detail { margin-top:1.6rem; padding-top:1.6rem; border-top:1px solid var(--border); text-align:left; }
+    .d-row { display:flex; justify-content:space-between; padding:.4rem 0; font-size:.82rem; }
+    .d-lbl { color:var(--t3); text-transform:uppercase; letter-spacing:.08em; font-size:.65rem; font-weight:700; }
+    .d-val { color:var(--t1); font-weight:600; }
+    .spinner { width:34px; height:34px; border-radius:50%; border:2px solid var(--border); border-top-color:var(--gold); margin:0 auto 1.6rem; animation:spin 0.9s linear infinite; }
+    @keyframes spin { to { transform:rotate(360deg); } }
+    .btn { display:inline-block; margin-top:2rem; padding:.9rem 2rem; background:var(--gold); color:#000; border-radius:2px; font-size:.72rem; font-weight:700; letter-spacing:.12em; text-transform:uppercase; transition:background .2s; }
+    .btn:hover { background:var(--gold-l); }
+    .btn-ghost { display:inline-block; margin-top:1rem; padding:.9rem 2rem; border:1px solid var(--border); border-radius:2px; color:var(--t2); font-size:.72rem; font-weight:600; letter-spacing:.1em; text-transform:uppercase; }
+  </style>
+</head>
+<body>
+<a href="index.html" class="logo">Rez<span>oro</span></a>
+
+<div class="card" id="card">
+  <div class="spinner"></div>
+  <h1>Confirming your payment…</h1>
+  <p>This only takes a moment. Please don't close this page.</p>
+</div>
+
+<script>
+function qs(name) {
+  return new URLSearchParams(window.location.search).get(name);
+}
+
+function render({ icon, title, body, detail, actions }) {
+  document.getElementById('card').innerHTML = `
+    <div class="icon${icon === 'err' ? ' err' : ''}">${icon === 'err'
+      ? '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="13"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>'
+      : '<svg viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg>'}</div>
+    <h1>${title}</h1>
+    <p>${body}</p>
+    ${detail || ''}
+    ${actions || `<a href="index.html" class="btn">Back to Rezoro</a>`}
+  `;
+}
+
+async function run() {
+  const type   = qs('type');
+  const ref    = qs('ref');
+  const status = qs('status');
+  const txId   = qs('transaction_id');
+
+  if (!type || !ref) {
+    render({ icon:'err', title:'Something went wrong', body:"We couldn't find this payment. If you were charged, contact us with your reference and we'll sort it out." });
+    return;
+  }
+
+  if (status && status !== 'successful') {
+    render({
+      icon:'err', title:'Payment not completed',
+      body:'Your payment was cancelled or did not go through — you have not been charged.',
+      actions:`<a href="${type === 'fancard' ? 'fans.html' : 'index.html'}" class="btn">Try Again</a>`
+    });
+    return;
+  }
+
+  try {
+    const r = await fetch(`/api/payment/verify?type=${encodeURIComponent(type)}&ref=${encodeURIComponent(ref)}&transaction_id=${encodeURIComponent(txId || '')}`);
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.error || 'Verification failed.');
+
+    const tierLabel = d.tier ? d.tier.charAt(0).toUpperCase() + d.tier.slice(1) : '';
+
+    if (type === 'fancard') {
+      render({
+        icon:'ok',
+        title:'Fan Card On Its Way',
+        body:`Your ${tierLabel} collectible featuring <strong style="color:var(--t1)">${d.celebName}</strong> has been generated and emailed to you, along with its Certificate of Authenticity.`,
+        detail:`<div class="detail">
+          <div class="d-row"><span class="d-lbl">Celebrity</span><span class="d-val">${d.celebName}</span></div>
+          <div class="d-row"><span class="d-lbl">Tier</span><span class="d-val">${tierLabel}</span></div>
+          <div class="d-row"><span class="d-lbl">Reference</span><span class="d-val">${ref}</span></div>
+        </div>`
+      });
+    } else {
+      render({
+        icon:'ok',
+        title:'Booking Confirmed',
+        body:`Payment received for your <strong style="color:var(--t1)">${d.celebName}</strong> booking. Our team will be in touch shortly to finalise details.`,
+        detail:`<div class="detail">
+          <div class="d-row"><span class="d-lbl">Celebrity</span><span class="d-val">${d.celebName}</span></div>
+          <div class="d-row"><span class="d-lbl">Reference</span><span class="d-val">${ref}</span></div>
+        </div>`
+      });
+    }
+  } catch (err) {
+    render({
+      icon:'err', title:'Could not confirm payment',
+      body: err.message || 'Something went wrong verifying this payment. If you were charged, contact us with your reference number.',
+      detail:`<div class="detail"><div class="d-row"><span class="d-lbl">Reference</span><span class="d-val">${ref}</span></div></div>`
+    });
+  }
+}
+run();
+</script>
+</body>
+</html>
