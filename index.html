@@ -1652,6 +1652,38 @@ document.addEventListener('keydown', e => { if(e.key==='Escape'){ closeBook(); c
     await delay(40);
   }
 })();
+
+/* ── Celebrities added via admin — real photo, appended to the roster strip ── */
+function prefillBook(name) {
+  openBook();
+  const input = document.getElementById('book-celeb');
+  if (input) input.value = name;
+}
+
+(async function loadAdminRosterCelebs() {
+  const esc = s => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  const initialsOf = name => String(name || '').trim().split(/\s+/).map(w => w[0]).slice(0, 2).join('').toUpperCase();
+  const tierLabel = { gold: 'Gold', silver: 'Silver', bronze: 'Bronze' };
+  try {
+    const res = await fetch('/api/celebrities');
+    if (!res.ok) return;
+    const celebs = await res.json();
+    const track = document.getElementById('stripTrack');
+    if (!track || !celebs.length) return;
+    celebs.forEach(c => {
+      const card = document.createElement('div');
+      card.className = 'strip-card';
+      card.style.cursor = 'pointer';
+      card.innerHTML = `
+        <div class="strip-av">${c.hasPhoto ? `<img src="/api/celebrities/${c.id}/photo" alt="${esc(c.name)}">` : initialsOf(c.name)}</div>
+        <div class="strip-name">${esc(c.name)}</div>
+        <div class="strip-genre">${esc(c.knownFor || 'Celebrity')}</div>
+        <span class="strip-tier tier-${c.tier}">${tierLabel[c.tier] || 'Gold'}</span>`;
+      card.addEventListener('click', () => prefillBook(c.name));
+      track.appendChild(card);
+    });
+  } catch (e) {}
+})();
 </script>
 </body>
 </html>
