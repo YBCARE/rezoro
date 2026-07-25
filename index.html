@@ -1306,8 +1306,20 @@ if(strip){
 }
 
 /* ── BOOKING MODAL ─────────────────────────────── */
-/* ── BOOKING MODAL ─────────────────────────────── */
-const TIERS = {
+// Defaults shown until the real, admin-editable pricing loads from the server.
+const TIER_META = {
+  individual: [
+    { key:'bronze', label:'Bronze' },
+    { key:'silver', label:'Silver' },
+    { key:'gold',   label:'Gold'   }
+  ],
+  company: [
+    { key:'standard', label:'Standard' },
+    { key:'premium',  label:'Premium'  },
+    { key:'elite',    label:'Elite'    }
+  ]
+};
+let TIERS = {
   individual: [
     { key:'bronze', label:'Bronze', price:2500,  days:3,  desc:'3-day engagement' },
     { key:'silver', label:'Silver', price:4100,  days:7,  desc:'7-day engagement' },
@@ -1321,6 +1333,22 @@ const TIERS = {
 };
 let bookType = 'individual';
 let bookTier = 'bronze';
+
+async function loadBookingPricing() {
+  try {
+    const r = await fetch('/api/settings/booking-pricing');
+    if (!r.ok) return;
+    const p = await r.json();
+    Object.entries(TIER_META).forEach(([type, metas]) => {
+      TIERS[type] = metas.map(m => {
+        const d = p[type]?.[m.key] || {};
+        const days = d.days ?? TIERS[type].find(t=>t.key===m.key)?.days ?? 0;
+        return { key:m.key, label:m.label, price: d.price ?? TIERS[type].find(t=>t.key===m.key)?.price ?? 0, days, desc: `${days}-day ${type==='company'?'campaign':'engagement'}` };
+      });
+    });
+    renderTiers();
+  } catch(e){}
+}
 
 function setBookType(type) {
   bookType = type;
@@ -1360,6 +1388,7 @@ function selectTier(key) {
 function openBook(e) {
   if(e) e.preventDefault();
   renderTiers();
+  loadBookingPricing();
   document.getElementById('bookOverlay').classList.add('open');
   document.body.style.overflow='hidden';
 }

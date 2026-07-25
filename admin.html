@@ -849,6 +849,46 @@ async function gateUnlock(){
     </div>
   </div>
 
+  <!-- ════ PAGE: SETTINGS ═════════════════════════════════ -->
+  <div class="page" id="pg-settings">
+    <div class="pg-header">
+      <div><div class="pg-title">Settings</div><div class="pg-sub">Site-wide pricing and configuration.</div></div>
+    </div>
+    <div class="tbl-card" style="margin-bottom:1.2rem;">
+      <div class="tbl-header">
+        <div class="tbl-title">Booking Pricing</div>
+        <div class="tbl-meta">Prices &amp; response windows shown in the "Book a Star" modal on the homepage.</div>
+      </div>
+      <div style="padding:1.4rem;">
+        <div style="font-size:.68rem;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--t3);margin-bottom:.9rem;">Individual</div>
+        <div class="f-row" style="grid-template-columns:1fr 1fr 1fr;margin-bottom:.3rem;">
+          <div class="f-grp"><label class="f-lbl">Bronze — Price (USD)</label><input class="f-in" type="number" min="0" step="1" id="bp-individual-bronze-price"></div>
+          <div class="f-grp"><label class="f-lbl">Silver — Price (USD)</label><input class="f-in" type="number" min="0" step="1" id="bp-individual-silver-price"></div>
+          <div class="f-grp"><label class="f-lbl">Gold — Price (USD)</label><input class="f-in" type="number" min="0" step="1" id="bp-individual-gold-price"></div>
+        </div>
+        <div class="f-row" style="grid-template-columns:1fr 1fr 1fr;">
+          <div class="f-grp"><label class="f-lbl">Bronze — Days</label><input class="f-in" type="number" min="1" step="1" id="bp-individual-bronze-days"></div>
+          <div class="f-grp"><label class="f-lbl">Silver — Days</label><input class="f-in" type="number" min="1" step="1" id="bp-individual-silver-days"></div>
+          <div class="f-grp"><label class="f-lbl">Gold — Days</label><input class="f-in" type="number" min="1" step="1" id="bp-individual-gold-days"></div>
+        </div>
+
+        <div style="font-size:.68rem;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--t3);margin:1.4rem 0 .9rem;">Company</div>
+        <div class="f-row" style="grid-template-columns:1fr 1fr 1fr;margin-bottom:.3rem;">
+          <div class="f-grp"><label class="f-lbl">Standard — Price (USD)</label><input class="f-in" type="number" min="0" step="1" id="bp-company-standard-price"></div>
+          <div class="f-grp"><label class="f-lbl">Premium — Price (USD)</label><input class="f-in" type="number" min="0" step="1" id="bp-company-premium-price"></div>
+          <div class="f-grp"><label class="f-lbl">Elite — Price (USD)</label><input class="f-in" type="number" min="0" step="1" id="bp-company-elite-price"></div>
+        </div>
+        <div class="f-row" style="grid-template-columns:1fr 1fr 1fr;">
+          <div class="f-grp"><label class="f-lbl">Standard — Days</label><input class="f-in" type="number" min="1" step="1" id="bp-company-standard-days"></div>
+          <div class="f-grp"><label class="f-lbl">Premium — Days</label><input class="f-in" type="number" min="1" step="1" id="bp-company-premium-days"></div>
+          <div class="f-grp"><label class="f-lbl">Elite — Days</label><input class="f-in" type="number" min="1" step="1" id="bp-company-elite-days"></div>
+        </div>
+
+        <button class="f-sub" id="bp-save-btn" onclick="saveBookingPricing()" style="max-width:260px;margin-top:.6rem;">✦ Save Pricing</button>
+      </div>
+    </div>
+  </div>
+
   <!-- ════ PAGE: GENERIC ══════════════════════════════════ -->
   <div class="page" id="pg-generic">
     <div class="pg-header">
@@ -954,7 +994,7 @@ const PAGE_MAP = {
   incoming:'incoming', newsletter:'newsletter',
   celebrities:'celebrities', 'celeb-editor':'celeb-editor',
   fancards:'fancards', categories:'generic', availability:'generic',
-  clients:'generic', agents:'generic', settings:'generic'
+  clients:'generic', agents:'generic', settings:'settings'
 };
 const LABELS = {
   dashboard:'Dashboard', analytics:'Analytics', bookings:'Bookings', inquiries:'Inquiries',
@@ -977,6 +1017,7 @@ function nav(name, el){
   if(PAGE_MAP[name]==='generic') document.getElementById('pgGenericTitle').textContent = label;
   if(name==='celeb-editor') renderCelebEditor();
   if(name==='fancards') { renderFanTable(); loadFanCardPricing(); }
+  if(name==='settings') loadBookingPricing();
   if(name==='incoming') loadIncoming();
   if(name==='newsletter') loadSubscribers();
   if(window.innerWidth <= 768) toggleSB(false);
@@ -1171,6 +1212,59 @@ function renderCelebEditor(){
       </td>
     </tr>
   `).join('');
+}
+
+/* ════════════════════════════════════════════
+   BOOKING PRICING  (Book a Star modal on index.html)
+════════════════════════════════════════════ */
+const BP_TIERS = { individual: ['bronze','silver','gold'], company: ['standard','premium','elite'] };
+
+async function loadBookingPricing(){
+  try {
+    const r = await fetch('/api/settings/booking-pricing');
+    const p = await r.json();
+    Object.entries(BP_TIERS).forEach(([type, tiers]) => {
+      tiers.forEach(t => {
+        const d = p[type]?.[t] || {};
+        const priceEl = document.getElementById(`bp-${type}-${t}-price`);
+        const daysEl  = document.getElementById(`bp-${type}-${t}-days`);
+        if (priceEl) priceEl.value = d.price ?? '';
+        if (daysEl)  daysEl.value  = d.days ?? '';
+      });
+    });
+  } catch(e){}
+}
+
+async function saveBookingPricing(){
+  const btn = document.getElementById('bp-save-btn');
+  const pricing = { individual: {}, company: {} };
+  let valid = true;
+  Object.entries(BP_TIERS).forEach(([type, tiers]) => {
+    tiers.forEach(t => {
+      const price = Number(document.getElementById(`bp-${type}-${t}-price`).value);
+      const days  = Number(document.getElementById(`bp-${type}-${t}-days`).value);
+      if (!Number.isFinite(price) || price < 0 || !Number.isFinite(days) || days < 1) valid = false;
+      pricing[type][t] = { price, days };
+    });
+  });
+  if (!valid) { showToast('⚠ Enter a valid price and days (1+) for every tier.', 'error'); return; }
+
+  btn.disabled = true; btn.textContent = 'Saving…';
+  try {
+    const r = await fetch('/api/admin/settings/booking-pricing', {
+      method: 'PUT',
+      headers: adminHeaders({ 'Content-Type': 'application/json' }),
+      body: JSON.stringify(pricing)
+    });
+    if (r.status === 401) { adminSignOut(); return; }
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.error || 'Failed to save pricing.');
+    showToast('✦ Booking pricing updated — live on the homepage now.');
+  } catch(e) {
+    showToast('⚠ ' + e.message, 'error');
+  } finally {
+    btn.disabled = false; btn.textContent = '✦ Save Pricing';
+  }
 }
 
 /* ════════════════════════════════════════════

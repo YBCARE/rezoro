@@ -154,7 +154,7 @@ app.get('/hero.mp4', (req, res) => {
 /* ══════════════════════════════════════════════════════════
    BOOKING INQUIRY  (index.html → submit booking)
 ═══════════════════════════════════════════════════════════ */
-const TIERS = {
+const DEFAULT_BOOKING_PRICING = {
   individual: {
     bronze: { price: 2500,  days: 3  },
     silver: { price: 4100,  days: 7  },
@@ -167,6 +167,32 @@ const TIERS = {
   }
 };
 
+app.get('/api/settings/booking-pricing', async (_req, res) => {
+  res.json(await store.settings.get('booking-pricing', DEFAULT_BOOKING_PRICING));
+});
+
+app.put('/api/admin/settings/booking-pricing', adminAuthMiddleware, async (req, res) => {
+  const body = req.body || {};
+  const toPricing = (obj, tiers) => {
+    const out = {};
+    for (const t of tiers) {
+      const price = Number(obj?.[t]?.price);
+      const days  = Number(obj?.[t]?.days);
+      if (!Number.isFinite(price) || price < 0 || !Number.isFinite(days) || days < 1) return null;
+      out[t] = { price, days };
+    }
+    return out;
+  };
+  const individual = toPricing(body.individual, ['bronze','silver','gold']);
+  const company     = toPricing(body.company, ['standard','premium','elite']);
+  if (!individual || !company) {
+    return res.status(400).json({ error: 'Every tier needs a valid non-negative price and a days value of at least 1.' });
+  }
+  const pricing = { individual, company };
+  await store.settings.set('booking-pricing', pricing);
+  res.json({ success: true, pricing });
+});
+
 app.post('/api/booking-inquiry', rateLimit('booking', 5, 60 * 60 * 1000), async (req, res) => {
   try {
     const { name, email, phone, company, celebName, tier, tierType, message } = req.body;
@@ -176,7 +202,8 @@ app.post('/api/booking-inquiry', rateLimit('booking', 5, 60 * 60 * 1000), async 
 
     const typeKey = (tierType||'individual').toLowerCase();
     const tierKey = (tier||'').toLowerCase();
-    const tierData = (TIERS[typeKey]||{})[tierKey] || { price: 0, days: 0 };
+    const bookingPricing = await store.settings.get('booking-pricing', DEFAULT_BOOKING_PRICING);
+    const tierData = (bookingPricing[typeKey]||{})[tierKey] || { price: 0, days: 0 };
 
     const ref = makeRef();
     const booking = {
