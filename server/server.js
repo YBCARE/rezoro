@@ -483,6 +483,30 @@ app.delete('/api/admin/celebrities/:id', adminAuthMiddleware, async (req, res) =
 });
 
 /* ══════════════════════════════════════════════════════════
+   FAN CARD PRICING  (editable tier prices, shown on fans.html)
+═══════════════════════════════════════════════════════════ */
+const DEFAULT_FANCARD_PRICING = { gold: 5000, silver: 4100, bronze: 2500 };
+
+app.get('/api/settings/fancard-pricing', async (_req, res) => {
+  res.json(await store.settings.get('fancard-pricing', DEFAULT_FANCARD_PRICING));
+});
+
+app.put('/api/admin/settings/fancard-pricing', adminAuthMiddleware, async (req, res) => {
+  const { gold, silver, bronze } = req.body || {};
+  const toPositiveNumber = v => { const n = Number(v); return Number.isFinite(n) && n >= 0 ? n : null; };
+  const pricing = {
+    gold:   toPositiveNumber(gold),
+    silver: toPositiveNumber(silver),
+    bronze: toPositiveNumber(bronze),
+  };
+  if (Object.values(pricing).some(v => v === null)) {
+    return res.status(400).json({ error: 'gold, silver and bronze must all be valid non-negative numbers.' });
+  }
+  await store.settings.set('fancard-pricing', pricing);
+  res.json({ success: true, pricing });
+});
+
+/* ══════════════════════════════════════════════════════════
    FAN CARD  (existing + link to user account)
 ═══════════════════════════════════════════════════════════ */
 app.post('/api/fancard', rateLimit('fancard', 5, 60 * 60 * 1000), optionalAuthMiddleware, upload.single('photo'), async (req, res) => {

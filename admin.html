@@ -798,23 +798,37 @@ async function gateUnlock(){
     <div class="kpi-grid">
       <div class="kpi" style="--kpi-color:#C9A84C;--kpi-bg:rgba(201,168,76,.1);">
         <div class="kpi-lbl">Gold Tier <div class="kpi-ico">🥇</div></div>
-        <div class="kpi-val">$5,000</div>
+        <div class="kpi-val" id="fcp-kpi-gold">$5,000</div>
         <div class="kpi-d" style="color:var(--t3);">per fan card</div>
       </div>
       <div class="kpi" style="--kpi-color:#A8B8C4;--kpi-bg:rgba(168,184,196,.1);">
         <div class="kpi-lbl">Silver Tier <div class="kpi-ico">🥈</div></div>
-        <div class="kpi-val">$4,100</div>
+        <div class="kpi-val" id="fcp-kpi-silver">$4,100</div>
         <div class="kpi-d" style="color:var(--t3);">per fan card</div>
       </div>
       <div class="kpi" style="--kpi-color:#C07848;--kpi-bg:rgba(192,120,72,.1);">
         <div class="kpi-lbl">Bronze Tier <div class="kpi-ico">🥉</div></div>
-        <div class="kpi-val">$2,500</div>
+        <div class="kpi-val" id="fcp-kpi-bronze">$2,500</div>
         <div class="kpi-d" style="color:var(--t3);">per fan card</div>
       </div>
       <div class="kpi" style="--kpi-color:var(--gold);--kpi-bg:var(--gold-d);">
         <div class="kpi-lbl">Custom Added <div class="kpi-ico">⭐</div></div>
         <div class="kpi-val" id="fc-total-count">0</div>
         <div class="kpi-d" style="color:var(--t3);">via admin</div>
+      </div>
+    </div>
+    <div class="tbl-card" style="margin-bottom:1.2rem;">
+      <div class="tbl-header">
+        <div class="tbl-title">Fan Card Pricing</div>
+        <div class="tbl-meta">Changes apply instantly on fans.html for every celebrity, at every tier.</div>
+      </div>
+      <div style="padding:1.4rem;">
+        <div class="f-row" style="grid-template-columns:1fr 1fr 1fr;">
+          <div class="f-grp"><label class="f-lbl">Gold Price (USD)</label><input class="f-in" type="number" min="0" step="1" id="fcp-gold"></div>
+          <div class="f-grp"><label class="f-lbl">Silver Price (USD)</label><input class="f-in" type="number" min="0" step="1" id="fcp-silver"></div>
+          <div class="f-grp"><label class="f-lbl">Bronze Price (USD)</label><input class="f-in" type="number" min="0" step="1" id="fcp-bronze"></div>
+        </div>
+        <button class="f-sub" id="fcp-save-btn" onclick="saveFanCardPricing()" style="max-width:260px;">✦ Save Pricing</button>
       </div>
     </div>
     <div class="tbl-card">
@@ -962,7 +976,7 @@ function nav(name, el){
   document.getElementById('tbCrumb').textContent = label;
   if(PAGE_MAP[name]==='generic') document.getElementById('pgGenericTitle').textContent = label;
   if(name==='celeb-editor') renderCelebEditor();
-  if(name==='fancards') renderFanTable();
+  if(name==='fancards') { renderFanTable(); loadFanCardPricing(); }
   if(name==='incoming') loadIncoming();
   if(name==='newsletter') loadSubscribers();
   if(window.innerWidth <= 768) toggleSB(false);
@@ -1157,6 +1171,51 @@ function renderCelebEditor(){
       </td>
     </tr>
   `).join('');
+}
+
+/* ════════════════════════════════════════════
+   FAN CARD PRICING
+════════════════════════════════════════════ */
+const fmtUsd = n => '$' + Number(n).toLocaleString('en-US');
+
+async function loadFanCardPricing(){
+  try {
+    const r = await fetch('/api/settings/fancard-pricing');
+    const p = await r.json();
+    ['gold','silver','bronze'].forEach(t=>{
+      document.getElementById('fcp-'+t).value = p[t];
+      document.getElementById('fcp-kpi-'+t).textContent = fmtUsd(p[t]);
+    });
+  } catch(e){}
+}
+
+async function saveFanCardPricing(){
+  const btn = document.getElementById('fcp-save-btn');
+  const pricing = {
+    gold:   document.getElementById('fcp-gold').value,
+    silver: document.getElementById('fcp-silver').value,
+    bronze: document.getElementById('fcp-bronze').value,
+  };
+  if (Object.values(pricing).some(v => v==='' || Number(v) < 0)) {
+    showToast('⚠ Enter a valid price for all three tiers.', 'error'); return;
+  }
+  btn.disabled = true; btn.textContent = 'Saving…';
+  try {
+    const r = await fetch('/api/admin/settings/fancard-pricing', {
+      method: 'PUT',
+      headers: adminHeaders({ 'Content-Type': 'application/json' }),
+      body: JSON.stringify(pricing)
+    });
+    if (r.status === 401) { adminSignOut(); return; }
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.error || 'Failed to save pricing.');
+    ['gold','silver','bronze'].forEach(t=> document.getElementById('fcp-kpi-'+t).textContent = fmtUsd(pricing[t]));
+    showToast('✦ Fan card pricing updated — live on fans.html now.');
+  } catch(e) {
+    showToast('⚠ ' + e.message, 'error');
+  } finally {
+    btn.disabled = false; btn.textContent = '✦ Save Pricing';
+  }
 }
 
 /* ════════════════════════════════════════════

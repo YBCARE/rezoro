@@ -29,6 +29,7 @@ function memoryStore() {
   const subscribers = new Map(); // email → subscriber
   const editions = new Map();    // key → running count
   const celebrities = new Map(); // id → { id, name, tier, knownFor, trailerUrl, visible, wiki, photo:{buffer,mime}|null, createdAt }
+  const settings = new Map();    // key → value
 
   return {
     persistent: false,
@@ -95,6 +96,10 @@ function memoryStore() {
       async all() { return [...subscribers.values()].sort(byCreatedDesc); },
       async emails() { return [...subscribers.keys()]; },
     },
+    settings: {
+      async get(key, fallback = null) { return settings.has(key) ? settings.get(key) : fallback; },
+      async set(key, value) { settings.set(key, value); return value; },
+    },
   };
 }
 
@@ -139,6 +144,10 @@ async function postgresStore() {
       data       JSONB NOT NULL,
       photo      BYTEA,
       photo_mime TEXT
+    );
+    CREATE TABLE IF NOT EXISTS settings (
+      key   TEXT PRIMARY KEY,
+      value JSONB NOT NULL
     );
   `);
 
@@ -261,6 +270,19 @@ async function postgresStore() {
       async remove(id) {
         const r = await q('DELETE FROM celebrities WHERE id = $1', [id]);
         return r.rowCount > 0;
+      },
+    },
+    settings: {
+      async get(key, fallback = null) {
+        const r = await q('SELECT value FROM settings WHERE key = $1', [key]);
+        return r.rows[0] ? r.rows[0].value : fallback;
+      },
+      async set(key, value) {
+        await q(
+          'INSERT INTO settings(key, value) VALUES($1, $2) ON CONFLICT(key) DO UPDATE SET value = $2',
+          [key, JSON.stringify(value)]
+        );
+        return value;
       },
     },
   };

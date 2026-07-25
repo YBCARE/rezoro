@@ -182,7 +182,7 @@
     <div class="tier-grid">
       <div class="tier-card" id="tier-gold" onclick="selectTier('gold')">
         <div class="tier-name">Gold</div>
-        <div class="tier-price gold">$5,000</div>
+        <div class="tier-price gold" id="tp-gold">$5,000</div>
         <div class="tier-features">
           <div class="tier-feat">Top 10 A-list celebrities</div>
           <div class="tier-feat">Holographic gold-foil card</div>
@@ -194,7 +194,7 @@
       </div>
       <div class="tier-card" id="tier-silver" onclick="selectTier('silver')">
         <div class="tier-name">Silver</div>
-        <div class="tier-price silver">$4,100</div>
+        <div class="tier-price silver" id="tp-silver">$4,100</div>
         <div class="tier-features">
           <div class="tier-feat">10 international stars</div>
           <div class="tier-feat">Chrome-finish silver card</div>
@@ -206,7 +206,7 @@
       </div>
       <div class="tier-card" id="tier-bronze" onclick="selectTier('bronze')">
         <div class="tier-name">Bronze</div>
-        <div class="tier-price bronze">$2,500</div>
+        <div class="tier-price bronze" id="tp-bronze">$2,500</div>
         <div class="tier-features">
           <div class="tier-feat">6 rising stars</div>
           <div class="tier-feat">Copper-metallic finish card</div>
@@ -390,7 +390,23 @@ const DEFAULT_CELEBS = [
   {id:'mhenderson',  name:'Martin Henderson',    tier:'bronze', emoji:'🎬', genre:'TV · Drama',      wiki:'Martin_Henderson_(actor)'},
   {id:'reggold',     name:'Ryan Eggold',         tier:'bronze', emoji:'🎬', genre:'TV · Drama',      wiki:'Ryan_Eggold'},
 ];
-const TIER_PRICES = {gold:'$5,000', silver:'$4,100', bronze:'$2,500'};
+// Defaults shown until the real, admin-editable prices load from the server.
+let TIER_PRICES = {gold:'$5,000', silver:'$4,100', bronze:'$2,500'};
+const fmtPrice = n => '$' + Number(n).toLocaleString('en-US');
+
+async function loadPricing(){
+  try {
+    const r = await fetch('/api/settings/fancard-pricing');
+    if (!r.ok) return;
+    const p = await r.json();
+    TIER_PRICES = { gold: fmtPrice(p.gold), silver: fmtPrice(p.silver), bronze: fmtPrice(p.bronze) };
+    ['gold','silver','bronze'].forEach(t=>{
+      const el = document.getElementById('tp-'+t);
+      if (el) el.textContent = TIER_PRICES[t];
+    });
+    if (currentTier) updatePreview();
+  } catch(e){}
+}
 const initialsOf = name => String(name||'').trim().split(/\s+/).map(w=>w[0]).slice(0,2).join('').toUpperCase();
 const esc = s => String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 let currentTier=null, currentCeleb=null, allCelebs=[], searchQ='';
@@ -596,6 +612,7 @@ function showFanToast(msg, type='info'){
 }
 
 loadAllCelebs().then(()=>{ if(currentTier) renderPickGrid(); });
+loadPricing();
 window.addEventListener('storage', e=>{
   if(e.key==='rezoro_celeb_data'){
     loadAllCelebs().then(()=>{ if(currentTier) renderPickGrid(); updatePreview(); });
