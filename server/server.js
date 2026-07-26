@@ -552,6 +552,30 @@ app.put('/api/admin/settings/fancard-pricing', adminAuthMiddleware, async (req, 
 });
 
 /* ══════════════════════════════════════════════════════════
+   FAN CARD BENEFITS  (editable tier feature lists, shown on fans.html)
+═══════════════════════════════════════════════════════════ */
+const DEFAULT_FANCARD_BENEFITS = {
+  gold:   ['Top 10 A-list celebrities', 'Holographic gold-foil card', 'Digital & physical edition', "Numbered collector's certificate", 'Priority concierge support'],
+  silver: ['10 international stars', 'Chrome-finish silver card', 'Digital & physical edition', 'Numbered limited edition', 'Standard support'],
+  bronze: ['6 rising stars', 'Copper-metallic finish card', 'Digital edition', 'Standard edition', 'Email support'],
+};
+
+app.get('/api/settings/fancard-benefits', async (_req, res) => {
+  res.json(await store.settings.get('fancard-benefits', DEFAULT_FANCARD_BENEFITS));
+});
+
+app.put('/api/admin/settings/fancard-benefits', adminAuthMiddleware, async (req, res) => {
+  const { gold, silver, bronze } = req.body || {};
+  const toList = v => Array.isArray(v) ? v.map(s => String(s).trim()).filter(Boolean).slice(0, 12) : null;
+  const benefits = { gold: toList(gold), silver: toList(silver), bronze: toList(bronze) };
+  if (Object.values(benefits).some(v => v === null || v.length === 0)) {
+    return res.status(400).json({ error: 'gold, silver and bronze must each have at least one benefit line.' });
+  }
+  await store.settings.set('fancard-benefits', benefits);
+  res.json({ success: true, benefits });
+});
+
+/* ══════════════════════════════════════════════════════════
    FAN CARD  (existing + link to user account)
 ═══════════════════════════════════════════════════════════ */
 

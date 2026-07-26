@@ -185,37 +185,19 @@
       <div class="tier-card" id="tier-gold" onclick="selectTier('gold')">
         <div class="tier-name">Gold</div>
         <div class="tier-price gold" id="tp-gold">$5,000</div>
-        <div class="tier-features">
-          <div class="tier-feat">Top 10 A-list celebrities</div>
-          <div class="tier-feat">Holographic gold-foil card</div>
-          <div class="tier-feat">Digital & physical edition</div>
-          <div class="tier-feat">Numbered collector's certificate</div>
-          <div class="tier-feat">Priority concierge support</div>
-        </div>
+        <div class="tier-features" id="tf-gold"></div>
         <span class="tier-select-badge" id="badge-gold">Select Gold</span>
       </div>
       <div class="tier-card" id="tier-silver" onclick="selectTier('silver')">
         <div class="tier-name">Silver</div>
         <div class="tier-price silver" id="tp-silver">$4,100</div>
-        <div class="tier-features">
-          <div class="tier-feat">10 international stars</div>
-          <div class="tier-feat">Chrome-finish silver card</div>
-          <div class="tier-feat">Digital & physical edition</div>
-          <div class="tier-feat">Numbered limited edition</div>
-          <div class="tier-feat">Standard support</div>
-        </div>
+        <div class="tier-features" id="tf-silver"></div>
         <span class="tier-select-badge" id="badge-silver">Select Silver</span>
       </div>
       <div class="tier-card" id="tier-bronze" onclick="selectTier('bronze')">
         <div class="tier-name">Bronze</div>
         <div class="tier-price bronze" id="tp-bronze">$2,500</div>
-        <div class="tier-features">
-          <div class="tier-feat">6 rising stars</div>
-          <div class="tier-feat">Copper-metallic finish card</div>
-          <div class="tier-feat">Digital edition</div>
-          <div class="tier-feat">Standard edition</div>
-          <div class="tier-feat">Email support</div>
-        </div>
+        <div class="tier-features" id="tf-bronze"></div>
         <span class="tier-select-badge" id="badge-bronze">Select Bronze</span>
       </div>
     </div>
@@ -279,6 +261,20 @@ async function loadPricing(){
       if (el) el.textContent = TIER_PRICES[t];
     });
     if (currentTier) updatePreview();
+  } catch(e){}
+}
+
+async function loadBenefits(){
+  try {
+    const r = await fetch('/api/settings/fancard-benefits');
+    if (!r.ok) return;
+    const b = await r.json();
+    ['gold','silver','bronze'].forEach(t=>{
+      const el = document.getElementById('tf-'+t);
+      if (el && Array.isArray(b[t])) {
+        el.innerHTML = b[t].map(f=>`<div class="tier-feat">${esc(f)}</div>`).join('');
+      }
+    });
   } catch(e){}
 }
 const initialsOf = name => String(name||'').trim().split(/\s+/).map(w=>w[0]).slice(0,2).join('').toUpperCase();
@@ -470,6 +466,7 @@ function showFanToast(msg, type='info'){
 
 loadAllCelebs().then(()=>{ if(currentTier) renderPickGrid(); });
 loadPricing();
+loadBenefits();
 
 </script>
 </body>

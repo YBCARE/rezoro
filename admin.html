@@ -554,6 +554,20 @@ async function gateUnlock(){
         <button class="f-sub" id="fcp-save-btn" onclick="saveFanCardPricing()" style="max-width:260px;">✦ Save Pricing</button>
       </div>
     </div>
+    <div class="tbl-card" style="margin-bottom:1.2rem;">
+      <div class="tbl-header">
+        <div class="tbl-title">Fan Card Benefits</div>
+        <div class="tbl-meta">One benefit per line. Shown as the feature list under each tier on fans.html.</div>
+      </div>
+      <div style="padding:1.4rem;">
+        <div class="f-row" style="grid-template-columns:1fr 1fr 1fr;">
+          <div class="f-grp"><label class="f-lbl">Gold Benefits</label><textarea class="f-in" id="fcb-gold" rows="5" style="resize:vertical;font-family:inherit;"></textarea></div>
+          <div class="f-grp"><label class="f-lbl">Silver Benefits</label><textarea class="f-in" id="fcb-silver" rows="5" style="resize:vertical;font-family:inherit;"></textarea></div>
+          <div class="f-grp"><label class="f-lbl">Bronze Benefits</label><textarea class="f-in" id="fcb-bronze" rows="5" style="resize:vertical;font-family:inherit;"></textarea></div>
+        </div>
+        <button class="f-sub" id="fcb-save-btn" onclick="saveFanCardBenefits()" style="max-width:260px;">✦ Save Benefits</button>
+      </div>
+    </div>
     <div class="tbl-card">
       <div class="tbl-header">
         <div class="tbl-title">Celebrity Roster</div>
@@ -681,7 +695,7 @@ function nav(name, el){
   const label = LABELS[name]||name;
   document.getElementById('tbTitle').textContent = label;
   document.getElementById('tbCrumb').textContent = label;
-  if(name==='fancards') { renderFanTable(); loadFanCardPricing(); }
+  if(name==='fancards') { renderFanTable(); loadFanCardPricing(); loadFanCardBenefits(); }
   if(name==='settings') loadBookingPricing();
   if(name==='incoming') loadIncoming();
   if(name==='newsletter') loadSubscribers();
@@ -810,6 +824,45 @@ async function saveFanCardPricing(){
     showToast('⚠ ' + e.message, 'error');
   } finally {
     btn.disabled = false; btn.textContent = '✦ Save Pricing';
+  }
+}
+
+async function loadFanCardBenefits(){
+  try {
+    const r = await fetch('/api/settings/fancard-benefits');
+    const b = await r.json();
+    ['gold','silver','bronze'].forEach(t=>{
+      if (Array.isArray(b[t])) document.getElementById('fcb-'+t).value = b[t].join('\n');
+    });
+  } catch(e){}
+}
+
+async function saveFanCardBenefits(){
+  const btn = document.getElementById('fcb-save-btn');
+  const toLines = s => s.split('\n').map(l=>l.trim()).filter(Boolean);
+  const benefits = {
+    gold:   toLines(document.getElementById('fcb-gold').value),
+    silver: toLines(document.getElementById('fcb-silver').value),
+    bronze: toLines(document.getElementById('fcb-bronze').value),
+  };
+  if (Object.values(benefits).some(v => v.length===0)) {
+    showToast('⚠ Enter at least one benefit line for all three tiers.', 'error'); return;
+  }
+  btn.disabled = true; btn.textContent = 'Saving…';
+  try {
+    const r = await fetch('/api/admin/settings/fancard-benefits', {
+      method: 'PUT',
+      headers: adminHeaders({ 'Content-Type': 'application/json' }),
+      body: JSON.stringify(benefits)
+    });
+    if (r.status === 401) { adminSignOut(); return; }
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.error || 'Failed to save benefits.');
+    showToast('✦ Fan card benefits updated — live on fans.html now.');
+  } catch(e) {
+    showToast('⚠ ' + e.message, 'error');
+  } finally {
+    btn.disabled = false; btn.textContent = '✦ Save Benefits';
   }
 }
 
