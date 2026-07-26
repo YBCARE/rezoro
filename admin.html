@@ -557,7 +557,10 @@ async function gateUnlock(){
     <div class="tbl-card">
       <div class="tbl-header">
         <div class="tbl-title">Celebrity Roster</div>
-        <div class="tbl-meta">Added here → appear on the homepage &amp; fans.html automatically</div>
+        <div class="tbl-meta">Includes the full built-in roster — edit, hide, or replace any celebrity's photo</div>
+      </div>
+      <div style="padding:1rem 1.4rem 0;">
+        <input class="f-in" type="text" placeholder="Search celebrities…" oninput="filterFanCelebs(this.value)" style="max-width:340px;">
       </div>
       <div style="overflow-x:auto;">
         <table>
@@ -618,12 +621,17 @@ async function gateUnlock(){
 <button class="mob-fab" onclick="toggleSB()">☰</button>
 <div class="toast" id="toast"></div>
 
-<!-- ══ MODAL: ADD FAN CELEBRITY ══════════════════════════ -->
+<!-- ══ MODAL: ADD / EDIT CELEBRITY ════════════════════════ -->
 <div class="overlay" id="addFanCelebOverlay" onclick="closeAddFanCelebOutside(event)">
   <div class="modal" style="max-width:480px;">
     <button class="m-close" onclick="closeAddFanCeleb()">✕</button>
-    <div class="m-title">Add Celebrity</div>
-    <p class="m-sub">Appears on the homepage roster and the Fan Cards page immediately after saving.</p>
+    <div class="m-title" id="fc-modal-title">Add Celebrity</div>
+    <p class="m-sub" id="fc-modal-sub">Appears on the homepage roster and the Fan Cards page immediately after saving.</p>
+    <input type="hidden" id="fc-edit-id" value="">
+    <div id="fc-current-photo" style="display:none;margin-bottom:1rem;">
+      <img id="fc-current-photo-img" style="width:64px;height:64px;border-radius:50%;object-fit:cover;object-position:center top;border:1px solid var(--border);">
+      <span style="font-size:.72rem;color:var(--t3);margin-left:.6rem;">Current photo — upload a new one below to replace it.</span>
+    </div>
     <div class="f-row">
       <div class="f-grp"><label class="f-lbl">Celebrity Name *</label><input class="f-in" type="text" id="fc-name" placeholder="e.g. Ana de Armas"></div>
       <div class="f-grp"><label class="f-lbl">Tier *</label>
@@ -635,13 +643,13 @@ async function gateUnlock(){
       </div>
     </div>
     <div class="f-grp"><label class="f-lbl">Known For</label><input class="f-in" type="text" id="fc-known" placeholder="e.g. No Time to Die, Blade Runner 2049"></div>
-    <div class="f-grp"><label class="f-lbl">Photo <span style="color:var(--t3);font-weight:400;">(shown on the fan card &amp; picker — required to look real)</span></label>
+    <div class="f-grp"><label class="f-lbl">Photo <span style="color:var(--t3);font-weight:400;" id="fc-photo-hint">(shown on the fan card &amp; picker — required to look real)</span></label>
       <input class="f-in" type="file" id="fc-photo" accept="image/*" style="padding:.5rem .8rem;cursor:pointer;">
     </div>
     <div class="f-grp"><label class="f-lbl">YouTube Trailer URL <span style="color:var(--t3);font-weight:400;">(optional)</span></label><input class="f-in" type="text" id="fc-trailer" placeholder="https://youtube.com/watch?v=..."></div>
     <div class="f-grp"><label class="f-lbl">Visibility</label>
       <select class="f-sel" id="fc-visible">
-        <option value="1">● Visible on Fan Cards Page</option>
+        <option value="1">● Visible</option>
         <option value="0">○ Hidden</option>
       </select>
     </div>
@@ -690,6 +698,11 @@ function toggleSB(force){
   sb.classList.toggle('open', open);
   ov.classList.toggle('on', open);
 }
+
+/* ════════════════════════════════════════════
+   ESCAPING
+════════════════════════════════════════════ */
+function esc(s){ return String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 
 /* ════════════════════════════════════════════
    TOAST
@@ -814,26 +827,37 @@ async function loadFanCelebs(){
   } catch(e){ fanCelebs=[]; }
 }
 
-async function renderFanTable(){
-  await loadFanCelebs();
+let fanCelebSearch = '';
+const initialsOfAdmin = name => String(name||'').trim().split(/\s+/).map(w=>w[0]).slice(0,2).join('').toUpperCase();
+
+function filterFanCelebs(q){ fanCelebSearch = q; renderFanCelebRows(); }
+
+function renderFanCelebRows(){
   const tbody=document.getElementById('fanCelebTable');
   const empty=document.getElementById('fc-empty');
-  const counter=document.getElementById('fc-total-count');
   if(!tbody) return;
-  counter.textContent=fanCelebs.length;
-  if(!fanCelebs.length){ tbody.innerHTML=''; if(empty) empty.style.display='block'; return; }
+  const q = fanCelebSearch.trim().toLowerCase();
+  const list = q ? fanCelebs.filter(c=>c.name.toLowerCase().includes(q)) : fanCelebs;
+  if(!list.length){ tbody.innerHTML=''; if(empty){ empty.style.display='block'; empty.querySelector('div:last-child').innerHTML = q ? `No celebrities match "${esc(q)}".` : `No celebrities added yet. Click <strong style="color:var(--gold);">+ Add Celebrity</strong> to get started.`; } return; }
   if(empty) empty.style.display='none';
   const ts={gold:'b-gold',silver:'b-silver',bronze:'b-bronze'};
   const tl={gold:'🥇 Gold',silver:'🥈 Silver',bronze:'🥉 Bronze'};
-  tbody.innerHTML=fanCelebs.map((c)=>`
+  tbody.innerHTML=list.map((c)=>`
     <tr>
-      <td><div class="td-row"><div class="td-av" style="overflow:hidden;">${c.hasPhoto?`<img src="/api/celebrities/${c.id}/photo" alt="${esc(c.name)}" style="width:100%;height:100%;object-fit:cover;object-position:center top;">`:(c.emoji||'🎬')}</div><div><div class="td-p">${esc(c.name)}</div><div class="td-s">${esc(c.knownFor||'—')}</div></div></div></td>
+      <td><div class="td-row"><div class="td-av" style="overflow:hidden;font-family:var(--font-d, serif);">${c.hasPhoto?`<img src="/api/celebrities/${c.id}/photo" alt="${esc(c.name)}" style="width:100%;height:100%;object-fit:cover;object-position:center top;">`:initialsOfAdmin(c.name)}</div><div><div class="td-p">${esc(c.name)}</div><div class="td-s">${esc(c.knownFor||'—')}</div></div></div></td>
       <td><span class="badge ${ts[c.tier]||'b-gold'}">${tl[c.tier]||c.tier}</span></td>
       <td style="color:var(--t2);font-size:.78rem;">${esc(c.knownFor||'—')}</td>
-      <td>${c.hasPhoto?'<span style="color:#3ecf8e;">● Photo set</span>':'<span style="color:#f87171;">○ No photo</span>'}</td>
+      <td>${c.hasPhoto?'<span style="color:#3ecf8e;">● Photo set</span>':'<span style="color:var(--t3);">○ Default</span>'}</td>
       <td><button class="td-btn ${c.visible!==false?'gold':''}" onclick="toggleFanVis('${c.id}')">${c.visible!==false?'● Visible':'○ Hidden'}</button></td>
-      <td><button class="td-btn danger" onclick="removeFanCeleb('${c.id}')">Remove</button></td>
+      <td><div class="td-acts"><button class="td-btn" onclick="openEditFanCeleb('${c.id}')">Edit</button><button class="td-btn danger" onclick="removeFanCeleb('${c.id}')">Remove</button></div></td>
     </tr>`).join('');
+}
+
+async function renderFanTable(){
+  await loadFanCelebs();
+  const counter=document.getElementById('fc-total-count');
+  if(counter) counter.textContent=fanCelebs.length;
+  renderFanCelebRows();
 }
 
 async function toggleFanVis(id){
@@ -857,10 +881,51 @@ async function removeFanCeleb(id){
   showToast(`${name} removed from Fan Cards.`);
 }
 
-function openAddFanCeleb(){ document.getElementById('addFanCelebOverlay').classList.add('open'); document.body.style.overflow='hidden'; }
+function resetFanCelebForm(){
+  ['fc-name','fc-known','fc-trailer'].forEach(id=>{ const el=document.getElementById(id); if(el) el.value=''; });
+  document.getElementById('fc-photo').value='';
+  document.getElementById('fc-tier').selectedIndex=0;
+  document.getElementById('fc-visible').selectedIndex=0;
+  document.getElementById('fc-edit-id').value='';
+  document.getElementById('fc-current-photo').style.display='none';
+}
+
+function openAddFanCeleb(){
+  resetFanCelebForm();
+  document.getElementById('fc-modal-title').textContent='Add Celebrity';
+  document.getElementById('fc-modal-sub').textContent='Appears on the homepage roster and the Fan Cards page immediately after saving.';
+  document.getElementById('fc-photo-hint').textContent='(shown on the fan card & picker — required to look real)';
+  document.getElementById('fc-submit-btn').textContent='✦ Add to Fan Cards';
+  document.getElementById('addFanCelebOverlay').classList.add('open'); document.body.style.overflow='hidden';
+}
+
+function openEditFanCeleb(id){
+  const c = fanCelebs.find(x=>x.id===id);
+  if(!c) return;
+  resetFanCelebForm();
+  document.getElementById('fc-edit-id').value = id;
+  document.getElementById('fc-name').value = c.name;
+  document.getElementById('fc-tier').value = c.tier;
+  document.getElementById('fc-known').value = c.knownFor || '';
+  document.getElementById('fc-trailer').value = c.trailerUrl || '';
+  document.getElementById('fc-visible').value = c.visible !== false ? '1' : '0';
+  document.getElementById('fc-modal-title').textContent = 'Edit Celebrity';
+  document.getElementById('fc-modal-sub').textContent = 'Changes apply immediately on the homepage roster and Fan Cards page.';
+  document.getElementById('fc-photo-hint').textContent = '(optional — only upload to replace the current photo)';
+  document.getElementById('fc-submit-btn').textContent = '✦ Save Changes';
+  if (c.hasPhoto) {
+    document.getElementById('fc-current-photo-img').src = `/api/celebrities/${c.id}/photo`;
+    document.getElementById('fc-current-photo').style.display = 'flex';
+    document.getElementById('fc-current-photo').style.alignItems = 'center';
+  }
+  document.getElementById('addFanCelebOverlay').classList.add('open'); document.body.style.overflow='hidden';
+}
+
 function closeAddFanCeleb(){ document.getElementById('addFanCelebOverlay').classList.remove('open'); document.body.style.overflow=''; }
 function closeAddFanCelebOutside(e){ if(e.target===document.getElementById('addFanCelebOverlay')) closeAddFanCeleb(); }
+
 async function submitAddFanCeleb(){
+  const editId=document.getElementById('fc-edit-id').value;
   const name=document.getElementById('fc-name').value.trim();
   const tier=document.getElementById('fc-tier').value;
   const known=document.getElementById('fc-known').value.trim();
@@ -870,7 +935,7 @@ async function submitAddFanCeleb(){
   if(!name){ showToast('⚠ Please enter a celebrity name.','error'); return; }
 
   const btn=document.getElementById('fc-submit-btn');
-  btn.disabled=true; btn.textContent='Adding…';
+  btn.disabled=true; btn.textContent=editId?'Saving…':'Adding…';
 
   const fd=new FormData();
   fd.append('name', name); fd.append('tier', tier);
@@ -879,22 +944,20 @@ async function submitAddFanCeleb(){
   if(photoFile) fd.append('photo', photoFile);
 
   try {
-    const r = await fetch('/api/admin/celebrities', { method:'POST', headers: adminHeaders(), body: fd });
+    const url = editId ? `/api/admin/celebrities/${editId}` : '/api/admin/celebrities';
+    const r = await fetch(url, { method: editId?'PUT':'POST', headers: adminHeaders(), body: fd });
     if (r.status === 401) { adminSignOut(); return; }
     const d = await r.json();
-    if (!r.ok) throw new Error(d.error || 'Failed to add celebrity.');
+    if (!r.ok) throw new Error(d.error || 'Failed to save celebrity.');
     await renderFanTable(); closeAddFanCeleb();
-    showToast(`✦ ${name} added to Fan Cards!`);
+    showToast(editId ? `✦ ${name} updated!` : `✦ ${name} added to Fan Cards!`);
   } catch(e) {
     showToast('⚠ ' + e.message, 'error');
   } finally {
-    btn.disabled=false; btn.textContent='✦ Add to Fan Cards';
+    btn.disabled=false; btn.textContent=editId?'✦ Save Changes':'✦ Add to Fan Cards';
   }
 
-  ['fc-name','fc-known','fc-trailer'].forEach(id=>{ const el=document.getElementById(id); if(el) el.value=''; });
-  document.getElementById('fc-photo').value='';
-  document.getElementById('fc-tier').selectedIndex=0;
-  document.getElementById('fc-visible').selectedIndex=0;
+  resetFanCelebForm();
 }
 
 /* ═══════════════════════════════════════════

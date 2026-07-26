@@ -262,125 +262,6 @@
 </div>
 
 <script>
-const DEFAULT_CELEBS = [
-  {id:'dicaprio',    name:'Leonardo DiCaprio',   tier:'gold',   emoji:'🎬', genre:'Film · Drama',    wiki:'Leonardo_DiCaprio'},
-  {id:'zendaya',     name:'Zendaya',             tier:'gold',   emoji:'⭐', genre:'Film · Fashion',  wiki:'Zendaya'},
-  {id:'cruise',      name:'Tom Cruise',          tier:'gold',   emoji:'🏆', genre:'Film · Action',   wiki:'Tom_Cruise'},
-  {id:'johnson',     name:'Dwayne Johnson',      tier:'gold',   emoji:'💪', genre:'Film · Action',   wiki:'Dwayne_Johnson'},
-  {id:'johansson',   name:'Scarlett Johansson',  tier:'gold',   emoji:'🎭', genre:'Film · Action',   wiki:'Scarlett_Johansson'},
-  {id:'rdj',         name:'Robert Downey Jr',    tier:'gold',   emoji:'🦸', genre:'Film · Marvel',   wiki:'Robert_Downey_Jr.'},
-  {id:'pitt',        name:'Brad Pitt',           tier:'gold',   emoji:'🎬', genre:'Film · Drama',    wiki:'Brad_Pitt'},
-  {id:'wsmith',      name:'Will Smith',          tier:'gold',   emoji:'🎤', genre:'Film · Comedy',   wiki:'Will_Smith'},
-  {id:'washington',  name:'Denzel Washington',   tier:'gold',   emoji:'🎬', genre:'Film · Drama',    wiki:'Denzel_Washington'},
-  {id:'freeman',     name:'Morgan Freeman',      tier:'gold',   emoji:'🎙', genre:'Film · Drama',    wiki:'Morgan_Freeman'},
-  {id:'ajolie',      name:'Angelina Jolie',      tier:'gold',   emoji:'👑', genre:'Film · Drama',    wiki:'Angelina_Jolie'},
-  {id:'mdamon',      name:'Matt Damon',          tier:'gold',   emoji:'🎬', genre:'Film · Drama',    wiki:'Matt_Damon'},
-  {id:'kreeves',     name:'Keanu Reeves',        tier:'gold',   emoji:'🥷', genre:'Film · Action',   wiki:'Keanu_Reeves'},
-  {id:'bcumberbatch',name:'Benedict Cumberbatch',tier:'gold',   emoji:'🎩', genre:'Film · Drama',    wiki:'Benedict_Cumberbatch'},
-  {id:'jroberts',    name:'Julia Roberts',       tier:'gold',   emoji:'😊', genre:'Film · Drama',    wiki:'Julia_Roberts'},
-  {id:'bcooper',     name:'Bradley Cooper',      tier:'gold',   emoji:'🎬', genre:'Film · Drama',    wiki:'Bradley_Cooper'},
-  {id:'lneeson',     name:'Liam Neeson',         tier:'gold',   emoji:'💥', genre:'Film · Action',   wiki:'Liam_Neeson'},
-  {id:'imckellen',   name:'Ian McKellen',        tier:'gold',   emoji:'🧙', genre:'Film · Fantasy',  wiki:'Ian_McKellen'},
-  {id:'hjackman',    name:'Hugh Jackman',        tier:'gold',   emoji:'🐺', genre:'Film · Action',   wiki:'Hugh_Jackman'},
-  {id:'hford',       name:'Harrison Ford',       tier:'gold',   emoji:'🚀', genre:'Film · Action',   wiki:'Harrison_Ford'},
-  {id:'ceastwood',   name:'Clint Eastwood',      tier:'gold',   emoji:'🤠', genre:'Film · Western',  wiki:'Clint_Eastwood'},
-  {id:'sjackson',    name:'Samuel L. Jackson',   tier:'gold',   emoji:'😎', genre:'Film · Action',   wiki:'Samuel_L._Jackson'},
-  {id:'rgosling',    name:'Ryan Gosling',        tier:'gold',   emoji:'🎬', genre:'Film · Drama',    wiki:'Ryan_Gosling'},
-  {id:'ggadot',      name:'Gal Gadot',           tier:'gold',   emoji:'🦸', genre:'Film · Action',   wiki:'Gal_Gadot'},
-  {id:'pmccartney',  name:'Paul McCartney',      tier:'gold',   emoji:'🎸', genre:'Music · Rock',    wiki:'Paul_McCartney'},
-  {id:'badbunny',    name:'Bad Bunny',           tier:'gold',   emoji:'🐰', genre:'Music · Reggaeton',wiki:'Bad_Bunny'},
-  {id:'depp',        name:'Johnny Depp',         tier:'silver', emoji:'🎩', genre:'Film · Drama',    wiki:'Johnny_Depp'},
-  {id:'momoa',       name:'Jason Momoa',         tier:'silver', emoji:'🌊', genre:'Film · Action',   wiki:'Jason_Momoa'},
-  {id:'reynolds',    name:'Ryan Reynolds',       tier:'silver', emoji:'😄', genre:'Film · Comedy',   wiki:'Ryan_Reynolds'},
-  {id:'hemsworth',   name:'Chris Hemsworth',     tier:'silver', emoji:'⚡', genre:'Film · Action',   wiki:'Chris_Hemsworth'},
-  {id:'robbie',      name:'Margot Robbie',       tier:'silver', emoji:'✨', genre:'Film · Drama',    wiki:'Margot_Robbie'},
-  {id:'evans',       name:'Chris Evans',         tier:'silver', emoji:'🛡', genre:'Film · Action',   wiki:'Chris_Evans_(actor)'},
-  {id:'cavill',      name:'Henry Cavill',        tier:'silver', emoji:'🦸', genre:'Film · Action',   wiki:'Henry_Cavill'},
-  {id:'theron',      name:'Charlize Theron',     tier:'silver', emoji:'👑', genre:'Film · Action',   wiki:'Charlize_Theron'},
-  {id:'costner',     name:'Kevin Costner',       tier:'silver', emoji:'🤠', genre:'Film · Drama',    wiki:'Kevin_Costner'},
-  {id:'yaman',       name:'Can Yaman',           tier:'silver', emoji:'🌟', genre:'TV · Drama',      wiki:'Can_Yaman'},
-  {id:'rpattinson',  name:'Robert Pattinson',    tier:'silver', emoji:'🧛', genre:'Film · Drama',    wiki:'Robert_Pattinson'},
-  {id:'cfarrell',    name:'Colin Farrell',       tier:'silver', emoji:'🎭', genre:'Film · Drama',    wiki:'Colin_Farrell'},
-  {id:'hunnam',      name:'Charlie Hunnam',      tier:'silver', emoji:'🏍️', genre:'Film · Action',   wiki:'Charlie_Hunnam'},
-  {id:'fraser',      name:'Brendan Fraser',      tier:'silver', emoji:'🎬', genre:'Film · Drama',    wiki:'Brendan_Fraser'},
-  {id:'heughan',     name:'Sam Heughan',         tier:'silver', emoji:'⚔️', genre:'TV · Drama',      wiki:'Sam_Heughan'},
-  {id:'chesney',     name:'Kenny Chesney',       tier:'silver', emoji:'🤠', genre:'Music · Country', wiki:'Kenny_Chesney'},
-  {id:'gstrait',     name:'George Strait',       tier:'silver', emoji:'🎸', genre:'Music · Country', wiki:'George_Strait'},
-  {id:'jparsons',    name:'Jim Parsons',         tier:'silver', emoji:'🧪', genre:'TV · Comedy',     wiki:'Jim_Parsons'},
-  {id:'fimmel',      name:'Travis Fimmel',       tier:'silver', emoji:'⚔️', genre:'TV · Drama',      wiki:'Travis_Fimmel'},
-  {id:'mharmon',     name:'Mark Harmon',         tier:'silver', emoji:'🎬', genre:'TV · Drama',      wiki:'Mark_Harmon'},
-  {id:'msheen',      name:'Michael Sheen',       tier:'silver', emoji:'🎭', genre:'Film · Drama',    wiki:'Michael_Sheen'},
-  {id:'dtennant',    name:'David Tennant',       tier:'silver', emoji:'🎭', genre:'TV · Drama',      wiki:'David_Tennant'},
-  {id:'jmcavoy',     name:'James McAvoy',        tier:'silver', emoji:'🎬', genre:'Film · Drama',    wiki:'James_McAvoy'},
-  {id:'sbaker',      name:'Simon Baker',         tier:'silver', emoji:'🎬', genre:'TV · Drama',      wiki:'Simon_Baker'},
-  {id:'gskarsgard',  name:'Gustaf Skarsgård',    tier:'silver', emoji:'⚔️', genre:'TV · Drama',      wiki:'Gustaf_Skarsgård'},
-  {id:'pmorgan',     name:'Piers Morgan',        tier:'silver', emoji:'📺', genre:'TV · News',       wiki:'Piers_Morgan'},
-  {id:'jcaviezel',   name:'Jim Caviezel',        tier:'silver', emoji:'🎬', genre:'Film · Drama',    wiki:'Jim_Caviezel'},
-  {id:'cmeloni',     name:'Christopher Meloni',  tier:'silver', emoji:'🎬', genre:'TV · Drama',      wiki:'Christopher_Meloni'},
-  {id:'tellis',      name:'Tom Ellis',           tier:'silver', emoji:'😈', genre:'TV · Drama',      wiki:'Tom_Ellis_(actor)'},
-  {id:'aturner',     name:'Aidan Turner',        tier:'silver', emoji:'⚔️', genre:'TV · Drama',      wiki:'Aidan_Turner'},
-  {id:'hyunbin',     name:'Hyun Bin',            tier:'silver', emoji:'🌟', genre:'TV · K-Drama',    wiki:'Hyun_Bin'},
-  {id:'jspader',     name:'James Spader',        tier:'silver', emoji:'🎭', genre:'TV · Drama',      wiki:'James_Spader'},
-  {id:'bpaisley',    name:'Brad Paisley',        tier:'silver', emoji:'🎸', genre:'Music · Country', wiki:'Brad_Paisley'},
-  {id:'mventimiglia',name:'Milo Ventimiglia',    tier:'silver', emoji:'🎬', genre:'TV · Drama',      wiki:'Milo_Ventimiglia'},
-  {id:'ncage',       name:'Nicolas Cage',        tier:'silver', emoji:'🎭', genre:'Film · Action',   wiki:'Nicolas_Cage'},
-  {id:'gbutler',     name:'Gerard Butler',       tier:'silver', emoji:'🏛️', genre:'Film · Action',   wiki:'Gerard_Butler'},
-  {id:'mbolton',     name:'Michael Bolton',      tier:'silver', emoji:'🎵', genre:'Music · Pop',     wiki:'Michael_Bolton'},
-  {id:'hweaving',    name:'Hugo Weaving',        tier:'silver', emoji:'🎭', genre:'Film · Drama',    wiki:'Hugo_Weaving'},
-  {id:'tkinney',     name:'Taylor Kinney',       tier:'silver', emoji:'🚒', genre:'TV · Drama',      wiki:'Taylor_Kinney'},
-  {id:'bshelton',    name:'Blake Shelton',       tier:'silver', emoji:'🎸', genre:'Music · Country', wiki:'Blake_Shelton'},
-  {id:'lbryan',      name:'Luke Bryan',          tier:'silver', emoji:'🤠', genre:'Music · Country', wiki:'Luke_Bryan'},
-  {id:'cwalken',     name:'Christopher Walken',  tier:'silver', emoji:'🎭', genre:'Film · Drama',    wiki:'Christopher_Walken'},
-  {id:'askarsgard',  name:'Alexander Skarsgård', tier:'silver', emoji:'🧛', genre:'Film · Drama',    wiki:'Alexander_Skarsgård'},
-  {id:'jbridges',    name:'Jeff Bridges',        tier:'silver', emoji:'🎬', genre:'Film · Drama',    wiki:'Jeff_Bridges'},
-  {id:'jgyllenhaal', name:'Jake Gyllenhaal',     tier:'silver', emoji:'🎬', genre:'Film · Drama',    wiki:'Jake_Gyllenhaal'},
-  {id:'ctatum',      name:'Channing Tatum',      tier:'silver', emoji:'💃', genre:'Film · Action',   wiki:'Channing_Tatum'},
-  {id:'jstatham',    name:'Jason Statham',       tier:'silver', emoji:'💪', genre:'Film · Action',   wiki:'Jason_Statham'},
-  {id:'goldman',     name:'Gary Oldman',         tier:'silver', emoji:'🎭', genre:'Film · Drama',    wiki:'Gary_Oldman'},
-  {id:'egreen',      name:'Eva Green',           tier:'silver', emoji:'🖤', genre:'Film · Drama',    wiki:'Eva_Green'},
-  {id:'wharrelson',  name:'Woody Harrelson',     tier:'silver', emoji:'🎭', genre:'Film · Drama',    wiki:'Woody_Harrelson'},
-  {id:'mmcconaughey',name:'Matthew McConaughey', tier:'silver', emoji:'🎬', genre:'Film · Drama',    wiki:'Matthew_McConaughey'},
-  {id:'bodenkirk',   name:'Bob Odenkirk',        tier:'silver', emoji:'🎭', genre:'TV · Drama',      wiki:'Bob_Odenkirk'},
-  {id:'thoward',     name:'Terrence Howard',     tier:'silver', emoji:'🎬', genre:'TV · Drama',      wiki:'Terrence_Howard'},
-  {id:'kwinnick',    name:'Katheryn Winnick',    tier:'silver', emoji:'⚔️', genre:'TV · Drama',      wiki:'Katheryn_Winnick'},
-  {id:'scrow',       name:'Sheryl Crow',         tier:'silver', emoji:'🎵', genre:'Music · Rock',    wiki:'Sheryl_Crow'},
-  {id:'methodman',   name:'Method Man',          tier:'silver', emoji:'🎤', genre:'Music · Hip-Hop', wiki:'Method_Man'},
-  {id:'mgrulfo',     name:'Manuel Garcia-Rulfo', tier:'silver', emoji:'🎬', genre:'Film · Drama',    wiki:'Manuel_Garcia-Rulfo'},
-  {id:'murphy',      name:'Cillian Murphy',      tier:'bronze', emoji:'🎬', genre:'Film · Drama',    wiki:'Cillian_Murphy'},
-  {id:'pascal',      name:'Pedro Pascal',        tier:'bronze', emoji:'🎭', genre:'Film · Drama',    wiki:'Pedro_Pascal'},
-  {id:'mescal',      name:'Paul Mescal',         tier:'bronze', emoji:'🎭', genre:'Film · Drama',    wiki:'Paul_Mescal'},
-  {id:'elba',        name:'Idris Elba',          tier:'bronze', emoji:'🎬', genre:'Film · Drama',    wiki:'Idris_Elba'},
-  {id:'hardy',       name:'Tom Hardy',           tier:'bronze', emoji:'💪', genre:'Film · Action',   wiki:'Tom_Hardy'},
-  {id:'jordan',      name:'Michael B Jordan',    tier:'bronze', emoji:'🥊', genre:'Film · Drama',    wiki:'Michael_B._Jordan'},
-  {id:'mshort',      name:'Martin Short',        tier:'bronze', emoji:'😄', genre:'Film · Comedy',   wiki:'Martin_Short'},
-  {id:'chandler',    name:'Chelsea Handler',     tier:'bronze', emoji:'😂', genre:'TV · Comedy',     wiki:'Chelsea_Handler'},
-  {id:'rsambora',    name:'Richie Sambora',      tier:'bronze', emoji:'🎸', genre:'Music · Rock',    wiki:'Richie_Sambora'},
-  {id:'dmcdermott',  name:'Dylan McDermott',     tier:'bronze', emoji:'🎬', genre:'TV · Drama',      wiki:'Dylan_McDermott'},
-  {id:'ascott',      name:'Alex Scott',          tier:'bronze', emoji:'⚽', genre:'Sports · TV',     wiki:'Alex_Scott_(presenter)'},
-  {id:'thynes',      name:'Tyler Hynes',         tier:'bronze', emoji:'🎬', genre:'TV · Drama',      wiki:'Tyler_Hynes'},
-  {id:'pgadiot',     name:'Peter Gadiot',        tier:'bronze', emoji:'🎬', genre:'TV · Drama',      wiki:'Peter_Gadiot'},
-  {id:'shauser',     name:'Stjepan Hauser',      tier:'bronze', emoji:'🎻', genre:'Music · Classical',wiki:'Stjepan_Hauser'},
-  {id:'arudolph',    name:'Adeline Rudolph',     tier:'bronze', emoji:'🎬', genre:'TV · Drama',      wiki:'Adeline_Rudolph'},
-  {id:'oerding',     name:'Johannes Oerding',    tier:'bronze', emoji:'🎵', genre:'Music · Pop',     wiki:'Johannes_Oerding'},
-  {id:'kcollins',    name:'Kaitlan Collins',     tier:'bronze', emoji:'📺', genre:'TV · News',       wiki:'Kaitlan_Collins'},
-  {id:'shoffs',      name:'Susanna Hoffs',       tier:'bronze', emoji:'🎵', genre:'Music · Rock',    wiki:'Susanna_Hoffs'},
-  {id:'salviti',     name:'Sveva Alviti',        tier:'bronze', emoji:'🎭', genre:'Film · Drama',    wiki:'Sveva_Alviti'},
-  {id:'dkagasoff',   name:'Daren Kagasoff',      tier:'bronze', emoji:'🎬', genre:'TV · Drama',      wiki:'Daren_Kagasoff'},
-  {id:'mggubler',    name:'Matthew Gray Gubler', tier:'bronze', emoji:'🎬', genre:'TV · Drama',      wiki:'Matthew_Gray_Gubler'},
-  {id:'tbyers',      name:'Trai Byers',          tier:'bronze', emoji:'🎬', genre:'TV · Drama',      wiki:'Trai_Byers'},
-  {id:'rphilippe',   name:'Ryan Phillippe',      tier:'bronze', emoji:'🎬', genre:'Film · Drama',    wiki:'Ryan_Phillippe'},
-  {id:'mboone',      name:'Megan Boone',         tier:'bronze', emoji:'🎬', genre:'TV · Drama',      wiki:'Megan_Boone'},
-  {id:'mmorrone',    name:'Michele Morrone',     tier:'bronze', emoji:'🌟', genre:'Film · Drama',    wiki:'Michele_Morrone'},
-  {id:'jsikora',     name:'Joseph Sikora',       tier:'bronze', emoji:'🎬', genre:'TV · Drama',      wiki:'Joseph_Sikora'},
-  {id:'dboreanaz',   name:'David Boreanaz',      tier:'bronze', emoji:'🎬', genre:'TV · Drama',      wiki:'David_Boreanaz'},
-  {id:'tpayne',      name:'Tom Payne',           tier:'bronze', emoji:'🎬', genre:'TV · Drama',      wiki:'Tom_Payne_(actor)'},
-  {id:'pwinchester', name:'Philip Winchester',   tier:'bronze', emoji:'🎬', genre:'TV · Drama',      wiki:'Philip_Winchester'},
-  {id:'sstapleton',  name:'Sullivan Stapleton',  tier:'bronze', emoji:'🎬', genre:'Film · Action',   wiki:'Sullivan_Stapleton'},
-  {id:'panderson',   name:'Paul Anderson',       tier:'bronze', emoji:'🎬', genre:'TV · Drama',      wiki:'Paul_Anderson_(actor)'},
-  {id:'sweber',      name:'Stanley Weber',       tier:'bronze', emoji:'🎬', genre:'Film · Drama',    wiki:'Stanley_Weber'},
-  {id:'mhenderson',  name:'Martin Henderson',    tier:'bronze', emoji:'🎬', genre:'TV · Drama',      wiki:'Martin_Henderson_(actor)'},
-  {id:'reggold',     name:'Ryan Eggold',         tier:'bronze', emoji:'🎬', genre:'TV · Drama',      wiki:'Ryan_Eggold'},
-];
 // Defaults shown until the real, admin-editable prices load from the server.
 let TIER_PRICES = {gold:'$5,000', silver:'$4,100', bronze:'$2,500'};
 const fmtPrice = n => '$' + Number(n).toLocaleString('en-US');
@@ -402,26 +283,19 @@ const initialsOf = name => String(name||'').trim().split(/\s+/).map(w=>w[0]).sli
 const esc = s => String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 let currentTier=null, currentCeleb=null, allCelebs=[], searchQ='';
 
+// The full roster — built-in names and anything added via admin — lives
+// in the database now, managed entirely from admin.html. Nothing is
+// hardcoded here anymore.
 async function loadAllCelebs(){
-  allCelebs = DEFAULT_CELEBS.map(c=>({...c}));
-  try {
-    const edits = JSON.parse(localStorage.getItem('rezoro_celeb_data')||'[]');
-    edits.forEach(ov => {
-      const idx = allCelebs.findIndex(c=>c.id===ov.id);
-      if(idx>-1){ if(ov.name) allCelebs[idx].name=ov.name; if(ov.tier) allCelebs[idx].tier=ov.tier; }
-    });
-  } catch(e){}
-  // Celebrities added via the admin panel — real photos, served by the backend
   try {
     const res = await fetch('/api/celebrities');
-    const custom = res.ok ? await res.json() : [];
-    custom.forEach(c=>{
-      allCelebs.push({
-        id: 'admin_'+c.id, celebId: c.id, name: c.name, tier: c.tier,
-        genre: c.knownFor || '', photoUrl: c.hasPhoto ? `/api/celebrities/${c.id}/photo` : null
-      });
-    });
-  } catch(e){}
+    const list = res.ok ? await res.json() : [];
+    allCelebs = list.map(c => ({
+      id: c.id, celebId: c.id, name: c.name, tier: c.tier,
+      genre: c.knownFor || '', wiki: c.wiki || '',
+      photoUrl: c.hasPhoto ? `/api/celebrities/${c.id}/photo` : null
+    }));
+  } catch(e) { allCelebs = []; }
 }
 
 function selectTier(tier){
@@ -473,9 +347,9 @@ async function loadCelebPreviewPhoto(wiki){
 function renderPickGrid(){
   const grid=document.getElementById('pickGrid');
   const q=searchQ.toLowerCase();
-  // Admin-added celebrities (celebId set) are available at every tier the buyer picks;
-  // the built-in roster keeps its assigned tier.
-  const filtered=allCelebs.filter(c=>(c.celebId||c.tier===currentTier)&&(q===''||c.name.toLowerCase().includes(q)));
+  // Every celebrity is available at whichever tier the buyer selects —
+  // tier is a card finish/price choice, not an exclusivity gate.
+  const filtered=allCelebs.filter(c=>q===''||c.name.toLowerCase().includes(q));
   if(!currentTier){ grid.innerHTML='<div class="pick-empty">Select a tier above to see available celebrities.</div>'; return; }
   if(!filtered.length){ grid.innerHTML='<div class="pick-empty">No celebrities found.</div>'; return; }
   grid.innerHTML=filtered.map(c=>`
@@ -592,11 +466,6 @@ function showFanToast(msg, type='info'){
 
 loadAllCelebs().then(()=>{ if(currentTier) renderPickGrid(); });
 loadPricing();
-window.addEventListener('storage', e=>{
-  if(e.key==='rezoro_celeb_data'){
-    loadAllCelebs().then(()=>{ if(currentTier) renderPickGrid(); updatePreview(); });
-  }
-});
 
 </script>
 </body>

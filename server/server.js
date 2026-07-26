@@ -10,6 +10,7 @@ const { randomUUID } = require('crypto');
 const { generatePrintCard }        = require('./fancard-print');
 const { generateCertificate }      = require('./certificate');
 const { createStore }              = require('./store');
+const { seedBuiltInCelebrities }   = require('./seed-celebrities');
 const {
   sendFanCardEmail,
   sendBookingConfirmation,
@@ -700,8 +701,9 @@ app.get('/api/payment/verify', rateLimit('verify', 30, 60 * 60 * 1000), async (r
 
 /* ── Start ──────────────────────────────────────────────── */
 createStore()
-  .then(s => {
+  .then(async s => {
     store = s;
+    await seedBuiltInCelebrities(store);
     app.listen(PORT, () => {
       console.log(`\n  ╔══════════════════════════════════════╗`);
       console.log(`  ║   R E Z O R O   B A C K E N D  v2    ║`);
