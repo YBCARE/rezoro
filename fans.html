@@ -103,32 +103,34 @@
     .buy-btn { width:100%; padding:1.05rem; border:none; border-radius:var(--r-xs); font-family:var(--font-s); font-size:.75rem; font-weight:700; letter-spacing:.14em; text-transform:uppercase; color:#000; background:var(--gold); transition:background .2s; }
     .buy-btn:hover { background:var(--gold-l); }
 
-    /* FAN CARD PREVIEW */
+    /* FAN CARD PREVIEW — mirrors the actual print card: big photo on top,
+       name + collector details below, so what buyers see here matches
+       what arrives in their inbox. */
     .preview-wrap { border-radius:var(--r-xl); overflow:hidden; position:relative; aspect-ratio:2.5/3.5; display:flex; flex-direction:column; width:100%; max-width:340px; margin:0 auto; }
-    .fc-gold   { background:linear-gradient(145deg,#1a1200 0%,#2d1f00 30%,#1a1200 60%,#0d0900 100%); border:1px solid rgba(201,168,76,.5); box-shadow:0 0 60px rgba(201,168,76,.18),inset 0 1px 0 rgba(201,168,76,.3); }
-    .fc-silver { background:linear-gradient(145deg,#0e1014 0%,#1a1e24 30%,#0e1014 60%,#080a0d 100%); border:1px solid rgba(168,184,196,.5); box-shadow:0 0 60px rgba(168,184,196,.1),inset 0 1px 0 rgba(168,184,196,.3); }
-    .fc-bronze { background:linear-gradient(145deg,#140a04 0%,#241408 30%,#140a04 60%,#0a0602 100%); border:1px solid rgba(192,120,72,.5); box-shadow:0 0 60px rgba(192,120,72,.14),inset 0 1px 0 rgba(192,120,72,.3); }
-    .fc-gold::before, .fc-silver::before, .fc-bronze::before { content:''; position:absolute; inset:0; z-index:1; background:linear-gradient(135deg,transparent 30%,rgba(255,255,255,.06) 50%,transparent 70%); animation:shimmer 3s ease-in-out infinite; }
-    @keyframes shimmer { 0%,100%{opacity:.4;transform:translateX(-20%)} 50%{opacity:1;transform:translateX(20%)} }
-    .fc-inner { position:relative; z-index:2; display:flex; flex-direction:column; height:100%; padding:1.6rem 1.4rem; }
-    .fc-head { display:flex; justify-content:space-between; align-items:flex-start; }
-    .fc-logo { font-family:var(--font-d); font-size:1.1rem; font-weight:600; letter-spacing:.04em; }
-    .fc-logo span { opacity:.6; }
-    .fc-badge { font-size:.55rem; font-weight:800; letter-spacing:.14em; text-transform:uppercase; padding:.28rem .65rem; border-radius:4px; }
-    .fc-badge.gold   { background:rgba(201,168,76,.2);  color:var(--gold);   border:1px solid var(--gold-border); }
-    .fc-badge.silver { background:rgba(168,184,196,.15);color:var(--silver); border:1px solid rgba(168,184,196,.3); }
-    .fc-badge.bronze { background:rgba(192,120,72,.15); color:var(--bronze); border:1px solid rgba(192,120,72,.3); }
-    .fc-body { flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:.5rem 0; }
-    .fc-avatar { font-size:4rem; margin-bottom:.5rem; width:90px; height:90px; border-radius:50%; overflow:hidden; display:flex; align-items:center; justify-content:center; }
-    .fc-avatar img { width:100%; height:100%; object-fit:cover; object-position:center top; border-radius:50%; }
-    .fc-celeb { font-family:var(--font-d); font-size:1.4rem; font-weight:600; line-height:1.2; text-align:center; }
+    .fc-gold   { background:#0d0800; border:1px solid rgba(201,168,76,.5); box-shadow:0 0 60px rgba(201,168,76,.18); }
+    .fc-silver { background:#080a0e; border:1px solid rgba(168,184,196,.5); box-shadow:0 0 60px rgba(168,184,196,.1); }
+    .fc-bronze { background:#0a0500; border:1px solid rgba(192,120,72,.5); box-shadow:0 0 60px rgba(192,120,72,.14); }
+    .fc-inner { position:relative; z-index:2; display:flex; flex-direction:column; height:100%; }
+    .fc-photo-panel { position:relative; flex:0 0 60%; background:var(--bg3); overflow:hidden; }
+    .fc-photo-panel::after { content:''; position:absolute; inset:auto 0 0 0; height:45%; background:linear-gradient(to bottom, transparent, rgba(0,0,0,.55) 55%, rgba(0,0,0,.92)); }
+    .fc-head { position:absolute; inset:0 0 auto 0; z-index:3; display:flex; justify-content:space-between; align-items:flex-start; padding:.9rem 1rem; }
+    .fc-logo { font-family:var(--font-d); font-size:1.05rem; font-weight:600; letter-spacing:.04em; color:#F0ECE4; }
+    .fc-logo span { color:var(--gold); }
+    .fc-badge { font-size:.55rem; font-weight:800; letter-spacing:.14em; text-transform:uppercase; padding:.28rem .65rem; border-radius:4px; background:rgba(0,0,0,.4); backdrop-filter:blur(4px); }
+    .fc-badge.gold   { color:var(--gold-l);   border:1px solid var(--gold-border); }
+    .fc-badge.silver { color:var(--silver); border:1px solid rgba(168,184,196,.3); }
+    .fc-badge.bronze { color:var(--bronze); border:1px solid rgba(192,120,72,.3); }
+    .fc-avatar { width:100%; height:100%; display:flex; align-items:center; justify-content:center; font-family:var(--font-d); font-size:3rem; font-weight:600; color:var(--gold); opacity:.7; }
+    .fc-avatar img { width:100%; height:100%; object-fit:cover; object-position:center top; }
+    .fc-lower { flex:1; display:flex; flex-direction:column; justify-content:space-between; padding:1rem 1.2rem 1.3rem; }
+    .fc-celeb { font-family:var(--font-d); font-size:1.35rem; font-weight:600; line-height:1.2; }
     .fc-celeb.gold   { color:var(--gold-l); }
     .fc-celeb.silver { color:var(--silver); }
     .fc-celeb.bronze { color:var(--bronze); }
-    .fc-foot { border-top:1px solid rgba(255,255,255,.08); padding-top:.9rem; }
-    .fc-fan-lbl { font-size:.56rem; font-weight:700; letter-spacing:.14em; text-transform:uppercase; color:rgba(255,255,255,.25); margin-bottom:.2rem; }
-    .fc-fan-name { font-family:var(--font-d); font-size:1rem; font-style:italic; color:rgba(255,255,255,.5); }
-    .fc-serial { font-size:.58rem; font-weight:600; letter-spacing:.1em; color:rgba(255,255,255,.2); margin-top:.5rem; }
+    .fc-foot { border-top:1px solid rgba(255,255,255,.08); padding-top:.8rem; margin-top:.8rem; }
+    .fc-fan-lbl { font-size:.56rem; font-weight:700; letter-spacing:.14em; text-transform:uppercase; color:rgba(255,255,255,.3); margin-bottom:.2rem; }
+    .fc-fan-name { font-family:var(--font-d); font-size:1rem; font-style:italic; color:rgba(255,255,255,.65); }
+    .fc-serial { font-size:.58rem; font-weight:600; letter-spacing:.1em; color:rgba(255,255,255,.28); margin-top:.5rem; }
     .fc-placeholder { display:flex; flex-direction:column; align-items:center; justify-content:center; aspect-ratio:2.5/3.5; width:100%; max-width:340px; margin:0 auto; gap:1rem; padding:2rem; text-align:center; background:var(--bg2); border:1px solid var(--border); border-radius:var(--r-xl); }
     .fc-ph-icon { font-family:var(--font-d); font-size:3rem; font-weight:600; color:var(--gold); opacity:.25; }
     .fc-ph-text { font-size:.82rem; color:var(--t3); line-height:1.6; }
@@ -378,18 +380,20 @@ function updatePreview(){
   wrap.innerHTML=`
     <div class="preview-wrap fc-${t}">
       <div class="fc-inner">
-        <div class="fc-head">
-          <div class="fc-logo">Rez<span>oro</span></div>
-          <div class="fc-badge ${t}">${t.charAt(0).toUpperCase()+t.slice(1)} Tier</div>
-        </div>
-        <div class="fc-body">
+        <div class="fc-photo-panel">
+          <div class="fc-head">
+            <div class="fc-logo">Rez<span>oro</span></div>
+            <div class="fc-badge ${t}">${t.charAt(0).toUpperCase()+t.slice(1)}</div>
+          </div>
           <div class="fc-avatar" id="fc-avatar-live">${c.photoUrl ? `<img src="${c.photoUrl}" alt="${esc(c.name)}">` : initialsOf(c.name)}</div>
-          <div class="fc-celeb ${t}">${c.name}</div>
         </div>
-        <div class="fc-foot">
-          <div class="fc-fan-lbl">Collector</div>
-          <div class="fc-fan-name">${fanName}</div>
-          <div class="fc-serial">#RZ-${serial} · Limited Edition</div>
+        <div class="fc-lower">
+          <div class="fc-celeb ${t}">${c.name}</div>
+          <div class="fc-foot">
+            <div class="fc-fan-lbl">Collector</div>
+            <div class="fc-fan-name">${fanName}</div>
+            <div class="fc-serial">#RZ-${serial} · Limited Edition</div>
+          </div>
         </div>
       </div>
     </div>`;
