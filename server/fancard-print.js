@@ -21,22 +21,72 @@ tryFont('georgia.ttf', 'Georgia'); tryFont('georgiai.ttf', 'Georgia');
 tryFont('georgiab.ttf', 'Georgia'); tryFont('georgiaz.ttf', 'Georgia');
 tryFont('arial.ttf', 'Arial');      tryFont('arialbd.ttf', 'Arial');
 
-/* ── Wikipedia image (prefer full-resolution original for print) ── */
-function getWikiImages(slug) {
+/* ── Remote fetching ────────────────────────────────────────
+   Wikimedia returns 403 to clients that don't send a descriptive
+   User-Agent — which @napi-rs/canvas's loadImage() does not. So we
+   always fetch the bytes ourselves and hand loadImage() a Buffer.
+   Every request is timeout-guarded so a slow/unreachable Wikimedia
+   can never hang a customer's card delivery.
+─────────────────────────────────────────────────────────── */
+const UA = 'Rezoro/1.0 (https://rezoro.pro; fan card generator)';
+const NET_TIMEOUT = 12000;
+
+function httpGet(url, { asBuffer = false, redirectsLeft = 4 } = {}) {
   return new Promise((resolve) => {
-    if (!slug) return resolve({ original: null, thumb: null });
-    const url = `https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(slug)}`;
-    https.get(url, { headers: { 'User-Agent': 'Rezoro/1.0 (rezoro.pro)' } }, (res) => {
-      let data = '';
-      res.on('data', d => data += d);
-      res.on('end', () => {
-        try {
-          const j = JSON.parse(data);
-          resolve({ original: j.originalimage?.source || null, thumb: j.thumbnail?.source || null });
-        } catch { resolve({ original: null, thumb: null }); }
-      });
-    }).on('error', () => resolve({ original: null, thumb: null }));
+    if (!url || redirectsLeft < 0) return resolve(null);
+    let settled = false;
+    const done = v => { if (!settled) { settled = true; resolve(v); } };
+
+    const req = https.get(url, {
+      headers: { 'User-Agent': UA, 'Accept': asBuffer ? 'image/*' : 'application/json' },
+      timeout: NET_TIMEOUT,
+    }, (res) => {
+      // Follow redirects (Wikimedia sometimes 301s to a canonical host)
+      if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
+        res.resume();
+        const next = new URL(res.headers.location, url).toString();
+        return httpGet(next, { asBuffer, redirectsLeft: redirectsLeft - 1 }).then(done);
+      }
+      if (res.statusCode !== 200) { res.resume(); return done(null); }
+
+      const chunks = [];
+      res.on('data', c => chunks.push(c));
+      res.on('end', () => done(asBuffer ? Buffer.concat(chunks) : Buffer.concat(chunks).toString('utf8')));
+      res.on('error', () => done(null));
+    });
+
+    req.on('timeout', () => { req.destroy(); done(null); });
+    req.on('error', () => done(null));
   });
+}
+
+async function getWikiImages(slug) {
+  if (!slug) return { original: null, thumb: null };
+  const body = await httpGet(`https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(slug)}`);
+  if (!body) return { original: null, thumb: null };
+  try {
+    const j = JSON.parse(body);
+    return { original: j.originalimage?.source || null, thumb: j.thumbnail?.source || null };
+  } catch { return { original: null, thumb: null }; }
+}
+
+// Wikimedia thumb URLs embed their width (…/330px-Name.jpg). The card's photo
+// panel is ~826px wide, so ask for a size that actually looks sharp in print,
+// stepping down if the thumbnailer refuses that width.
+async function fetchCelebImageBuffer(slug) {
+  const { original, thumb } = await getWikiImages(slug);
+  const candidates = [];
+  if (thumb) {
+    for (const w of [900, 700, 500]) candidates.push(thumb.replace(/\/(\d+)px-/, `/${w}px-`));
+    candidates.push(thumb);
+  }
+  if (original) candidates.push(original);
+
+  for (const url of candidates.filter((v, i, a) => v && a.indexOf(v) === i)) {
+    const buf = await httpGet(url, { asBuffer: true });
+    if (buf && buf.length > 1000) return buf;
+  }
+  return null;
 }
 
 /* ── Geometry ── */
@@ -141,9 +191,8 @@ async function generatePrintCard({
     try { celebImg = await loadImage(celebImageSrc); } catch {}
   }
   if (!celebImg && celebWiki) {
-    const imgs = await getWikiImages(celebWiki);
-    const url = imgs.original || imgs.thumb;
-    if (url) { try { celebImg = await loadImage(url); } catch {} }
+    const buf = await fetchCelebImageBuffer(celebWiki);
+    if (buf) { try { celebImg = await loadImage(buf); } catch {} }
   }
   if (celebImg) {
     await drawCover(ctx, celebImg, px, py, pw, ph, 0.38);
