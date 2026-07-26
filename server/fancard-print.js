@@ -240,20 +240,8 @@ async function generatePrintCard({
     ctx.letterSpacing = '0px';
   }
 
-  // Optional fan photo inset (bottom-right, framed)
-  if (photoSrc) {
-    try {
-      const fimg = await loadImage(photoSrc);
-      const r = 52, fcx = TRIM.x + TRIM.w - 40 - r, fcy = footY - 108;
-      ctx.save();
-      ctx.beginPath(); ctx.arc(fcx, fcy, r, 0, Math.PI * 2); ctx.clip();
-      const sc = Math.max((r * 2) / fimg.width, (r * 2) / fimg.height);
-      ctx.drawImage(fimg, fcx - fimg.width * sc / 2, fcy - fimg.height * sc / 2, fimg.width * sc, fimg.height * sc);
-      ctx.restore();
-      ctx.beginPath(); ctx.arc(fcx, fcy, r + 2, 0, Math.PI * 2);
-      ctx.lineWidth = 3; ctx.strokeStyle = foilGradient(ctx, fcx - r, fcy - r, r * 2, r * 2, P); ctx.stroke();
-    } catch {}
-  }
+  // The collector's photo deliberately lives on the back, not here — the
+  // front belongs to the celebrity alone, like any real trading card.
 
   // Thin foil divider
   const divY = footY - 44;
@@ -293,10 +281,202 @@ async function generatePrintCard({
   return canvas.toBuffer('image/png');
 }
 
+/* ══════════════════════════════════════════════════════════
+   generatePrintCardBack — the collector's side.
+
+   The front belongs to the celebrity; this side records who owns
+   this specific numbered copy. Same trim/bleed/DPI as the front so
+   the pair prints as one double-sided card.
+══════════════════════════════════════════════════════════ */
+async function generatePrintCardBack({
+  fanName   = 'Collector',
+  country   = '',
+  celebName = 'Celebrity',
+  tier      = 'gold',
+  ref       = 'RZ-000000',
+  edition   = null,
+  issued    = null,
+  photoSrc  = null,   // buyer's photo (Buffer) — optional
+} = {}) {
+  const P = PALETTE[tier] || PALETTE.gold;
+  const canvas = createCanvas(W, H);
+  const ctx = canvas.getContext('2d');
+  const cx = W / 2;
+
+  /* 1 ─ Background (same palette as the front) */
+  const bg = ctx.createLinearGradient(0, 0, 0, H);
+  bg.addColorStop(0, P.bgTop); bg.addColorStop(0.55, P.bgMid); bg.addColorStop(1, P.bgBot);
+  ctx.fillStyle = bg;
+  ctx.fillRect(0, 0, W, H);
+
+  /* 2 ─ Subtle guilloché rosette watermark (security-print texture) */
+  ctx.save();
+  ctx.globalAlpha = 0.07;
+  ctx.strokeStyle = P.accent;
+  ctx.lineWidth = 0.9;
+  const R = 300;
+  for (let t = 0; t < 5; t++) {
+    const rot = (Math.PI / 5) * t;
+    ctx.beginPath();
+    for (let a = 0; a <= Math.PI * 2 + 0.01; a += 0.012) {
+      const r = R * Math.cos(7 * a);
+      const x = cx + Math.cos(a + rot) * r;
+      const y = H / 2 + Math.sin(a + rot) * r;
+      a === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+    }
+    ctx.stroke();
+  }
+  ctx.restore();
+
+  /* 3 ─ REZORO wordmark, centred at the top */
+  ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic';
+  ctx.font = 'bold 30px Georgia';
+  ctx.letterSpacing = '5px';
+  const rezW = ctx.measureText('REZ').width, oroW = ctx.measureText('ORO').width;
+  const startX = cx - (rezW + oroW) / 2;
+  ctx.textAlign = 'left';
+  ctx.fillStyle = '#F4F1EA';
+  ctx.fillText('REZ', startX, TRIM.y + 76);
+  ctx.fillStyle = P.accent;
+  ctx.fillText('ORO', startX + rezW, TRIM.y + 76);
+  ctx.letterSpacing = '0px';
+  ctx.textAlign = 'center';
+
+  ctx.font = 'bold 15px Arial';
+  ctx.letterSpacing = '5px';
+  ctx.fillStyle = `${P.accent}AA`;
+  ctx.fillText('CERTIFICATE OF OWNERSHIP', cx, TRIM.y + 112);
+  ctx.letterSpacing = '0px';
+
+  // Short foil rule under the header
+  const rl = 90;
+  ctx.fillStyle = foilGradient(ctx, cx - rl, 0, rl * 2, 3, P);
+  ctx.fillRect(cx - rl, TRIM.y + 136, rl * 2, 2);
+
+  /* 4 ─ Collector portrait — the hero of this side */
+  const pcy = TRIM.y + 372, pr = 132;
+
+  // Outer foil ring
+  ctx.beginPath(); ctx.arc(cx, pcy, pr + 7, 0, Math.PI * 2);
+  ctx.lineWidth = 3;
+  ctx.strokeStyle = foilGradient(ctx, cx - pr, pcy - pr, pr * 2, pr * 2, P);
+  ctx.stroke();
+
+  let drewPhoto = false;
+  if (photoSrc) {
+    try {
+      const fimg = await loadImage(photoSrc);
+      ctx.save();
+      ctx.beginPath(); ctx.arc(cx, pcy, pr, 0, Math.PI * 2); ctx.clip();
+      const sc = Math.max((pr * 2) / fimg.width, (pr * 2) / fimg.height);
+      ctx.drawImage(fimg, cx - fimg.width * sc / 2, pcy - fimg.height * sc / 2, fimg.width * sc, fimg.height * sc);
+      ctx.restore();
+      drewPhoto = true;
+    } catch {}
+  }
+  if (!drewPhoto) {
+    // Monogram fallback — intentional, not an empty hole
+    ctx.beginPath(); ctx.arc(cx, pcy, pr, 0, Math.PI * 2);
+    ctx.fillStyle = hexA(P.bgTop, 0.9); ctx.fill();
+    const initials = fanName.trim().split(/\s+/).map(w => w[0]).slice(0, 2).join('').toUpperCase() || 'R';
+    ctx.fillStyle = `${P.accent}66`;
+    ctx.font = 'bold 96px Georgia';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText(initials, cx, pcy + 4);
+    ctx.textBaseline = 'alphabetic';
+  }
+
+  /* 5 ─ Collector name + country */
+  let y = pcy + pr + 74;
+  ctx.textAlign = 'center';
+  ctx.font = 'bold 17px Arial';
+  ctx.letterSpacing = '5px';
+  ctx.fillStyle = `${P.accent}`;
+  ctx.fillText('COLLECTOR', cx, y);
+  ctx.letterSpacing = '0px';
+
+  y += 52;
+  const namePx = fitFont(ctx, fanName, TRIM.w - 130, 46, 'Georgia', 'bold', 26);
+  ctx.fillStyle = '#F4F1EA';
+  ctx.font = `bold ${namePx}px Georgia`;
+  ctx.fillText(fanName, cx, y);
+
+  if (country) {
+    y += 34;
+    ctx.font = 'bold 16px Arial';
+    ctx.letterSpacing = '3px';
+    ctx.fillStyle = `${P.accent}AA`;
+    ctx.fillText(country.toUpperCase(), cx, y);
+    ctx.letterSpacing = '0px';
+  }
+
+  /* 6 ─ Details block */
+  const boxX = TRIM.x + 56, boxW = TRIM.w - 112;
+  const boxY = TRIM.y + TRIM.h - 250, boxH = 150;
+  roundRect(ctx, boxX, boxY, boxW, boxH, 6);
+  ctx.fillStyle = 'rgba(0,0,0,0.28)'; ctx.fill();
+  roundRect(ctx, boxX, boxY, boxW, boxH, 6);
+  ctx.lineWidth = 1; ctx.strokeStyle = `${P.accent}40`; ctx.stroke();
+
+  const rows = [
+    ['CELEBRITY', celebName],
+    ['EDITION', edition || 'Limited Edition'],
+    ['REFERENCE', `#${ref}`],
+  ];
+  const rowH = 42;
+  rows.forEach((r, i) => {
+    const ry = boxY + 34 + i * rowH;
+    ctx.textAlign = 'left';
+    ctx.font = 'bold 14px Arial';
+    ctx.letterSpacing = '2.5px';
+    ctx.fillStyle = `${P.accent}99`;
+    ctx.fillText(r[0], boxX + 26, ry);
+    ctx.letterSpacing = '0px';
+
+    ctx.textAlign = 'right';
+    const vpx = fitFont(ctx, String(r[1]), boxW - 200, 22, 'Georgia', 'bold', 14);
+    ctx.font = `bold ${vpx}px Georgia`;
+    ctx.fillStyle = '#F4F1EA';
+    ctx.fillText(String(r[1]), boxX + boxW - 26, ry);
+
+    if (i < rows.length - 1) {
+      ctx.beginPath();
+      ctx.moveTo(boxX + 26, ry + 14); ctx.lineTo(boxX + boxW - 26, ry + 14);
+      ctx.strokeStyle = 'rgba(255,255,255,0.07)'; ctx.lineWidth = 1; ctx.stroke();
+    }
+  });
+
+  /* 7 ─ Authenticity statement + issue date */
+  ctx.textAlign = 'center';
+  ctx.font = 'italic 15px Georgia';
+  ctx.fillStyle = 'rgba(255,255,255,0.42)';
+  ctx.fillText('A genuine, individually numbered Rezoro limited edition.', cx, TRIM.y + TRIM.h - 72);
+
+  ctx.font = 'bold 12px Arial';
+  ctx.letterSpacing = '2px';
+  ctx.fillStyle = `${P.accent}70`;
+  ctx.fillText(`ISSUED ${fmtDate(issued)}  ·  REZORO.PRO`, cx, TRIM.y + TRIM.h - 44);
+  ctx.letterSpacing = '0px';
+
+  /* 8 ─ Matching metallic frame */
+  const fr = TRIM.x + 16;
+  roundRect(ctx, fr, TRIM.y + 16, TRIM.w - 32, TRIM.h - 32, 10);
+  ctx.lineWidth = 3;
+  ctx.strokeStyle = foilGradient(ctx, fr, TRIM.y + 16, TRIM.w - 32, TRIM.h - 32, P);
+  ctx.stroke();
+
+  return canvas.toBuffer('image/png');
+}
+
+function fmtDate(d) {
+  const dt = d ? new Date(d) : new Date();
+  return dt.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }).toUpperCase();
+}
+
 // #rrggbb + alpha → rgba()
 function hexA(hex, a) {
   const n = parseInt(hex.slice(1), 16);
   return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${a})`;
 }
 
-module.exports = { generatePrintCard };
+module.exports = { generatePrintCard, generatePrintCardBack };

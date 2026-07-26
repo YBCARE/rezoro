@@ -7,7 +7,7 @@ const bcrypt    = require('bcryptjs');
 const jwt       = require('jsonwebtoken');
 const { randomUUID } = require('crypto');
 
-const { generatePrintCard }        = require('./fancard-print');
+const { generatePrintCard, generatePrintCardBack } = require('./fancard-print');
 const { generateCertificate }      = require('./certificate');
 const { createStore }              = require('./store');
 const { seedBuiltInCelebrities }   = require('./seed-celebrities');
@@ -566,17 +566,24 @@ async function fulfillFancardOrder(order) {
 
   const photoSrc = order.photo ? order.photo.buffer : null;
 
+  const issued = new Date();
+
+  // Front: the celebrity. Back: the collector. Printed as one double-sided card.
   const cardBuffer = await generatePrintCard({
     fanName: order.fanName, country: order.country || '', celebName: order.celebName,
-    celebWiki: order.celebWiki || '', celebImageSrc, tier: order.tier, ref: order.ref, edition, photoSrc
+    celebWiki: order.celebWiki || '', celebImageSrc, tier: order.tier, ref: order.ref, edition
+  });
+  const cardBackBuffer = await generatePrintCardBack({
+    fanName: order.fanName, country: order.country || '', celebName: order.celebName,
+    tier: order.tier, ref: order.ref, edition, issued, photoSrc
   });
   const certBuffer = generateCertificate({
-    fanName: order.fanName, celebName: order.celebName, tier: order.tier, ref: order.ref, edition, issued: new Date()
+    fanName: order.fanName, celebName: order.celebName, tier: order.tier, ref: order.ref, edition, issued
   });
 
   await sendFanCardEmail({
     to: order.email, fanName: order.fanName, country: order.country || '', celebName: order.celebName,
-    tier: order.tier, ref: order.ref, edition, cardBuffer, certBuffer
+    tier: order.tier, ref: order.ref, edition, cardBuffer, cardBackBuffer, certBuffer
   });
 
   if (order.userId) {

@@ -68,7 +68,7 @@ ${body}
 }
 
 /* ── 1. Fan Card Email ───────────────────────────────────── */
-async function sendFanCardEmail({ to, fanName, country, celebName, tier, ref, edition, cardBuffer, certBuffer }) {
+async function sendFanCardEmail({ to, fanName, country, celebName, tier, ref, edition, cardBuffer, cardBackBuffer, certBuffer }) {
   fanName   = esc(fanName);
   celebName = esc(celebName);
   const tierLabel = tier.charAt(0).toUpperCase() + tier.slice(1);
@@ -87,13 +87,23 @@ async function sendFanCardEmail({ to, fanName, country, celebName, tier, ref, ed
     numbered <strong style="color:${tierColor};">${editionLabel}</strong>.
   </p>
 </td></tr>
-<tr><td align="center" style="padding-bottom:24px;">
-  <img src="cid:fancard" alt="Rezoro Fan Card" width="380"
-    style="width:100%;max-width:380px;border-radius:10px;display:block;border:1px solid rgba(201,168,76,.28);">
+<tr><td align="center" style="padding-bottom:14px;">
+  <table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 auto;">
+    <tr>
+      <td style="padding:0 6px;">
+        <img src="cid:fancard" alt="Fan card — front" width="230"
+          style="width:100%;max-width:230px;border-radius:8px;display:block;border:1px solid rgba(201,168,76,.28);">
+      </td>
+      ${cardBackBuffer ? `<td style="padding:0 6px;">
+        <img src="cid:fancardback" alt="Fan card — back" width="230"
+          style="width:100%;max-width:230px;border-radius:8px;display:block;border:1px solid rgba(201,168,76,.28);">
+      </td>` : ''}
+    </tr>
+  </table>
 </td></tr>
 <tr><td align="center" style="padding-bottom:32px;">
   <p style="margin:0;font-size:13px;color:#9A9490;line-height:1.7;">
-    Attached are two print-ready files: your <strong style="color:#F0ECE4;">collectible card</strong>
+    Attached are your print-ready files: the <strong style="color:#F0ECE4;">card front &amp; back</strong>
     and its matching <strong style="color:#F0ECE4;">Certificate of Authenticity</strong>.
   </p>
 </td></tr>
@@ -107,11 +117,19 @@ async function sendFanCardEmail({ to, fanName, country, celebName, tier, ref, ed
 </td></tr>`;
 
   const attachments = [{
-    filename: `rezoro-fancard-${ref}.png`,
+    filename: `rezoro-fancard-${ref}-front.png`,
     content: cardBuffer,
     cid: 'fancard',
     contentType: 'image/png'
   }];
+  if (cardBackBuffer) {
+    attachments.push({
+      filename: `rezoro-fancard-${ref}-back.png`,
+      content: cardBackBuffer,
+      cid: 'fancardback',
+      contentType: 'image/png'
+    });
+  }
   if (certBuffer) {
     attachments.push({
       filename: `rezoro-certificate-${ref}.png`,
@@ -125,7 +143,7 @@ async function sendFanCardEmail({ to, fanName, country, celebName, tier, ref, ed
     subject: `Your ${tierLabel} Fan Card — ${celebName} · ${ref}`,
     messageId: `<${randomUUID()}@rezoro.pro>`,
     headers: baseHeaders(),
-    text: `Hi ${fanName},\n\nYour ${tierLabel} fan card for ${celebName} (${editionLabel}) is attached, along with its Certificate of Authenticity.\nRef: ${ref}\n\n— Rezoro`,
+    text: `Hi ${fanName},\n\nYour ${tierLabel} fan card for ${celebName} (${editionLabel}) is attached — front and back — along with its Certificate of Authenticity.\nRef: ${ref}\n\n— Rezoro`,
     html: emailWrap(`Your ${tierLabel} fan card for ${celebName} · Ref: ${ref}`, body),
     attachments
   });
