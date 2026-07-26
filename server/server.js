@@ -48,10 +48,15 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static(ROOT, { acceptRanges: true }));
 
-/* ── Photo uploads (memory, max 5 MB) ───────────────────── */
+/* ── Photo uploads (memory, max 10 MB) ──────────────────── */
+// 5MB was too tight for an unedited phone photo — a normal camera shot
+// or screenshot routinely lands in the 6-9MB range, which was causing
+// multer to abort the upload stream mid-request. The browser reports
+// that as a bare "Failed to fetch" instead of a readable error, since
+// the connection drops before any response body arrives.
 const upload = multer({
   storage: multer.memoryStorage(),
-  limits: { fileSize: 5 * 1024 * 1024 }
+  limits: { fileSize: 10 * 1024 * 1024 }
 });
 
 /* ── Helpers ────────────────────────────────────────────── */
@@ -704,6 +709,24 @@ app.get('/api/payment/verify', rateLimit('verify', 30, 60 * 60 * 1000), async (r
     console.error('[payment/verify]', err.message);
     res.status(500).json({ error: 'Verification failed.' });
   }
+});
+
+/* ══════════════════════════════════════════════════════════
+   ERROR HANDLING  (must be registered after every route)
+   Without this, an upload error (e.g. a photo over the size limit)
+   aborts the connection instead of returning JSON — the browser then
+   reports a bare "Failed to fetch" with no explanation.
+═══════════════════════════════════════════════════════════ */
+app.use((err, req, res, _next) => {
+  if (err instanceof multer.MulterError) {
+    if (err.code === 'LIMIT_FILE_SIZE') {
+      return res.status(413).json({ error: 'That photo is too large. Please upload one under 10MB.' });
+    }
+    return res.status(400).json({ error: `Upload failed: ${err.message}` });
+  }
+  console.error('[unhandled]', err.stack || err.message);
+  if (res.headersSent) return;
+  res.status(500).json({ error: 'Something went wrong on our end. Please try again.' });
 });
 
 /* ── Start ──────────────────────────────────────────────── */
