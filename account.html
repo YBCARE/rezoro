@@ -71,6 +71,12 @@
     .loading{text-align:center;padding:2.5rem;color:var(--t3);font-size:.85rem;}
     /* Payment CTA */
     .pay-btn{display:inline-block;background:var(--gold);color:#000;font-weight:700;font-size:.7rem;letter-spacing:.1em;text-transform:uppercase;padding:.5rem 1.2rem;border-radius:2px;text-decoration:none;white-space:nowrap;}
+    /* Verification banner */
+    .verify-banner{display:flex;align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap;background:rgba(201,168,76,.08);border:1px solid var(--gold-border);border-radius:6px;padding:.9rem 1.2rem;margin-bottom:1.6rem;font-size:.82rem;}
+    .verify-banner p{color:var(--t1);}
+    .verify-banner button{flex-shrink:0;background:none;border:1px solid var(--gold-border);color:var(--gold);font-size:.7rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;padding:.45rem 1rem;border-radius:4px;cursor:pointer;font-family:'Montserrat',sans-serif;}
+    .verify-banner button:disabled{opacity:.5;cursor:default;}
+    .verify-success{background:rgba(62,207,142,.1);border:1px solid rgba(62,207,142,.3);border-radius:6px;padding:.9rem 1.2rem;margin-bottom:1.6rem;font-size:.82rem;color:#3ecf8e;}
     /* Responsive */
     @media(max-width:560px){
       nav{padding:1rem 1.2rem;}
@@ -90,6 +96,12 @@
 </nav>
 
 <main>
+  <div id="verify-success" class="verify-success" style="display:none;">✓ Your email is verified. Thanks!</div>
+  <div id="verify-banner" class="verify-banner" style="display:none;">
+    <p>⚠ Please verify your email address (<strong id="verify-banner-email"></strong>) to confirm it's really yours.</p>
+    <button id="verify-resend-btn" onclick="resendVerification()">Resend Email</button>
+  </div>
+
   <div class="acct-header">
     <div class="acct-avatar" id="av-initials">?</div>
     <div>
@@ -149,6 +161,49 @@ function initHeader() {
   }
 }
 initHeader();
+
+/* ── Email verification ─────────────────────────────────── */
+function updateVerifyBanner() {
+  const banner = document.getElementById('verify-banner');
+  if (currentUser.emailVerified === false) {
+    document.getElementById('verify-banner-email').textContent = currentUser.email || '';
+    banner.style.display = 'flex';
+  } else {
+    banner.style.display = 'none';
+  }
+}
+updateVerifyBanner();
+
+async function refreshVerificationStatus() {
+  try {
+    const r = await fetch('/api/auth/me', { headers: { Authorization: 'Bearer ' + token } });
+    if (!r.ok) return;
+    const fresh = await r.json();
+    currentUser = { ...currentUser, ...fresh };
+    localStorage.setItem('rz_user', JSON.stringify(currentUser));
+    updateVerifyBanner();
+  } catch {}
+}
+refreshVerificationStatus();
+
+if (new URLSearchParams(window.location.search).get('verified') === '1') {
+  document.getElementById('verify-success').style.display = 'block';
+  window.history.replaceState({}, '', window.location.pathname);
+}
+
+async function resendVerification() {
+  const btn = document.getElementById('verify-resend-btn');
+  btn.disabled = true;
+  const original = btn.textContent;
+  try {
+    const r = await fetch('/api/auth/resend-verification', { method: 'POST', headers: { Authorization: 'Bearer ' + token } });
+    const d = await r.json();
+    btn.textContent = r.ok ? 'Sent ✓' : (d.error || 'Failed');
+  } catch {
+    btn.textContent = 'Failed — try again';
+  }
+  setTimeout(() => { btn.textContent = original; btn.disabled = false; }, 4000);
+}
 
 /* ── Tabs ───────────────────────────────────────────────── */
 function switchTab(id, el) {

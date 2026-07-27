@@ -77,6 +77,12 @@ function memoryStore() {
     users: {
       async findByEmail(email) { return users.get(email) || null; },
       async create(u) { users.set(u.email, u); return u; },
+      async update(email, patch) {
+        const u = users.get(email);
+        if (!u) return null;
+        Object.assign(u, patch);
+        return u;
+      },
     },
     bookings: {
       async create(b) { bookings.set(b.id, b); return b; },
@@ -198,6 +204,10 @@ async function postgresStore() {
       async create(u) {
         await q('INSERT INTO users(email, data) VALUES($1, $2) ON CONFLICT(email) DO NOTHING', [u.email, u]);
         return u;
+      },
+      async update(email, patch) {
+        const r = await q('UPDATE users SET data = data || $2::jsonb WHERE email = $1 RETURNING data', [email, JSON.stringify(patch)]);
+        return r.rows[0]?.data || null;
       },
     },
     bookings: {

@@ -306,6 +306,37 @@ async function sendNewsletterWelcome({ to, name }) {
   });
 }
 
+/* ── Email Verification ──────────────────────────────────── */
+async function sendVerificationEmail({ to, name, verifyUrl }) {
+  name = esc(name);
+  const body = `
+<tr><td align="center" style="padding-bottom:10px;">
+  <h1 style="margin:0;font-size:26px;font-weight:700;color:#F0ECE4;">Verify Your Email</h1>
+</td></tr>
+<tr><td align="center" style="padding-bottom:28px;">
+  <p style="margin:0;font-size:15px;color:#9A9490;line-height:1.7;">
+    ${name ? `Hi <strong style="color:#F0ECE4;">${name}</strong>, welcome` : 'Welcome'} to Rezoro. Confirm this is your email address to finish setting up your account.
+  </p>
+</td></tr>
+<tr><td align="center" style="padding-bottom:28px;">
+  <a href="${verifyUrl}" style="display:inline-block;background:#C9A84C;color:#000;font-weight:700;font-size:13px;letter-spacing:.12em;text-transform:uppercase;padding:14px 36px;border-radius:8px;text-decoration:none;">
+    Verify Email Address
+  </a>
+</td></tr>
+<tr><td align="center" style="padding-bottom:8px;">
+  <p style="margin:0;font-size:12px;color:#5C5852;line-height:1.6;">This link expires in 3 days. If you didn't create a Rezoro account, you can ignore this email.</p>
+</td></tr>`;
+
+  await transporter.sendMail({
+    from: FROM, to, replyTo: REPLY,
+    subject: `Verify your email — Rezoro`,
+    messageId: `<${randomUUID()}@rezoro.pro>`,
+    headers: baseHeaders(),
+    text: `Verify your email to finish setting up your Rezoro account:\n\n${verifyUrl}\n\nThis link expires in 3 days.\n\n— Rezoro`,
+    html: emailWrap('Confirm your email address to finish setting up your Rezoro account', body)
+  });
+}
+
 /* ── 6. Newsletter Broadcast ─────────────────────────────── */
 async function sendNewsletter({ to, subject, html, text }) {
   await transporter.sendMail({
@@ -324,5 +355,6 @@ module.exports = {
   sendBookingAccepted,
   sendBookingRejected,
   sendNewsletterWelcome,
-  sendNewsletter
+  sendNewsletter,
+  sendVerificationEmail
 };

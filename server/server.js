@@ -17,7 +17,8 @@ const {
   sendBookingAccepted,
   sendBookingRejected,
   sendNewsletterWelcome,
-  sendNewsletter
+  sendNewsletter,
+  sendVerificationEmail
 } = require('./mailer');
 
 const app  = express();
@@ -356,6 +357,18 @@ app.post('/api/payment/webhook', async (req, res) => {
 /* ══════════════════════════════════════════════════════════
    USER AUTH
 ═══════════════════════════════════════════════════════════ */
+// Undefined means the account predates email verification — treat it as
+// verified so existing users are never locked out by this feature.
+const isVerified = user => user.emailVerified !== false;
+const publicUser = user => ({ id: user.id, name: user.name, email: user.email, createdAt: user.createdAt, emailVerified: isVerified(user) });
+
+function sendVerificationLink(user) {
+  const verifyToken = jwt.sign({ email: user.email, purpose: 'verify-email' }, JWT_SECRET, { expiresIn: '3d' });
+  const verifyUrl = `${SITE_URL}/api/auth/verify-email?token=${verifyToken}`;
+  return sendVerificationEmail({ to: user.email, name: user.name, verifyUrl })
+    .catch(e => console.error('[email] verification:', e.message));
+}
+
 app.post('/api/auth/register', async (req, res) => {
   try {
     const { name, email, password } = req.body;
@@ -364,11 +377,12 @@ app.post('/api/auth/register', async (req, res) => {
     if (password.length < 6) return res.status(400).json({ error: 'Password must be at least 6 characters.' });
 
     const hash = await bcrypt.hash(password, 10);
-    const user = { id: randomUUID(), name, email: email.toLowerCase(), hash, createdAt: new Date().toISOString() };
+    const user = { id: randomUUID(), name, email: email.toLowerCase(), hash, createdAt: new Date().toISOString(), emailVerified: false };
     await store.users.create(user);
+    sendVerificationLink(user);
 
     const token = jwt.sign({ id: user.id, email: user.email, name: user.name }, JWT_SECRET, { expiresIn: '7d' });
-    res.json({ token, user: { id: user.id, name: user.name, email: user.email, createdAt: user.createdAt } });
+    res.json({ token, user: publicUser(user) });
   } catch (err) {
     res.status(500).json({ error: 'Registration failed.' });
   }
@@ -382,7 +396,7 @@ app.post('/api/auth/login', async (req, res) => {
     const ok = await bcrypt.compare(password, user.hash);
     if (!ok) return res.status(401).json({ error: 'Invalid email or password.' });
     const token = jwt.sign({ id: user.id, email: user.email, name: user.name }, JWT_SECRET, { expiresIn: '7d' });
-    res.json({ token, user: { id: user.id, name: user.name, email: user.email, createdAt: user.createdAt } });
+    res.json({ token, user: publicUser(user) });
   } catch {
     res.status(500).json({ error: 'Login failed.' });
   }
@@ -391,7 +405,38 @@ app.post('/api/auth/login', async (req, res) => {
 app.get('/api/auth/me', authMiddleware, async (req, res) => {
   const user = await store.users.findByEmail(req.user.email);
   if (!user) return res.status(404).json({ error: 'User not found' });
-  res.json({ id: user.id, name: user.name, email: user.email, createdAt: user.createdAt });
+  res.json(publicUser(user));
+});
+
+app.post('/api/auth/resend-verification', rateLimit('resend-verify', 5, 60 * 60 * 1000), authMiddleware, async (req, res) => {
+  const user = await store.users.findByEmail(req.user.email);
+  if (!user) return res.status(404).json({ error: 'User not found' });
+  if (isVerified(user)) return res.json({ success: true, alreadyVerified: true });
+  await sendVerificationLink(user);
+  res.json({ success: true });
+});
+
+app.get('/api/auth/verify-email', async (req, res) => {
+  const sendResult = (title, message) => res.status(200).send(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>${title} — Rezoro</title>
+    <style>body{background:#07070A;color:#F0ECE4;font-family:Helvetica,Arial,sans-serif;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0;text-align:center;padding:2rem;}
+    a{color:#C9A84C;}</style></head><body><div><h1 style="font-weight:600;">${title}</h1><p style="color:#9A9490;">${message}</p>
+    <p style="margin-top:1.5rem;"><a href="/account.html">Go to your account →</a></p></div></body></html>`);
+
+  try {
+    const { token } = req.query;
+    if (!token) return sendResult('Invalid link', 'This verification link is missing its token.');
+    let payload;
+    try { payload = jwt.verify(token, JWT_SECRET); }
+    catch { return sendResult('Link expired', 'This verification link has expired. Sign in and request a new one from your account page.'); }
+    if (payload.purpose !== 'verify-email' || !payload.email) return sendResult('Invalid link', 'This verification link is not valid.');
+
+    const user = await store.users.findByEmail(payload.email);
+    if (!user) return sendResult('Account not found', 'We could not find an account for this email.');
+    await store.users.update(payload.email, { emailVerified: true });
+    res.redirect('/account.html?verified=1');
+  } catch (err) {
+    sendResult('Something went wrong', 'Please try again or contact support.');
+  }
 });
 
 /* ── Google Sign-In ─────────────────────────────────────── */
@@ -407,11 +452,12 @@ app.post('/api/auth/google', async (req, res) => {
     const email = gData.email.toLowerCase();
     let user = await store.users.findByEmail(email);
     if (!user) {
-      user = { id: randomUUID(), name: gData.name || email, email, hash: '', createdAt: new Date().toISOString(), google: true };
+      // Google has already verified this address — no separate verification needed.
+      user = { id: randomUUID(), name: gData.name || email, email, hash: '', createdAt: new Date().toISOString(), google: true, emailVerified: true };
       await store.users.create(user);
     }
     const token = jwt.sign({ id: user.id, email: user.email, name: user.name }, JWT_SECRET, { expiresIn: '7d' });
-    res.json({ token, user: { id: user.id, name: user.name, email: user.email, createdAt: user.createdAt } });
+    res.json({ token, user: publicUser(user) });
   } catch (err) {
     res.status(500).json({ error: 'Google sign-in failed.' });
   }
