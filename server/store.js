@@ -21,6 +21,12 @@ function stripPhoto(row) {
   return { ...rest, hasPhoto: !!photo };
 }
 
+// Same idea for bank-transfer receipt uploads — served by their own route, never inlined.
+function stripReceipt(row) {
+  const { receipt, ...rest } = row;
+  return { ...rest, hasReceipt: !!receipt };
+}
+
 /* ── In-memory backend ──────────────────────────────────── */
 function memoryStore() {
   const users = new Map();       // email → user
@@ -32,6 +38,8 @@ function memoryStore() {
   const testimonials = new Map(); // id → { id, quote, name, role, visible, photo:{buffer,mime}|null, createdAt }
   const settings = new Map();    // key → value
   const fancardOrders = new Map(); // ref → order
+  const paymentAttempts = new Map(); // id → attempt
+  const paymentAuditLog = [];        // append-only list of events
 
   return {
     persistent: false,
@@ -96,6 +104,76 @@ function memoryStore() {
       },
       async all() { return [...fancardOrders.values()].sort(byCreatedDesc).map(stripPhoto); },
     },
+    paymentAttempts: {
+      async create(a) {
+        const now = new Date().toISOString();
+        const row = { id: randomUUID(), status: 'PENDING_PAYMENT', createdAt: now, updatedAt: now, ...a };
+        paymentAttempts.set(row.id, row);
+        return stripReceipt(row);
+      },
+      async getById(id) { return paymentAttempts.get(id) || null; },
+      async getReceipt(id) { return paymentAttempts.get(id)?.receipt || null; },
+      async getByOrder(orderType, orderRef) {
+        return [...paymentAttempts.values()]
+          .filter(a => a.orderType === orderType && a.orderRef === orderRef)
+          .sort(byCreatedDesc).map(stripReceipt);
+      },
+      async getByTxid(txid) {
+        return [...paymentAttempts.values()].find(a => a.txid && a.txid === txid) || null;
+      },
+      async getByProviderTransactionId(providerTransactionId) {
+        return [...paymentAttempts.values()].find(a => a.providerTransactionId && a.providerTransactionId === providerTransactionId) || null;
+      },
+      // The heart of idempotent status changes: only applies if the row's current
+      // status is still one of `fromStatuses` — a stale/duplicate caller (double
+      // webhook, double click, retry) sees no matching row and gets null back,
+      // rather than corrupting state that another caller already moved on.
+      async transitionStatus(id, fromStatuses, toStatus, patch = {}) {
+        const row = paymentAttempts.get(id);
+        if (!row || !fromStatuses.includes(row.status)) return null;
+        Object.assign(row, patch, { status: toStatus, updatedAt: new Date().toISOString() });
+        return stripReceipt(row);
+      },
+      async update(id, patch) {
+        const row = paymentAttempts.get(id);
+        if (!row) return null;
+        Object.assign(row, patch, { updatedAt: new Date().toISOString() });
+        return stripReceipt(row);
+      },
+      async all({ status, orderType } = {}) {
+        let list = [...paymentAttempts.values()];
+        if (status) list = list.filter(a => (Array.isArray(status) ? status.includes(a.status) : a.status === status));
+        if (orderType) list = list.filter(a => a.orderType === orderType);
+        return list.sort(byCreatedDesc).map(stripReceipt);
+      },
+      async sweepExpired(now = new Date()) {
+        const expired = [];
+        for (const row of paymentAttempts.values()) {
+          if (row.status === 'PENDING_PAYMENT' && row.expiresAt && new Date(row.expiresAt) < now) {
+            row.status = 'EXPIRED';
+            row.updatedAt = new Date().toISOString();
+            expired.push(stripReceipt(row));
+          }
+        }
+        return expired;
+      },
+    },
+    paymentAuditLog: {
+      async append(event) {
+        const row = { id: paymentAuditLog.length + 1, createdAt: new Date().toISOString(), ...event };
+        paymentAuditLog.push(row);
+        return row;
+      },
+      async byOrder(orderType, orderRef) {
+        return paymentAuditLog.filter(e => e.orderType === orderType && e.orderRef === orderRef).sort(byCreatedDesc);
+      },
+      async byPaymentAttempt(paymentAttemptId) {
+        return paymentAuditLog.filter(e => e.paymentAttemptId === paymentAttemptId).sort(byCreatedDesc);
+      },
+      async recent(limit = 200) {
+        return [...paymentAuditLog].sort(byCreatedDesc).slice(0, limit);
+      },
+    },
     users: {
       async findByEmail(email) { return users.get(email) || null; },
       async create(u) { users.set(u.email, u); return u; },
@@ -109,6 +187,10 @@ function memoryStore() {
     bookings: {
       async create(b) { bookings.set(b.id, b); return b; },
       async getById(id) { return bookings.get(id) || null; },
+      async getByRef(ref) {
+        for (const b of bookings.values()) { if (b.ref === ref) return b; }
+        return null;
+      },
       async update(id, patch) {
         const b = bookings.get(id);
         if (!b) return null;
@@ -210,9 +292,131 @@ async function postgresStore() {
       photo      BYTEA,
       photo_mime TEXT
     );
+    CREATE TABLE IF NOT EXISTS payment_attempts (
+      id                       TEXT PRIMARY KEY,
+      order_type               TEXT NOT NULL,
+      order_ref                TEXT NOT NULL,
+      method                   TEXT NOT NULL,
+      asset                    TEXT,
+      network                  TEXT,
+      token_identifier         TEXT,
+      environment              TEXT NOT NULL DEFAULT 'live',
+      destination_snapshot     JSONB,
+      expected_amount          NUMERIC,
+      expected_currency        TEXT,
+      expected_crypto_amount   NUMERIC,
+      rate_source              TEXT,
+      rate_timestamp           TIMESTAMPTZ,
+      provider_transaction_id  TEXT,
+      txid                     TEXT,
+      sender_name              TEXT,
+      bank_reference           TEXT,
+      receipt                  BYTEA,
+      receipt_mime             TEXT,
+      status                   TEXT NOT NULL DEFAULT 'PENDING_PAYMENT',
+      failure_reason           TEXT,
+      verification_result      JSONB,
+      expires_at               TIMESTAMPTZ,
+      verified_at              TIMESTAMPTZ,
+      approved_at              TIMESTAMPTZ,
+      approved_by              TEXT,
+      rejected_at              TIMESTAMPTZ,
+      rejected_by              TEXT,
+      rejection_reason         TEXT,
+      created_at               TIMESTAMPTZ DEFAULT now(),
+      updated_at               TIMESTAMPTZ DEFAULT now()
+    );
+    CREATE UNIQUE INDEX IF NOT EXISTS payment_attempts_txid_uniq
+      ON payment_attempts (txid) WHERE txid IS NOT NULL;
+    CREATE UNIQUE INDEX IF NOT EXISTS payment_attempts_provider_tx_uniq
+      ON payment_attempts (provider_transaction_id) WHERE provider_transaction_id IS NOT NULL;
+    CREATE INDEX IF NOT EXISTS payment_attempts_order_idx
+      ON payment_attempts (order_type, order_ref);
+    CREATE TABLE IF NOT EXISTS payment_audit_log (
+      id                 BIGSERIAL PRIMARY KEY,
+      event              TEXT NOT NULL,
+      order_type         TEXT,
+      order_ref          TEXT,
+      payment_attempt_id TEXT,
+      actor_type         TEXT NOT NULL,
+      actor_id           TEXT,
+      metadata           JSONB,
+      created_at         TIMESTAMPTZ DEFAULT now()
+    );
+    CREATE INDEX IF NOT EXISTS payment_audit_log_order_idx
+      ON payment_audit_log (order_type, order_ref);
+    CREATE INDEX IF NOT EXISTS payment_audit_log_attempt_idx
+      ON payment_audit_log (payment_attempt_id);
   `);
 
   const q = (text, params) => pool.query(text, params);
+
+  // camelCase (app) ↔ snake_case (db) mapping for payment_attempts. Used both to
+  // build the row returned to callers and to whitelist which columns a patch
+  // object may touch — patch keys not in this map are silently ignored, so a
+  // caller can never write to an arbitrary column.
+  const ATTEMPT_FIELD_MAP = {
+    environment: 'environment',
+    destinationSnapshot: 'destination_snapshot',
+    expectedAmount: 'expected_amount',
+    expectedCurrency: 'expected_currency',
+    expectedCryptoAmount: 'expected_crypto_amount',
+    rateSource: 'rate_source',
+    rateTimestamp: 'rate_timestamp',
+    providerTransactionId: 'provider_transaction_id',
+    txid: 'txid',
+    senderName: 'sender_name',
+    bankReference: 'bank_reference',
+    failureReason: 'failure_reason',
+    verificationResult: 'verification_result',
+    expiresAt: 'expires_at',
+    verifiedAt: 'verified_at',
+    approvedAt: 'approved_at',
+    approvedBy: 'approved_by',
+    rejectedAt: 'rejected_at',
+    rejectedBy: 'rejected_by',
+    rejectionReason: 'rejection_reason',
+  };
+  const JSONB_FIELDS = new Set(['destinationSnapshot', 'verificationResult']);
+
+  function attemptRowToObj(row) {
+    if (!row) return null;
+    return {
+      id: row.id, orderType: row.order_type, orderRef: row.order_ref, method: row.method,
+      asset: row.asset, network: row.network, tokenIdentifier: row.token_identifier,
+      environment: row.environment, destinationSnapshot: row.destination_snapshot,
+      expectedAmount: row.expected_amount, expectedCurrency: row.expected_currency,
+      expectedCryptoAmount: row.expected_crypto_amount, rateSource: row.rate_source,
+      rateTimestamp: row.rate_timestamp, providerTransactionId: row.provider_transaction_id,
+      txid: row.txid, senderName: row.sender_name, bankReference: row.bank_reference,
+      hasReceipt: !!row.receipt, status: row.status, failureReason: row.failure_reason,
+      verificationResult: row.verification_result, expiresAt: row.expires_at,
+      verifiedAt: row.verified_at, approvedAt: row.approved_at, approvedBy: row.approved_by,
+      rejectedAt: row.rejected_at, rejectedBy: row.rejected_by, rejectionReason: row.rejection_reason,
+      createdAt: row.created_at, updatedAt: row.updated_at,
+    };
+  }
+
+  // Builds a safe "col = $n" SET fragment from a whitelisted patch object.
+  // receipt/receiptMime are handled by the caller separately (bytea pair).
+  function buildAttemptSet(patch, startIndex) {
+    const sets = [];
+    const values = [];
+    let i = startIndex;
+    for (const [key, val] of Object.entries(patch)) {
+      const col = ATTEMPT_FIELD_MAP[key];
+      if (!col) continue;
+      if (JSONB_FIELDS.has(key)) {
+        sets.push(`${col} = $${i}::jsonb`);
+        values.push(val === undefined ? null : JSON.stringify(val));
+      } else {
+        sets.push(`${col} = $${i}`);
+        values.push(val === undefined ? null : val);
+      }
+      i++;
+    }
+    return { sets, values };
+  }
 
   return {
     persistent: true,
@@ -246,6 +450,10 @@ async function postgresStore() {
       },
       async getById(id) {
         const r = await q('SELECT data FROM bookings WHERE id = $1', [id]);
+        return r.rows[0]?.data || null;
+      },
+      async getByRef(ref) {
+        const r = await q('SELECT data FROM bookings WHERE ref = $1', [ref]);
         return r.rows[0]?.data || null;
       },
       async update(id, patch) {
@@ -417,6 +625,133 @@ async function postgresStore() {
       async all() {
         const r = await q('SELECT ref, status, data, paid_at, (photo IS NOT NULL) AS has_photo FROM fancard_orders ORDER BY created_at DESC');
         return r.rows.map(row => ({ ...row.data, ref: row.ref, status: row.status, paidAt: row.paid_at, hasPhoto: row.has_photo }));
+      },
+    },
+    paymentAttempts: {
+      async create(a) {
+        const id = randomUUID();
+        const r = await q(
+          `INSERT INTO payment_attempts
+            (id, order_type, order_ref, method, asset, network, token_identifier, environment,
+             destination_snapshot, expected_amount, expected_currency, expected_crypto_amount,
+             rate_source, rate_timestamp, status, expires_at, receipt, receipt_mime)
+           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9::jsonb,$10,$11,$12,$13,$14,$15,$16,$17,$18)
+           RETURNING *`,
+          [
+            id, a.orderType, a.orderRef, a.method, a.asset || null, a.network || null,
+            a.tokenIdentifier || null, a.environment || 'live',
+            a.destinationSnapshot ? JSON.stringify(a.destinationSnapshot) : null,
+            a.expectedAmount ?? null, a.expectedCurrency || null, a.expectedCryptoAmount ?? null,
+            a.rateSource || null, a.rateTimestamp || null, a.status || 'PENDING_PAYMENT',
+            a.expiresAt || null, a.receipt?.buffer || null, a.receipt?.mime || null,
+          ]
+        );
+        return attemptRowToObj(r.rows[0]);
+      },
+      async getById(id) {
+        const r = await q('SELECT * FROM payment_attempts WHERE id = $1', [id]);
+        return attemptRowToObj(r.rows[0]);
+      },
+      async getReceipt(id) {
+        const r = await q('SELECT receipt, receipt_mime FROM payment_attempts WHERE id = $1', [id]);
+        if (!r.rows[0]?.receipt) return null;
+        return { buffer: r.rows[0].receipt, mime: r.rows[0].receipt_mime || 'application/octet-stream' };
+      },
+      async getByOrder(orderType, orderRef) {
+        const r = await q(
+          'SELECT * FROM payment_attempts WHERE order_type = $1 AND order_ref = $2 ORDER BY created_at DESC',
+          [orderType, orderRef]
+        );
+        return r.rows.map(attemptRowToObj);
+      },
+      async getByTxid(txid) {
+        const r = await q('SELECT * FROM payment_attempts WHERE txid = $1', [txid]);
+        return attemptRowToObj(r.rows[0]);
+      },
+      async getByProviderTransactionId(providerTransactionId) {
+        const r = await q('SELECT * FROM payment_attempts WHERE provider_transaction_id = $1', [providerTransactionId]);
+        return attemptRowToObj(r.rows[0]);
+      },
+      async transitionStatus(id, fromStatuses, toStatus, patch = {}) {
+        const { receipt, ...restPatch } = patch;
+        const { sets, values } = buildAttemptSet(restPatch, 4);
+        if (receipt !== undefined) {
+          sets.push(`receipt = $${values.length + 4}`, `receipt_mime = $${values.length + 5}`);
+          values.push(receipt?.buffer || null, receipt?.mime || null);
+        }
+        const setClause = sets.length ? ', ' + sets.join(', ') : '';
+        const r = await q(
+          `UPDATE payment_attempts
+           SET status = $2, updated_at = now()${setClause}
+           WHERE id = $1 AND status = ANY($3)
+           RETURNING *`,
+          [id, toStatus, fromStatuses, ...values]
+        );
+        return attemptRowToObj(r.rows[0]);
+      },
+      async update(id, patch) {
+        const { receipt, ...restPatch } = patch;
+        const { sets, values } = buildAttemptSet(restPatch, 2);
+        if (receipt !== undefined) {
+          sets.push(`receipt = $${values.length + 2}`, `receipt_mime = $${values.length + 3}`);
+          values.push(receipt?.buffer || null, receipt?.mime || null);
+        }
+        if (!sets.length) return this.getById(id);
+        const r = await q(
+          `UPDATE payment_attempts SET updated_at = now(), ${sets.join(', ')} WHERE id = $1 RETURNING *`,
+          [id, ...values]
+        );
+        return attemptRowToObj(r.rows[0]);
+      },
+      async all({ status, orderType } = {}) {
+        const clauses = [];
+        const params = [];
+        if (status) {
+          params.push(Array.isArray(status) ? status : [status]);
+          clauses.push(`status = ANY($${params.length})`);
+        }
+        if (orderType) {
+          params.push(orderType);
+          clauses.push(`order_type = $${params.length}`);
+        }
+        const where = clauses.length ? `WHERE ${clauses.join(' AND ')}` : '';
+        const r = await q(`SELECT * FROM payment_attempts ${where} ORDER BY created_at DESC`, params);
+        return r.rows.map(attemptRowToObj);
+      },
+      async sweepExpired() {
+        const r = await q(
+          `UPDATE payment_attempts SET status = 'EXPIRED', updated_at = now()
+           WHERE status = 'PENDING_PAYMENT' AND expires_at IS NOT NULL AND expires_at < now()
+           RETURNING *`
+        );
+        return r.rows.map(attemptRowToObj);
+      },
+    },
+    paymentAuditLog: {
+      async append(event) {
+        const r = await q(
+          `INSERT INTO payment_audit_log (event, order_type, order_ref, payment_attempt_id, actor_type, actor_id, metadata)
+           VALUES ($1,$2,$3,$4,$5,$6,$7::jsonb) RETURNING *`,
+          [
+            event.event, event.orderType || null, event.orderRef || null,
+            event.paymentAttemptId || null, event.actorType, event.actorId || null,
+            event.metadata ? JSON.stringify(event.metadata) : null,
+          ]
+        );
+        const row = r.rows[0];
+        return { id: row.id, event: row.event, orderType: row.order_type, orderRef: row.order_ref, paymentAttemptId: row.payment_attempt_id, actorType: row.actor_type, actorId: row.actor_id, metadata: row.metadata, createdAt: row.created_at };
+      },
+      async byOrder(orderType, orderRef) {
+        const r = await q('SELECT * FROM payment_audit_log WHERE order_type = $1 AND order_ref = $2 ORDER BY created_at DESC', [orderType, orderRef]);
+        return r.rows.map(row => ({ id: row.id, event: row.event, orderType: row.order_type, orderRef: row.order_ref, paymentAttemptId: row.payment_attempt_id, actorType: row.actor_type, actorId: row.actor_id, metadata: row.metadata, createdAt: row.created_at }));
+      },
+      async byPaymentAttempt(paymentAttemptId) {
+        const r = await q('SELECT * FROM payment_audit_log WHERE payment_attempt_id = $1 ORDER BY created_at DESC', [paymentAttemptId]);
+        return r.rows.map(row => ({ id: row.id, event: row.event, orderType: row.order_type, orderRef: row.order_ref, paymentAttemptId: row.payment_attempt_id, actorType: row.actor_type, actorId: row.actor_id, metadata: row.metadata, createdAt: row.created_at }));
+      },
+      async recent(limit = 200) {
+        const r = await q('SELECT * FROM payment_audit_log ORDER BY created_at DESC LIMIT $1', [limit]);
+        return r.rows.map(row => ({ id: row.id, event: row.event, orderType: row.order_type, orderRef: row.order_ref, paymentAttemptId: row.payment_attempt_id, actorType: row.actor_type, actorId: row.actor_id, metadata: row.metadata, createdAt: row.created_at }));
       },
     },
     settings: {

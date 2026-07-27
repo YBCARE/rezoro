@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Complete Your Payment — Rezoro</title>
+  <meta name="robots" content="noindex">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%2307070A'/%3E%3Ctext x='32' y='44' font-family='Georgia,serif' font-size='38' font-weight='700' fill='%23C9A84C' text-anchor='middle'%3ER%3C/text%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant:ital,wght@0,400;0,600;0,700;1,400&family=Montserrat:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --black:#000000; --bg:#07070A; --bg2:#0E0E13; --bg3:#141419;
+      --gold:#C9A84C; --gold-l:#E4C870; --gold-border:rgba(201,168,76,.24); --gold-bg:rgba(201,168,76,.08);
+      --t1:#F0ECE4; --t2:#9A9490; --t3:#5C5852;
+      --border:rgba(255,255,255,.08); --red:#f87171; --green:#3ecf8e;
+      --font-d:'Cormorant',Georgia,serif; --font-s:'Montserrat',system-ui,sans-serif;
+    }
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+    body{background:var(--bg);color:var(--t1);font-family:var(--font-s);min-height:100vh;-webkit-font-smoothing:antialiased;}
+    a{color:inherit;}
+    nav{display:flex;align-items:center;justify-content:space-between;padding:1.2rem 2rem;border-bottom:1px solid var(--border);}
+    .logo{font-family:var(--font-d);font-size:1.5rem;font-weight:600;letter-spacing:.04em;text-decoration:none;}
+    .logo span{color:var(--gold);}
+    .nav-back{font-size:.78rem;color:var(--t3);text-decoration:none;}
+    main{max-width:560px;margin:0 auto;padding:3rem 1.5rem 5rem;}
+    .card{background:var(--bg2);border:1px solid var(--gold-border);border-radius:10px;padding:2.2rem;margin-bottom:1.2rem;}
+    .order-title{font-family:var(--font-d);font-size:1.7rem;font-weight:600;margin-bottom:.3rem;}
+    .order-sub{font-size:.85rem;color:var(--t3);margin-bottom:1.6rem;}
+    .price-row{display:flex;justify-content:space-between;align-items:baseline;padding:1rem 0;border-top:1px solid var(--border);border-bottom:1px solid var(--border);margin-bottom:1.6rem;}
+    .price-lbl{font-size:.72rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--t3);}
+    .price-val{font-family:var(--font-d);font-size:1.8rem;font-weight:600;color:var(--gold);}
+    .step-label{font-size:.68rem;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--t3);margin-bottom:.9rem;}
+    .method-grid{display:grid;gap:.7rem;margin-bottom:.5rem;}
+    .method-btn{display:flex;align-items:center;justify-content:space-between;gap:1rem;padding:1rem 1.2rem;background:var(--bg3);border:1px solid var(--border);border-radius:8px;cursor:pointer;text-align:left;font-family:inherit;color:var(--t1);font-size:.9rem;font-weight:600;transition:border-color .2s,background .2s;}
+    .method-btn:hover:not(:disabled){border-color:var(--gold-border);background:var(--gold-bg);}
+    .method-btn:disabled{opacity:.5;cursor:default;}
+    .method-tag{font-size:.65rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--t3);}
+    .method-tag.maint{color:#f0a040;}
+    .method-note{font-size:.72rem;color:var(--t3);margin-top:.3rem;font-weight:400;}
+    .field{margin-bottom:1.1rem;}
+    .field label{display:block;font-size:.7rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--t3);margin-bottom:.5rem;}
+    .field input,.field textarea{width:100%;padding:.8rem 1rem;background:var(--bg3);border:1px solid var(--border);border-radius:6px;color:var(--t1);font-family:inherit;font-size:.88rem;outline:none;}
+    .field input:focus,.field textarea:focus{border-color:var(--gold-border);}
+    .field input[type=file]{padding:.6rem .8rem;cursor:pointer;}
+    .warn-box{background:rgba(248,113,113,.08);border:1px solid rgba(248,113,113,.28);border-radius:8px;padding:.9rem 1.1rem;font-size:.78rem;color:#f0a0a0;line-height:1.6;margin-bottom:1.4rem;}
+    .detail-box{background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:1.2rem 1.4rem;margin-bottom:1.4rem;}
+    .d-row{display:flex;justify-content:space-between;gap:1rem;padding:.5rem 0;font-size:.84rem;border-bottom:1px solid var(--border);}
+    .d-row:last-child{border-bottom:none;}
+    .d-lbl{color:var(--t3);}
+    .d-val{color:var(--t1);font-weight:600;text-align:right;word-break:break-all;font-family:'Courier New',monospace;font-size:.8rem;}
+    .qr-wrap{text-align:center;margin-bottom:1.4rem;}
+    .qr-wrap img{width:200px;height:200px;border-radius:8px;background:#fff;padding:10px;}
+    .btn{display:block;width:100%;padding:.95rem 1.4rem;background:var(--gold);color:#000;border:none;border-radius:6px;font-family:inherit;font-size:.78rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;cursor:pointer;transition:background .2s;}
+    .btn:hover:not(:disabled){background:var(--gold-l);}
+    .btn:disabled{opacity:.55;cursor:default;}
+    .btn-ghost{display:block;width:100%;text-align:center;padding:.8rem 1.4rem;background:none;border:1px solid var(--border);border-radius:6px;color:var(--t2);font-family:inherit;font-size:.72rem;font-weight:600;letter-spacing:.08em;text-transform:uppercase;cursor:pointer;margin-top:.7rem;}
+    .status-icon{width:56px;height:56px;margin:0 auto 1.4rem;border-radius:50%;display:flex;align-items:center;justify-content:center;border:1px solid var(--gold-border);}
+    .status-icon svg{width:24px;height:24px;stroke:var(--gold);fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;}
+    .status-icon.ok{border-color:rgba(62,207,142,.35);}
+    .status-icon.ok svg{stroke:var(--green);}
+    .status-icon.pending svg{animation:spin 1.4s linear infinite;}
+    @keyframes spin{to{transform:rotate(360deg);}}
+    .center{text-align:center;}
+    .loading{text-align:center;padding:4rem 1rem;color:var(--t3);font-size:.85rem;}
+    .err-msg{font-size:.8rem;color:var(--red);margin-top:.8rem;text-align:center;}
+    .badge{display:inline-block;font-size:.62rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;padding:.3rem .7rem;border-radius:4px;margin-bottom:1rem;}
+    .badge.review{background:rgba(201,168,76,.12);color:var(--gold);border:1px solid var(--gold-border);}
+    .badge.paid{background:rgba(62,207,142,.1);color:var(--green);border:1px solid rgba(62,207,142,.3);}
+    .badge.rejected{background:rgba(248,113,113,.1);color:var(--red);border:1px solid rgba(248,113,113,.3);}
+  </style>
+</head>
+<body>
+<nav>
+  <a href="index.html" class="logo">Rez<span>oro</span></a>
+  <a href="index.html" class="nav-back">← Back to Rezoro</a>
+</nav>
+<main id="main">
+  <div class="loading">Loading your order…</div>
+</main>
+
+<script>
+const params = new URLSearchParams(window.location.search);
+const orderType = params.get('type');
+const orderRef  = params.get('ref');
+const returningAttemptId = params.get('attempt');
+const fwStatus = params.get('status');
+const fwTxId = params.get('transaction_id');
+
+const esc = s => String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+const fmtUsd = n => '$' + Number(n).toLocaleString('en-US');
+const $ = id => document.getElementById(id);
+
+const METHOD_LABELS = { flutterwave: 'Card Payment (Flutterwave)', bank_transfer: 'Bank Transfer', bitcoin: 'Bitcoin (BTC)', usdc: 'USDC' };
+const NETWORK_LABELS = { base: 'Base', ethereum: 'Ethereum (ERC-20)', solana: 'Solana', tron: 'TRON (TRC-20)' };
+const TERMINAL_INACTIVE = ['FAILED', 'EXPIRED', 'REJECTED', 'CANCELLED'];
+const REVIEW_STATUSES = ['PENDING_VERIFICATION', 'LATE_PAYMENT_REVIEW', 'UNDERPAYMENT_REVIEW', 'OVERPAYMENT_REVIEW', 'DUPLICATE_PAYMENT_REVIEW'];
+
+let order = null;
+let methods = null;
+let pollTimer = null;
+
+function renderError(msg) {
+  $('main').innerHTML = `<div class="card center">
+    <div class="status-icon" style="border-color:rgba(248,113,113,.35);"><svg viewBox="0 0 24 24" stroke="#f87171"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="13"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg></div>
+    <div class="order-title">Something went wrong</div>
+    <p style="color:var(--t3);font-size:.85rem;">${esc(msg)}</p>
+  </div>`;
+}
+
+async function loadOrder() {
+  if (!orderType || !orderRef) return renderError("We couldn't find this order — the link looks incomplete.");
+  try {
+    const r = await fetch(`/api/orders/${encodeURIComponent(orderType)}/${encodeURIComponent(orderRef)}`);
+    const d = await r.json();
+    if (!r.ok) return renderError(d.error || 'Order not found.');
+    order = d;
+    if (returningAttemptId) await resolveFlutterwaveReturn();
+    render();
+  } catch {
+    renderError('Connection error. Please refresh the page.');
+  }
+}
+
+async function resolveFlutterwaveReturn() {
+  if (fwStatus && fwStatus !== 'successful') return; // cancelled/failed on FW's side — just show current state
+  if (!fwTxId) return;
+  try {
+    await fetch(`/api/payment-attempts/${encodeURIComponent(returningAttemptId)}/verify-flutterwave?transaction_id=${encodeURIComponent(fwTxId)}`);
+    const r = await fetch(`/api/orders/${encodeURIComponent(orderType)}/${encodeURIComponent(orderRef)}`);
+    if (r.ok) order = await r.json();
+  } catch {}
+}
+
+function activeAttempt() {
+  if (!order?.attempts?.length) return null;
+  return order.attempts.find(a => !TERMINAL_INACTIVE.includes(a.status) && a.status !== 'PAID' && a.status !== 'TEST_PAID') || null;
+}
+
+function render() {
+  clearTimeout(pollTimer);
+
+  if (order.fulfilled) return renderSuccess();
+
+  const attempt = activeAttempt();
+  if (attempt && attempt.status === 'PENDING_PAYMENT') return renderInstructions(attempt);
+  if (attempt && REVIEW_STATUSES.includes(attempt.status)) return renderUnderReview(attempt);
+
+  renderMethodPicker();
+}
+
+function orderHeader() {
+  return `<div class="card">
+    <div class="order-title">${esc(order.label)}</div>
+    <div class="order-sub">Order Reference: <strong style="color:var(--gold);font-family:'Courier New',monospace;">${esc(order.orderRef)}</strong></div>
+    <div class="price-row"><span class="price-lbl">Total Due</span><span class="price-val">${fmtUsd(order.price)}</span></div>
+  </div>`;
+}
+
+function renderSuccess() {
+  const cardNote = orderType === 'fancard'
+    ? "Your collectible fan card and Certificate of Authenticity have been emailed to you."
+    : "Payment received — our team will be in touch shortly to finalise the details.";
+  $('main').innerHTML = `<div class="card center">
+    <div class="status-icon ok"><svg viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg></div>
+    <div class="order-title">Payment Confirmed</div>
+    <p style="color:var(--t2);font-size:.88rem;line-height:1.7;margin-bottom:1.4rem;">${esc(cardNote)}</p>
+    <div class="detail-box"><div class="d-row"><span class="d-lbl">Reference</span><span class="d-val">${esc(order.orderRef)}</span></div></div>
+    <a href="index.html" class="btn" style="text-decoration:none;display:block;text-align:center;">Back to Rezoro</a>
+  </div>`;
+}
+
+function renderUnderReview(attempt) {
+  const labels = {
+    PENDING_VERIFICATION: ['Under Review', 'We’ve received your payment details and they’re being reviewed. This usually takes a short while — no need to submit again.'],
+    LATE_PAYMENT_REVIEW: ['Under Review', 'Your payment arrived after the original window closed. Our team is reviewing it manually.'],
+    UNDERPAYMENT_REVIEW: ['Under Review', 'The amount received didn’t quite match what was expected. Our team is reviewing this.'],
+    OVERPAYMENT_REVIEW: ['Under Review', 'We received more than expected. Our team is reviewing this.'],
+    DUPLICATE_PAYMENT_REVIEW: ['Under Review', 'This looks like it may duplicate another payment on this order. Our team is reviewing it.'],
+  };
+  const [title, body] = labels[attempt.status] || ['Under Review', 'Your payment is being reviewed.'];
+  $('main').innerHTML = `${orderHeader()}
+  <div class="card center">
+    <span class="badge review">${esc(attempt.status.replace(/_/g,' '))}</span>
+    <div class="status-icon pending"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg></div>
+    <div class="order-title">${title}</div>
+    <p style="color:var(--t2);font-size:.85rem;line-height:1.7;">${body}</p>
+  </div>`;
+  pollTimer = setTimeout(refreshOrder, 8000);
+}
+
+async function refreshOrder() {
+  try {
+    const r = await fetch(`/api/orders/${encodeURIComponent(orderType)}/${encodeURIComponent(orderRef)}`);
+    if (r.ok) { order = await r.json(); render(); }
+    else pollTimer = setTimeout(refreshOrder, 8000);
+  } catch { pollTimer = setTimeout(refreshOrder, 8000); }
+}
+
+async function renderMethodPicker() {
+  $('main').innerHTML = `${orderHeader()}<div class="card"><div class="loading">Loading payment options…</div></div>`;
+  try {
+    const r = await fetch('/api/payments/methods');
+    methods = await r.json();
+  } catch {
+    $('main').innerHTML += `<div class="card center err-msg">Could not load payment options. Please refresh.</div>`;
+    return;
+  }
+
+  const rows = [];
+  for (const m of ['flutterwave', 'bank_transfer', 'bitcoin', 'usdc']) {
+    const cfg = methods[m];
+    if (cfg.status === 'disabled') continue;
+    const maint = cfg.status === 'maintenance';
+    rows.push(`<button class="method-btn" ${maint ? 'disabled' : ''} onclick="selectMethod('${m}')">
+      <span>${METHOD_LABELS[m]}${maint ? `<div class="method-note">${esc(cfg.maintenanceMessage)}</div>` : ''}</span>
+      <span class="method-tag ${maint ? 'maint' : ''}">${maint ? 'Unavailable' : 'Select'}</span>
+    </button>`);
+  }
+
+  if (!rows.length) {
+    $('main').innerHTML = `${orderHeader()}<div class="card center">
+      <div class="order-title">No Payment Methods Available</div>
+      <p style="color:var(--t3);font-size:.85rem;">Please check back shortly, or contact us for help completing this order.</p>
+    </div>`;
+    return;
+  }
+
+  $('main').innerHTML = `${orderHeader()}<div class="card">
+    <div class="step-label">Choose Payment Method</div>
+    <div class="method-grid" id="methodGrid">${rows.join('')}</div>
+    <div id="networkPicker"></div>
+    <div id="methodErr" class="err-msg"></div>
+  </div>`;
+}
+
+function selectMethod(method) {
+  if (method === 'usdc') return renderNetworkPicker();
+  createAttempt(method, null);
+}
+
+function renderNetworkPicker() {
+  const cfg = methods.usdc;
+  const rows = [];
+  for (const n of ['base', 'ethereum', 'solana', 'tron']) {
+    const netCfg = cfg.networks[n];
+    if (netCfg.status === 'disabled') continue;
+    const maint = netCfg.status === 'maintenance';
+    rows.push(`<button class="method-btn" ${maint ? 'disabled' : ''} onclick="createAttempt('usdc','${n}')">
+      <span>${NETWORK_LABELS[n]}${maint ? `<div class="method-note">${esc(netCfg.maintenanceMessage)}</div>` : ''}</span>
+      <span class="method-tag ${maint ? 'maint' : ''}">${maint ? 'Unavailable' : 'Select'}</span>
+    </button>`);
+  }
+  if (!rows.length) {
+    $('networkPicker').innerHTML = `<p class="err-msg">No USDC networks are currently available.</p>`;
+    return;
+  }
+  $('networkPicker').innerHTML = `<div class="step-label" style="margin-top:1.4rem;">Choose Network</div>
+    <div class="method-grid">${rows.join('')}</div>
+    <p class="method-note" style="margin-top:.6rem;">Send USDC only using the network shown. Sending another token or using another network may result in loss of funds. TRON only accepts the configured USDC token — never USDT.</p>`;
+}
+
+async function createAttempt(method, network) {
+  const errEl = $('methodErr');
+  if (errEl) errEl.textContent = '';
+  try {
+    const r = await fetch(`/api/orders/${encodeURIComponent(orderType)}/${encodeURIComponent(orderRef)}/attempts`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ method, network }),
+    });
+    const d = await r.json();
+    if (!r.ok) { if (errEl) errEl.textContent = d.error || 'Could not start this payment method.'; return; }
+    if (d.paymentLink) { window.location.href = d.paymentLink; return; }
+    order.attempts.unshift(d.attempt);
+    render();
+  } catch {
+    if (errEl) errEl.textContent = 'Connection error. Please try again.';
+  }
+}
+
+function renderInstructions(attempt) {
+  const snap = attempt.destinationSnapshot || {};
+  let detailRows = '';
+  let qr = '';
+  let form = '';
+
+  if (attempt.method === 'bank_transfer') {
+    detailRows = `
+      <div class="d-row"><span class="d-lbl">Bank</span><span class="d-val">${esc(snap.bankName)}</span></div>
+      <div class="d-row"><span class="d-lbl">Account Holder</span><span class="d-val">${esc(snap.accountHolder)}</span></div>
+      <div class="d-row"><span class="d-lbl">Account Number</span><span class="d-val">${esc(snap.accountNumber)}</span></div>
+      ${snap.iban ? `<div class="d-row"><span class="d-lbl">IBAN</span><span class="d-val">${esc(snap.iban)}</span></div>` : ''}
+      ${snap.swift ? `<div class="d-row"><span class="d-lbl">SWIFT/BIC</span><span class="d-val">${esc(snap.swift)}</span></div>` : ''}
+      <div class="d-row"><span class="d-lbl">Amount</span><span class="d-val">${fmtUsd(attempt.expectedAmount)} ${esc(snap.currency)}</span></div>
+      <div class="d-row"><span class="d-lbl">Reference</span><span class="d-val">${esc(order.orderRef)}</span></div>`;
+    form = `
+      <div class="warn-box">A screenshot or receipt is not proof of payment on its own — an admin verifies funds were actually received before this order is marked paid.</div>
+      ${snap.instructions ? `<p style="font-size:.8rem;color:var(--t2);margin-bottom:1.2rem;line-height:1.6;">${esc(snap.instructions)}</p>` : ''}
+      <div class="field"><label>Your Full Name (as sender)</label><input id="submSender" placeholder="Name on the bank transfer"></div>
+      <div class="field"><label>Bank Reference / Transaction ID <span style="color:var(--t3);font-weight:400;text-transform:none;">(optional)</span></label><input id="submBankRef" placeholder="Reference shown on your bank statement"></div>
+      <div class="field"><label>Receipt <span style="color:var(--t3);font-weight:400;text-transform:none;">(optional — JPG, PNG, or PDF)</span></label><input id="submReceipt" type="file" accept=".jpg,.jpeg,.png,.pdf"></div>
+      <button class="btn" id="submitBtn" onclick="submitAttempt('${attempt.id}')">I've Sent the Transfer</button>`;
+  } else if (attempt.method === 'bitcoin') {
+    detailRows = `
+      <div class="d-row"><span class="d-lbl">Asset</span><span class="d-val">Bitcoin (BTC)</span></div>
+      <div class="d-row"><span class="d-lbl">Amount</span><span class="d-val">${attempt.expectedCryptoAmount} BTC</span></div>
+      <div class="d-row"><span class="d-lbl">Address</span><span class="d-val">${esc(snap.address)}</span></div>
+      <div class="d-row"><span class="d-lbl">Confirmations Needed</span><span class="d-val">${snap.requiredConfirmations}</span></div>
+      <div class="d-row"><span class="d-lbl">Expires</span><span class="d-val">${new Date(attempt.expiresAt).toLocaleString()}</span></div>`;
+    qr = `<div class="qr-wrap"><img src="/api/payment-attempts/${attempt.id}/qr.png" alt="Bitcoin payment QR code"></div>`;
+    form = `
+      <div class="warn-box">Cryptocurrency payments must be sent using the exact asset and network shown above. Sending another token or using another network may result in loss of funds. A screenshot is not proof of payment.</div>
+      <div class="field"><label>Transaction ID (TXID)</label><input id="submTxid" placeholder="Paste your Bitcoin transaction ID"></div>
+      <button class="btn" id="submitBtn" onclick="submitAttempt('${attempt.id}')">I've Sent the Payment</button>`;
+  } else if (attempt.method === 'usdc') {
+    const tokenField = snap.network === 'solana' ? snap.tokenMint : snap.tokenContract;
+    detailRows = `
+      <div class="d-row"><span class="d-lbl">Asset</span><span class="d-val">USDC</span></div>
+      <div class="d-row"><span class="d-lbl">Network</span><span class="d-val">${NETWORK_LABELS[snap.network] || esc(attempt.network)}</span></div>
+      <div class="d-row"><span class="d-lbl">Amount</span><span class="d-val">${attempt.expectedCryptoAmount} USDC</span></div>
+      <div class="d-row"><span class="d-lbl">Wallet</span><span class="d-val">${esc(snap.wallet)}</span></div>
+      <div class="d-row"><span class="d-lbl">Token ${snap.network === 'solana' ? 'Mint' : 'Contract'}</span><span class="d-val">${esc(tokenField)}</span></div>
+      <div class="d-row"><span class="d-lbl">Expires</span><span class="d-val">${new Date(attempt.expiresAt).toLocaleString()}</span></div>`;
+    qr = `<div class="qr-wrap"><img src="/api/payment-attempts/${attempt.id}/qr.png" alt="USDC wallet QR code"></div>`;
+    const tronNote = snap.network === 'tron' ? ' Send the configured USDC token on TRON only — never USDT.' : '';
+    form = `
+      <div class="warn-box">Send USDC only using the network shown above. Sending another token or using another network may result in loss of funds.${tronNote}</div>
+      <div class="field"><label>Transaction ID / Signature</label><input id="submTxid" placeholder="Paste your transaction ID or signature"></div>
+      <button class="btn" id="submitBtn" onclick="submitAttempt('${attempt.id}')">I've Sent the Payment</button>`;
+  }
+
+  $('main').innerHTML = `${orderHeader()}<div class="card">
+    <div class="step-label">Payment Instructions</div>
+    ${qr}
+    <div class="detail-box">${detailRows}</div>
+    ${form}
+    <div id="submitErr" class="err-msg"></div>
+    <button class="btn-ghost" onclick="cancelAndPickAgain('${attempt.id}')">Choose a Different Method</button>
+  </div>`;
+}
+
+async function submitAttempt(attemptId) {
+  const btn = $('submitBtn');
+  const errEl = $('submitErr');
+  errEl.textContent = '';
+  const fd = new FormData();
+  const txidEl = $('submTxid');
+  if (txidEl) {
+    if (!txidEl.value.trim()) { errEl.textContent = 'Please enter the transaction ID.'; return; }
+    fd.append('txid', txidEl.value.trim());
+  } else {
+    const sender = $('submSender');
+    if (!sender.value.trim()) { errEl.textContent = 'Please enter the sender name.'; return; }
+    fd.append('senderName', sender.value.trim());
+    fd.append('bankReference', $('submBankRef').value.trim());
+    const file = $('submReceipt').files[0];
+    if (file) fd.append('receipt', file);
+  }
+  btn.disabled = true; btn.textContent = 'Submitting…';
+  try {
+    const r = await fetch(`/api/payment-attempts/${attemptId}/submit`, { method: 'POST', body: fd });
+    const d = await r.json();
+    if (!r.ok) { errEl.textContent = d.error || 'Submission failed.'; btn.disabled = false; btn.textContent = "I've Sent the Payment"; return; }
+    await refreshOrder();
+  } catch {
+    errEl.textContent = 'Connection error. Please try again.';
+    btn.disabled = false; btn.textContent = "I've Sent the Payment";
+  }
+}
+
+function cancelAndPickAgain(attemptId) {
+  // The old attempt just stays PENDING_PAYMENT and expires naturally — we
+  // simply stop showing it and let the customer start a fresh one.
+  order.attempts = order.attempts.filter(a => a.id !== attemptId);
+  renderMethodPicker();
+}
+
+loadOrder();
+</script>
+</body>
+</html>

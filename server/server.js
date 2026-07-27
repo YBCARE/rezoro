@@ -9,6 +9,7 @@ const { randomUUID } = require('crypto');
 
 const { generatePrintCard, generatePrintCardBack } = require('./fancard-print');
 const { generateCertificate }      = require('./certificate');
+const { fulfillFancardOrder }      = require('./fancard-fulfillment');
 const { createStore }              = require('./store');
 const { seedBuiltInCelebrities }   = require('./seed-celebrities');
 const {
@@ -20,6 +21,13 @@ const {
   sendNewsletter,
   sendVerificationEmail
 } = require('./mailer');
+
+const { mountPaymentRoutes } = require('./payments/routes');
+const paymentSettings        = require('./payments/settings');
+const paymentAudit           = require('./payments/audit');
+const { startExpirySweeper } = require('./payments/expire-sweep');
+const { transitionPaymentStatus } = require('./payments/state-machine');
+const { activateMembershipAfterVerifiedPayment } = require('./payments/membership-gate');
 
 const app  = express();
 const PORT = process.env.PORT || 3001;
@@ -123,6 +131,14 @@ function rateLimit(key, max, windowMs) {
     next();
   };
 }
+
+/* ══════════════════════════════════════════════════════════
+   PAYMENTS  (Flutterwave / Bank Transfer / Bitcoin / USDC)
+═══════════════════════════════════════════════════════════ */
+mountPaymentRoutes(app, {
+  getStore: () => store,
+  adminAuthMiddleware, optionalAuthMiddleware, upload, rateLimit, SITE_URL,
+});
 
 /* ══════════════════════════════════════════════════════════
    HEALTH
@@ -266,31 +282,10 @@ app.post('/api/admin/bookings/:id/accept', adminAuthMiddleware, async (req, res)
   const booking = await store.bookings.getById(req.params.id);
   if (!booking) return res.status(404).json({ error: 'Booking not found' });
 
-  // Generate Flutterwave payment link
-  let paymentLink = `https://rezoro.pro?ref=${booking.ref}`; // fallback
-  if (FW_SECRET) {
-    try {
-      const fwRes = await fetch('https://api.flutterwave.com/v3/payments', {
-        method: 'POST',
-        headers: { 'Authorization': `Bearer ${FW_SECRET}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          tx_ref:       booking.ref,
-          amount:       booking.price,
-          currency:     'USD',
-          redirect_url: `${SITE_URL}/payment-success.html?type=booking&ref=${booking.ref}`,
-          customer: { email: booking.email, name: booking.name },
-          customizations: {
-            title:       'Rezoro — Celebrity Booking',
-            description: `${booking.tier} booking — ${booking.celebName}`,
-            logo:        'https://rezoro.pro/logo.png'
-          }
-        })
-      });
-      const fwData = await fwRes.json();
-      if (fwData.status === 'success') paymentLink = fwData.data.link;
-    } catch (e) { console.error('[flutterwave]', e.message); }
-  }
-
+  // The customer picks a payment method (whichever admin has enabled) on
+  // order.html — this no longer creates a Flutterwave link directly, since
+  // Flutterwave might be disabled/in maintenance while Bank/BTC/USDC still work.
+  const paymentLink = `${SITE_URL}/order.html?type=booking&ref=${booking.ref}`;
   const updated = await store.bookings.update(booking.id, { status: 'accepted', paymentLink });
 
   sendBookingAccepted({
@@ -328,28 +323,123 @@ app.post('/api/admin/bookings/:id/status', adminAuthMiddleware, async (req, res)
 });
 
 /* ══════════════════════════════════════════════════════════
+   FLUTTERWAVE — shared resolution (webhook + return-URL verify)
+═══════════════════════════════════════════════════════════ */
+// Re-verifies server-side via Flutterwave's own /verify endpoint — never
+// trusts the webhook payload or a frontend redirect alone — using whichever
+// key (test/live) was actually active when this attempt was created, not
+// whatever the payload claims. Idempotent: a resolved attempt short-circuits.
+async function handleFlutterwaveResolution(attempt, providerTransactionId) {
+  if (attempt.status !== 'PENDING_PAYMENT') return { alreadyResolved: true };
+
+  const keys = paymentSettings.resolveFlutterwaveKeys(attempt.environment);
+  if (!keys) {
+    console.error(`[flutterwave] cannot verify attempt ${attempt.id} — no ${attempt.environment} keys configured`);
+    return { error: 'not_configured' };
+  }
+
+  let vData;
+  try {
+    const vRes = await fetch(`https://api.flutterwave.com/v3/transactions/${providerTransactionId}/verify`, {
+      headers: { Authorization: `Bearer ${keys.secretKey}` }
+    });
+    vData = await vRes.json();
+  } catch (e) {
+    console.error('[flutterwave] verify request failed:', e.message);
+    return { error: 'verify_request_failed' };
+  }
+
+  const tx = vData?.data;
+  const ok = vData?.status === 'success' && tx?.status === 'successful' && tx?.tx_ref === attempt.id
+    && Number(tx?.amount) >= Number(attempt.expectedAmount) && tx?.currency === attempt.expectedCurrency;
+
+  if (!ok) {
+    await paymentAudit.logEvent(store, {
+      event: 'PAYMENT_VERIFICATION_FAILED', orderType: attempt.orderType, orderRef: attempt.orderRef,
+      paymentAttemptId: attempt.id, actorType: 'webhook', metadata: { providerTransactionId },
+    });
+    return { verified: false };
+  }
+
+  if (attempt.environment === 'test') {
+    await transitionPaymentStatus(store, attempt.id, ['PENDING_PAYMENT'], 'TEST_PAID', {
+      providerTransactionId: String(providerTransactionId), verifiedAt: new Date().toISOString(),
+    });
+    await paymentAudit.logEvent(store, {
+      event: 'PAYMENT_VERIFIED', orderType: attempt.orderType, orderRef: attempt.orderRef,
+      paymentAttemptId: attempt.id, actorType: 'webhook',
+      metadata: { environment: 'test', note: 'Test-mode payment — membership NOT activated.' },
+    });
+    return { verified: true, environment: 'test' };
+  }
+
+  const result = await activateMembershipAfterVerifiedPayment(store, {
+    paymentAttemptId: attempt.id, fromStatuses: ['PENDING_PAYMENT'],
+    verificationResult: { provider: 'flutterwave', status: tx.status, amount: tx.amount, currency: tx.currency },
+    extraPatch: { providerTransactionId: String(providerTransactionId) },
+  });
+  return { verified: true, environment: 'live', activated: result.activated };
+}
+
+// Lets order.html trigger verification as soon as Flutterwave redirects the
+// customer back — the webhook remains the authoritative path if the
+// customer never lands back on the page, but this makes the common case instant.
+app.get('/api/payment-attempts/:id/verify-flutterwave', rateLimit('fw-verify', 30, 60 * 60 * 1000), async (req, res) => {
+  try {
+    const attempt = await store.paymentAttempts.getById(req.params.id);
+    if (!attempt || attempt.method !== 'flutterwave') return res.status(404).json({ error: 'Payment attempt not found.' });
+    const transactionId = req.query.transaction_id;
+    if (!transactionId) return res.status(400).json({ error: 'transaction_id is required.' });
+    const result = await handleFlutterwaveResolution(attempt, transactionId);
+    res.json({ success: true, ...result });
+  } catch (err) {
+    console.error('[flutterwave-verify]', err.message);
+    res.status(500).json({ error: 'Verification failed.' });
+  }
+});
+
+/* ══════════════════════════════════════════════════════════
    FLUTTERWAVE WEBHOOK
 ═══════════════════════════════════════════════════════════ */
 app.post('/api/payment/webhook', async (req, res) => {
   // Reject all webhooks unless the shared secret is configured AND matches.
   const secret = req.headers['verif-hash'] || '';
   if (!FW_WEBHOOK_SECRET || secret !== FW_WEBHOOK_SECRET) {
+    await paymentAudit.logEvent(store, {
+      event: 'WEBHOOK_REJECTED', actorType: 'webhook',
+      metadata: { reason: 'invalid_or_missing_verif_hash' },
+    }).catch(() => {});
     return res.status(401).json({ error: 'Unauthorized' });
   }
-  const { data } = req.body;
-  if (data && data.status === 'successful' && data.tx_ref) {
-    // Redundant confirmation path in case the buyer never lands back on
-    // payment-success.html — covers both bookings and fan card orders.
-    const booking = [...await store.bookings.all()].find(b => b.ref === data.tx_ref);
-    if (booking) {
-      await store.bookings.updateByRef(data.tx_ref, { status: 'confirmed' });
-    } else {
-      const order = await store.fancardOrders.getByRef(data.tx_ref);
-      if (order && order.status !== 'paid') {
-        try { await fulfillFancardOrder(order); }
-        catch (e) { console.error('[webhook] fulfill failed:', e.message); }
+  try {
+    const { data } = req.body;
+    if (data && data.status === 'successful' && data.tx_ref) {
+      // New-style payments: tx_ref is a payment_attempts.id (a UUID) created via
+      // /api/orders/:type/:ref/attempts. Falls through to the legacy path below
+      // for any payment link created before this system existed (tx_ref was the
+      // order's own human-readable ref, e.g. "RZ-...", for those).
+      const attempt = await store.paymentAttempts.getById(data.tx_ref);
+      if (attempt) {
+        await handleFlutterwaveResolution(attempt, data.id);
+      } else {
+        const booking = await store.bookings.getByRef(data.tx_ref);
+        if (booking) {
+          await store.bookings.updateByRef(data.tx_ref, { status: 'confirmed' });
+        } else {
+          const order = await store.fancardOrders.getByRef(data.tx_ref);
+          if (order && order.status !== 'paid') {
+            try { await fulfillFancardOrder(store, order); }
+            catch (e) { console.error('[webhook] fulfill failed:', e.message); }
+          }
+        }
       }
     }
+  } catch (err) {
+    // Always acknowledge receipt even if our own processing failed — a 5xx
+    // here just makes Flutterwave retry the same webhook, which won't help
+    // if the bug is on our side, and this event isn't the only path to
+    // fulfillment (the return-URL verify and admin approval both also work).
+    console.error('[webhook] processing failed:', err.message);
   }
   res.json({ status: 'ok' });
 });
@@ -695,61 +785,16 @@ app.get('/api/admin/fancard-orders', adminAuthMiddleware, async (_req, res) => {
    FAN CARD  (existing + link to user account)
 ═══════════════════════════════════════════════════════════ */
 
-// Generates the print-ready card + certificate, emails them, and records
-// the order as delivered. Called only after payment is verified. Safe to
-// call twice for the same order — it's guarded by order.status at the
-// call sites (checked before invoking).
-async function fulfillFancardOrder(order) {
-  let celebImageSrc = null;
-  if (order.celebId) {
-    const photo = await store.celebrities.getPhoto(order.celebId);
-    if (photo) celebImageSrc = photo.buffer;
-  }
-
-  const edNum   = await store.editions.next(`${order.tier}:${order.celebName.toLowerCase()}`);
-  const edition = `No. ${String(edNum).padStart(3, '0')}`;
-
-  const photoSrc = order.photo ? order.photo.buffer : null;
-
-  const issued = new Date();
-
-  // Front: the celebrity. Back: the collector. Printed as one double-sided card.
-  const cardBuffer = await generatePrintCard({
-    fanName: order.fanName, country: order.country || '', celebName: order.celebName,
-    celebWiki: order.celebWiki || '', celebImageSrc, tier: order.tier, ref: order.ref, edition
-  });
-  const cardBackBuffer = await generatePrintCardBack({
-    fanName: order.fanName, country: order.country || '', celebName: order.celebName,
-    tier: order.tier, ref: order.ref, edition, issued, photoSrc
-  });
-  const certBuffer = generateCertificate({
-    fanName: order.fanName, celebName: order.celebName, tier: order.tier, ref: order.ref, edition, issued
-  });
-
-  await sendFanCardEmail({
-    to: order.email, fanName: order.fanName, country: order.country || '', celebName: order.celebName,
-    tier: order.tier, ref: order.ref, edition, cardBuffer, cardBackBuffer, certBuffer
-  });
-
-  if (order.userId) {
-    await store.fancards.add(order.userId, {
-      ref: order.ref, celebName: order.celebName, tier: order.tier, fanName: order.fanName,
-      country: order.country || '', edition, createdAt: new Date().toISOString()
-    });
-  }
-
-  await store.fancardOrders.markPaid(order.ref, { edition, delivered: true });
-  console.log(`[FANCARD] ${order.ref} — ${order.celebName} for ${order.fanName} (paid, delivered)`);
-}
-
+// Creates the order only — no payment method is chosen yet. The customer is
+// sent to order.html, which lists whichever methods are currently ENABLED
+// and creates the actual payment attempt once one is picked (see
+// server/payments/routes.js). This is what makes "admin disables Flutterwave,
+// Bank/BTC/USDC still work" possible — nothing here is FLW-specific anymore.
 app.post('/api/fancard/checkout', rateLimit('fancard', 8, 60 * 60 * 1000), optionalAuthMiddleware, upload.single('photo'), async (req, res) => {
   try {
     const { fanName, country, celebName, celebWiki, celebId, tier, email } = req.body;
     if (!fanName || !celebName || !email) {
       return res.status(400).json({ error: 'fanName, celebName and email are required.' });
-    }
-    if (!FW_SECRET) {
-      return res.status(503).json({ error: 'Payments are not configured yet. Contact the site owner.' });
     }
 
     const tierClean = ['gold','silver','bronze'].includes(tier) ? tier : 'gold';
@@ -771,32 +816,13 @@ app.post('/api/fancard/checkout', rateLimit('fancard', 8, 60 * 60 * 1000), optio
       ref, fanName, country: country || '', celebName, celebWiki: celebWiki || '', celebId: celebId || null,
       tier: tierClean, price, email, userId: req.user ? req.user.id : null, photo
     });
+    await paymentAudit.logEvent(store, {
+      event: 'ORDER_CREATED', orderType: 'fancard', orderRef: ref,
+      actorType: req.user ? 'customer' : 'system', actorId: req.user ? req.user.id : null,
+      metadata: { celebName, tier: tierClean, price },
+    });
 
-    let paymentLink = null;
-    try {
-      const fwRes = await fetch('https://api.flutterwave.com/v3/payments', {
-        method: 'POST',
-        headers: { 'Authorization': `Bearer ${FW_SECRET}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          tx_ref: ref, amount: price, currency: 'USD',
-          redirect_url: `${SITE_URL}/payment-success.html?type=fancard&ref=${ref}`,
-          customer: { email, name: fanName },
-          customizations: {
-            title: 'Rezoro — Fan Card',
-            description: `${tierClean} fan card — ${celebName}`,
-            logo: `${SITE_URL}/logo.png`
-          }
-        })
-      });
-      const fwData = await fwRes.json();
-      if (fwData.status === 'success') paymentLink = fwData.data.link;
-    } catch (e) { console.error('[flutterwave]', e.message); }
-
-    if (!paymentLink) {
-      return res.status(502).json({ error: 'Could not start payment. Please try again shortly.' });
-    }
-
-    res.json({ success: true, ref, paymentLink });
+    res.json({ success: true, ref });
   } catch (err) {
     console.error('[fancard/checkout]', err.message);
     res.status(500).json({ error: 'Failed to start checkout.' });
@@ -825,7 +851,7 @@ app.get('/api/payment/verify', rateLimit('verify', 30, 60 * 60 * 1000), async (r
         && Number(tx?.amount) >= Number(order.price) && tx?.currency === 'USD';
       if (!ok) return res.status(402).json({ error: 'Payment could not be verified.' });
 
-      await fulfillFancardOrder(order);
+      await fulfillFancardOrder(store, order);
       return res.json({ success: true, celebName: order.celebName, tier: order.tier, email: order.email, ref });
     }
 
@@ -874,6 +900,7 @@ createStore()
   .then(async s => {
     store = s;
     await seedBuiltInCelebrities(store);
+    startExpirySweeper(store);
     app.listen(PORT, () => {
       console.log(`\n  ╔══════════════════════════════════════╗`);
       console.log(`  ║   R E Z O R O   B A C K E N D  v2    ║`);

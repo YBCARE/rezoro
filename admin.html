@@ -411,6 +411,11 @@ async function gateUnlock(){
       <a class="sb-item" onclick="nav('orders',this)"><span class="sb-icon">💳</span> Fan Card Orders</a>
     </div>
     <div class="sb-group">
+      <span class="sb-group-label">Payments</span>
+      <a class="sb-item" onclick="nav('paymentsreview',this)"><span class="sb-icon">🧾</span> Payments <span class="sb-badge sb-badge-red" id="sb-review-count"></span></a>
+      <a class="sb-item" onclick="nav('paymentsettings',this)"><span class="sb-icon">🔧</span> Payment Settings</a>
+    </div>
+    <div class="sb-group">
       <span class="sb-group-label">Talent</span>
       <a class="sb-item" onclick="nav('fancards',this)"><span class="sb-icon">⭐</span> Celebrities</a>
     </div>
@@ -663,6 +668,126 @@ async function gateUnlock(){
     </div>
   </div>
 
+  <!-- ════ PAGE: PAYMENT SETTINGS ═════════════════════════ -->
+  <div class="page" id="pg-paymentsettings">
+    <div class="pg-header">
+      <div><div class="pg-title">Payment Settings</div><div class="pg-sub">Control which payment methods customers can use, without touching code.</div></div>
+    </div>
+
+    <!-- FLUTTERWAVE -->
+    <div class="tbl-card" style="margin-bottom:1.2rem;">
+      <div class="tbl-header">
+        <div class="tbl-title">Flutterwave</div>
+        <div class="tbl-meta" id="ps-fw-keystatus">Checking configuration…</div>
+      </div>
+      <div style="padding:1.4rem;">
+        <div class="f-row" style="grid-template-columns:1fr 1fr;">
+          <div class="f-grp"><label class="f-lbl">Status</label>
+            <select class="f-sel" id="ps-fw-status"><option value="enabled">Enabled</option><option value="maintenance">Maintenance</option><option value="disabled">Disabled</option></select>
+          </div>
+          <div class="f-grp"><label class="f-lbl">Mode</label>
+            <select class="f-sel" id="ps-fw-mode"><option value="test">Test</option><option value="live">Live</option></select>
+          </div>
+        </div>
+        <div class="f-grp"><label class="f-lbl">Maintenance Message</label><textarea class="f-in" id="ps-fw-msg" rows="2" style="resize:vertical;font-family:inherit;"></textarea></div>
+        <button class="f-sub" id="ps-fw-save" onclick="savePaymentSettings('flutterwave')" style="max-width:220px;">✦ Save Flutterwave</button>
+      </div>
+    </div>
+
+    <!-- BANK TRANSFER -->
+    <div class="tbl-card" style="margin-bottom:1.2rem;">
+      <div class="tbl-header"><div class="tbl-title">Bank Transfer</div><div class="tbl-meta">Shown to customers exactly as entered — double-check before saving.</div></div>
+      <div style="padding:1.4rem;">
+        <div class="f-grp"><label class="f-lbl">Status</label>
+          <select class="f-sel" id="ps-bt-status"><option value="enabled">Enabled</option><option value="maintenance">Maintenance</option><option value="disabled">Disabled</option></select>
+        </div>
+        <div class="f-row" style="grid-template-columns:1fr 1fr;">
+          <div class="f-grp"><label class="f-lbl">Bank Name</label><input class="f-in" id="ps-bt-bankName"></div>
+          <div class="f-grp"><label class="f-lbl">Account Holder</label><input class="f-in" id="ps-bt-accountHolder"></div>
+        </div>
+        <div class="f-row" style="grid-template-columns:1fr 1fr;">
+          <div class="f-grp"><label class="f-lbl">Account Number</label><input class="f-in" id="ps-bt-accountNumber"></div>
+          <div class="f-grp"><label class="f-lbl">IBAN <span style="color:var(--t3);font-weight:400;">(if applicable)</span></label><input class="f-in" id="ps-bt-iban"></div>
+        </div>
+        <div class="f-row" style="grid-template-columns:1fr 1fr;">
+          <div class="f-grp"><label class="f-lbl">Currency</label><input class="f-in" id="ps-bt-currency" placeholder="USD"></div>
+          <div class="f-grp"><label class="f-lbl">SWIFT/BIC <span style="color:var(--t3);font-weight:400;">(if applicable)</span></label><input class="f-in" id="ps-bt-swift"></div>
+        </div>
+        <div class="f-grp"><label class="f-lbl">Payment Instructions</label><textarea class="f-in" id="ps-bt-instructions" rows="2" style="resize:vertical;font-family:inherit;"></textarea></div>
+        <div class="f-grp"><label class="f-lbl">Maintenance Message</label><textarea class="f-in" id="ps-bt-msg" rows="2" style="resize:vertical;font-family:inherit;"></textarea></div>
+        <button class="f-sub" id="ps-bt-save" onclick="savePaymentSettings('bank_transfer')" style="max-width:220px;">✦ Save Bank Transfer</button>
+      </div>
+    </div>
+
+    <!-- BITCOIN -->
+    <div class="tbl-card" style="margin-bottom:1.2rem;">
+      <div class="tbl-header"><div class="tbl-title">Bitcoin</div><div class="tbl-meta">Only a public receiving address — never a seed phrase or private key.</div></div>
+      <div style="padding:1.4rem;">
+        <div class="f-grp"><label class="f-lbl">Status</label>
+          <select class="f-sel" id="ps-btc-status"><option value="enabled">Enabled</option><option value="maintenance">Maintenance</option><option value="disabled">Disabled</option></select>
+        </div>
+        <div class="f-grp"><label class="f-lbl">Receiving Address</label><input class="f-in" id="ps-btc-address" placeholder="bc1…"></div>
+        <div class="f-row" style="grid-template-columns:1fr 1fr;">
+          <div class="f-grp"><label class="f-lbl">Required Confirmations</label><input class="f-in" type="number" min="0" id="ps-btc-confirmations"></div>
+          <div class="f-grp"><label class="f-lbl">Expiration (minutes)</label><input class="f-in" type="number" min="1" id="ps-btc-expiration"></div>
+        </div>
+        <div class="f-grp"><label class="f-lbl">Maintenance Message</label><textarea class="f-in" id="ps-btc-msg" rows="2" style="resize:vertical;font-family:inherit;"></textarea></div>
+        <button class="f-sub" id="ps-btc-save" onclick="savePaymentSettings('bitcoin')" style="max-width:220px;">✦ Save Bitcoin</button>
+      </div>
+    </div>
+
+    <!-- USDC -->
+    <div class="tbl-card" style="margin-bottom:1.2rem;">
+      <div class="tbl-header"><div class="tbl-title">USDC</div><div class="tbl-meta">Each network is independent — a network only accepts payments once its wallet and expected token are both set.</div></div>
+      <div style="padding:1.4rem;">
+        <div class="f-grp"><label class="f-lbl">Overall Status</label>
+          <select class="f-sel" id="ps-usdc-status"><option value="enabled">Enabled</option><option value="maintenance">Maintenance</option><option value="disabled">Disabled</option></select>
+        </div>
+        <div class="f-grp"><label class="f-lbl">Overall Maintenance Message</label><textarea class="f-in" id="ps-usdc-msg" rows="2" style="resize:vertical;font-family:inherit;"></textarea></div>
+        <div id="ps-usdc-networks"></div>
+        <button class="f-sub" id="ps-usdc-save" onclick="savePaymentSettings('usdc')" style="max-width:220px;margin-top:.6rem;">✦ Save USDC</button>
+      </div>
+    </div>
+
+    <!-- PREVIEW CHECKOUT -->
+    <div class="tbl-card">
+      <div class="tbl-header"><div class="tbl-title">Preview Checkout</div><div class="tbl-meta">Exactly what customers see right now — no order is created.</div></div>
+      <div style="padding:1.4rem;max-width:420px;" id="ps-preview"></div>
+    </div>
+  </div>
+
+  <!-- ════ PAGE: PAYMENTS REVIEW ═══════════════════════════ -->
+  <div class="page" id="pg-paymentsreview">
+    <div class="pg-header">
+      <div><div class="pg-title">Payments</div><div class="pg-sub">Every payment attempt across bookings and fan cards.</div></div>
+    </div>
+    <div class="tbl-card">
+      <div class="tbl-header">
+        <div class="tbl-title">All Payments</div>
+        <div class="tbl-meta">Click a row to review, approve, or reject.</div>
+      </div>
+      <div style="padding:1rem 1.4rem 0;display:flex;gap:.5rem;flex-wrap:wrap;">
+        <button class="td-btn" id="pr-filter-needs_review" onclick="setPrFilter('needs_review', this)" style="color:var(--t1);border-color:var(--border2);">Needs Review</button>
+        <button class="td-btn" id="pr-filter-PENDING_PAYMENT" onclick="setPrFilter('PENDING_PAYMENT', this)">Pending</button>
+        <button class="td-btn" id="pr-filter-PAID" onclick="setPrFilter('PAID', this)">Paid</button>
+        <button class="td-btn" id="pr-filter-TEST_PAID" onclick="setPrFilter('TEST_PAID', this)">Test</button>
+        <button class="td-btn" id="pr-filter-EXPIRED" onclick="setPrFilter('EXPIRED', this)">Expired</button>
+        <button class="td-btn" id="pr-filter-REJECTED" onclick="setPrFilter('REJECTED', this)">Rejected</button>
+        <button class="td-btn" id="pr-filter-FAILED" onclick="setPrFilter('FAILED', this)">Failed</button>
+        <button class="td-btn" id="pr-filter-all" onclick="setPrFilter('all', this)">All</button>
+      </div>
+      <div id="pr-list" style="padding:1.2rem 1.4rem;"></div>
+    </div>
+  </div>
+
+  <!-- PAYMENT DETAIL MODAL -->
+  <div class="overlay" id="paymentDetailOverlay" onclick="if(event.target===this) closePaymentDetail()">
+    <div class="modal" style="max-width:560px;max-height:85vh;overflow-y:auto;">
+      <button class="m-close" onclick="closePaymentDetail()">✕</button>
+      <div id="pd-content"></div>
+    </div>
+  </div>
+
   <!-- ════ PAGE: SETTINGS ═════════════════════════════════ -->
   <div class="page" id="pg-settings">
     <div class="pg-header">
@@ -780,11 +905,13 @@ async function gateUnlock(){
 ════════════════════════════════════════════ */
 const PAGE_MAP = {
   incoming:'incoming', newsletter:'newsletter',
-  fancards:'fancards', settings:'settings', orders:'orders', testimonials:'testimonials'
+  fancards:'fancards', settings:'settings', orders:'orders', testimonials:'testimonials',
+  paymentsettings:'paymentsettings', paymentsreview:'paymentsreview'
 };
 const LABELS = {
   incoming:'Incoming Bookings', newsletter:'Newsletter',
-  fancards:'Celebrities', settings:'Settings', orders:'Fan Card Orders', testimonials:'Testimonials'
+  fancards:'Celebrities', settings:'Settings', orders:'Fan Card Orders', testimonials:'Testimonials',
+  paymentsettings:'Payment Settings', paymentsreview:'Payments'
 };
 
 function nav(name, el){
@@ -803,6 +930,8 @@ function nav(name, el){
   if(name==='newsletter') loadSubscribers();
   if(name==='orders') loadOrders();
   if(name==='testimonials') renderTestimonialTable();
+  if(name==='paymentsettings') loadPaymentSettings();
+  if(name==='paymentsreview') loadPaymentsReview();
   if(window.innerWidth <= 768) toggleSB(false);
 }
 
@@ -968,6 +1097,355 @@ async function saveFanCardBenefits(){
   } finally {
     btn.disabled = false; btn.textContent = '✦ Save Benefits';
   }
+}
+
+/* ════════════════════════════════════════════
+   PAYMENT SETTINGS
+════════════════════════════════════════════ */
+let paymentSettingsCache = null;
+const USDC_NETWORKS = ['base','ethereum','solana','tron'];
+const USDC_NETWORK_LABELS = { base:'Base', ethereum:'Ethereum (ERC-20)', solana:'Solana', tron:'TRON (TRC-20)' };
+const METHOD_LABELS_ADMIN = { flutterwave:'Card Payment (Flutterwave)', bank_transfer:'Bank Transfer', bitcoin:'Bitcoin (BTC)', usdc:'USDC' };
+
+async function loadPaymentSettings(){
+  try {
+    const r = await fetch('/api/admin/payments/settings', { headers: adminHeaders() });
+    if (r.status === 401) { adminSignOut(); return; }
+    paymentSettingsCache = await r.json();
+  } catch(e) { showToast('⚠ Failed to load payment settings.', 'error'); return; }
+
+  const fw = paymentSettingsCache.flutterwave;
+  document.getElementById('ps-fw-status').value = fw.status;
+  document.getElementById('ps-fw-mode').value = fw.mode;
+  document.getElementById('ps-fw-msg').value = fw.maintenanceMessage || '';
+  const ks = fw.keyStatus || {};
+  document.getElementById('ps-fw-keystatus').textContent =
+    `Test keys: ${ks.hasTestKeys ? 'configured' : 'missing'} · Live keys: ${ks.hasLiveKeys ? 'configured' : 'missing'}`;
+
+  const bt = paymentSettingsCache.bank_transfer;
+  document.getElementById('ps-bt-status').value = bt.status;
+  document.getElementById('ps-bt-bankName').value = bt.bankName || '';
+  document.getElementById('ps-bt-accountHolder').value = bt.accountHolder || '';
+  document.getElementById('ps-bt-accountNumber').value = bt.accountNumber || '';
+  document.getElementById('ps-bt-iban').value = bt.iban || '';
+  document.getElementById('ps-bt-currency').value = bt.currency || '';
+  document.getElementById('ps-bt-swift').value = bt.swift || '';
+  document.getElementById('ps-bt-instructions').value = bt.instructions || '';
+  document.getElementById('ps-bt-msg').value = bt.maintenanceMessage || '';
+
+  const btc = paymentSettingsCache.bitcoin;
+  document.getElementById('ps-btc-status').value = btc.status;
+  document.getElementById('ps-btc-address').value = btc.address || '';
+  document.getElementById('ps-btc-confirmations').value = btc.requiredConfirmations;
+  document.getElementById('ps-btc-expiration').value = btc.expirationMinutes;
+  document.getElementById('ps-btc-msg').value = btc.maintenanceMessage || '';
+
+  const usdc = paymentSettingsCache.usdc;
+  document.getElementById('ps-usdc-status').value = usdc.status;
+  document.getElementById('ps-usdc-msg').value = usdc.maintenanceMessage || '';
+  renderUsdcNetworkForms(usdc.networks);
+
+  renderPreviewCheckout();
+}
+
+function renderUsdcNetworkForms(networks){
+  const el = document.getElementById('ps-usdc-networks');
+  el.innerHTML = USDC_NETWORKS.map(n => {
+    const tokenLabel = n === 'solana' ? 'USDC Mint' : 'USDC Contract';
+    return `<div style="border-top:1px solid var(--border);padding-top:1.2rem;margin-top:1.2rem;">
+      <div style="font-size:.72rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--gold);margin-bottom:.8rem;">${USDC_NETWORK_LABELS[n]}</div>
+      <div class="f-row" style="grid-template-columns:1fr 1fr;">
+        <div class="f-grp"><label class="f-lbl">Status</label>
+          <select class="f-sel" id="ps-usdc-${n}-status">
+            <option value="enabled">Enabled</option><option value="maintenance">Maintenance</option><option value="disabled">Disabled</option>
+          </select>
+        </div>
+        <div class="f-grp"><label class="f-lbl">Required Confirmations</label><input class="f-in" type="number" min="0" id="ps-usdc-${n}-confirmations"></div>
+      </div>
+      <div class="f-grp"><label class="f-lbl">Receiving Wallet</label><input class="f-in" id="ps-usdc-${n}-wallet"></div>
+      <div class="f-grp"><label class="f-lbl">${tokenLabel} <span style="color:var(--t3);font-weight:400;">(verify from an official source before entering)</span></label><input class="f-in" id="ps-usdc-${n}-token"></div>
+      <div class="f-grp"><label class="f-lbl">Expiration (minutes)</label><input class="f-in" type="number" min="1" id="ps-usdc-${n}-expiration"></div>
+      <div class="f-grp"><label class="f-lbl">Maintenance Message</label><textarea class="f-in" rows="2" style="resize:vertical;font-family:inherit;" id="ps-usdc-${n}-msg"></textarea></div>
+    </div>`;
+  }).join('');
+  USDC_NETWORKS.forEach(n => {
+    const cfg = networks[n];
+    document.getElementById(`ps-usdc-${n}-status`).value = cfg.status;
+    document.getElementById(`ps-usdc-${n}-confirmations`).value = cfg.requiredConfirmations;
+    document.getElementById(`ps-usdc-${n}-wallet`).value = cfg.wallet || '';
+    document.getElementById(`ps-usdc-${n}-token`).value = (n === 'solana' ? cfg.tokenMint : cfg.tokenContract) || '';
+    document.getElementById(`ps-usdc-${n}-expiration`).value = cfg.expirationMinutes;
+    document.getElementById(`ps-usdc-${n}-msg`).value = cfg.maintenanceMessage || '';
+  });
+}
+
+function collectPaymentSettings(method){
+  if (method === 'flutterwave') {
+    return { status: document.getElementById('ps-fw-status').value, mode: document.getElementById('ps-fw-mode').value, maintenanceMessage: document.getElementById('ps-fw-msg').value };
+  }
+  if (method === 'bank_transfer') {
+    return {
+      status: document.getElementById('ps-bt-status').value,
+      bankName: document.getElementById('ps-bt-bankName').value.trim(),
+      accountHolder: document.getElementById('ps-bt-accountHolder').value.trim(),
+      accountNumber: document.getElementById('ps-bt-accountNumber').value.trim(),
+      iban: document.getElementById('ps-bt-iban').value.trim(),
+      currency: document.getElementById('ps-bt-currency').value.trim() || 'USD',
+      swift: document.getElementById('ps-bt-swift').value.trim(),
+      instructions: document.getElementById('ps-bt-instructions').value,
+      maintenanceMessage: document.getElementById('ps-bt-msg').value,
+    };
+  }
+  if (method === 'bitcoin') {
+    return {
+      status: document.getElementById('ps-btc-status').value,
+      address: document.getElementById('ps-btc-address').value.trim(),
+      requiredConfirmations: Number(document.getElementById('ps-btc-confirmations').value) || 0,
+      expirationMinutes: Number(document.getElementById('ps-btc-expiration').value) || 60,
+      maintenanceMessage: document.getElementById('ps-btc-msg').value,
+    };
+  }
+  const networks = {};
+  USDC_NETWORKS.forEach(n => {
+    const tokenVal = document.getElementById(`ps-usdc-${n}-token`).value.trim();
+    networks[n] = {
+      status: document.getElementById(`ps-usdc-${n}-status`).value,
+      wallet: document.getElementById(`ps-usdc-${n}-wallet`).value.trim(),
+      requiredConfirmations: Number(document.getElementById(`ps-usdc-${n}-confirmations`).value) || 0,
+      expirationMinutes: Number(document.getElementById(`ps-usdc-${n}-expiration`).value) || 60,
+      maintenanceMessage: document.getElementById(`ps-usdc-${n}-msg`).value,
+      ...(n === 'solana' ? { tokenMint: tokenVal } : { tokenContract: tokenVal }),
+    };
+  });
+  return { status: document.getElementById('ps-usdc-status').value, maintenanceMessage: document.getElementById('ps-usdc-msg').value, networks };
+}
+
+async function savePaymentSettings(method){
+  const btnId = { flutterwave:'ps-fw-save', bank_transfer:'ps-bt-save', bitcoin:'ps-btc-save', usdc:'ps-usdc-save' }[method];
+  const btn = document.getElementById(btnId);
+  const next = collectPaymentSettings(method);
+  const current = paymentSettingsCache[method];
+
+  async function attempt(confirmed){
+    const r = await fetch(`/api/admin/payments/settings/${method}`, {
+      method: 'PUT', headers: adminHeaders({ 'Content-Type': 'application/json' }),
+      body: JSON.stringify({ settings: next, confirmed }),
+    });
+    if (r.status === 401) { adminSignOut(); return null; }
+    const d = await r.json();
+    return { ok: r.ok, data: d };
+  }
+
+  btn.disabled = true; const orig = btn.textContent; btn.textContent = 'Saving…';
+  try {
+    let result = await attempt(false);
+    if (!result) return;
+    if (result.data.requiresConfirmation) {
+      const goingLive = method === 'flutterwave' && next.mode === 'live' && current.mode !== 'live';
+      const msg = goingLive
+        ? 'You are about to enable LIVE Flutterwave payments. Real customer transactions may be processed. Confirm that live credentials and webhook configuration are complete.'
+        : 'Changing this receiving address/account affects new payment orders only. Existing pending orders will continue using the payment details stored when those orders were created.';
+      if (!confirm(msg)) { showToast('Cancelled — no changes saved.', 'warn'); return; }
+      result = await attempt(true);
+      if (!result) return;
+    }
+    if (!result.ok) throw new Error(result.data.error || 'Failed to save.');
+    paymentSettingsCache[method] = next;
+    showToast(`✦ ${METHOD_LABELS_ADMIN[method]} settings saved.`);
+    renderPreviewCheckout();
+  } catch(e) {
+    showToast('⚠ ' + e.message, 'error');
+  } finally {
+    btn.disabled = false; btn.textContent = orig;
+  }
+}
+
+async function renderPreviewCheckout(){
+  const el = document.getElementById('ps-preview');
+  el.innerHTML = '<div style="color:var(--t3);font-size:.8rem;">Loading…</div>';
+  try {
+    const r = await fetch('/api/payments/methods');
+    const methods = await r.json();
+    const rows = [];
+    for (const m of ['flutterwave','bank_transfer','bitcoin','usdc']) {
+      const cfg = methods[m];
+      if (cfg.status === 'disabled') continue;
+      const maint = cfg.status === 'maintenance';
+      rows.push(`<div style="display:flex;justify-content:space-between;align-items:center;padding:.8rem 1rem;background:var(--bg3);border:1px solid var(--border);border-radius:6px;margin-bottom:.5rem;${maint?'opacity:.55;':''}">
+        <span style="font-size:.85rem;font-weight:600;">${METHOD_LABELS_ADMIN[m]}${maint?`<div style="font-size:.7rem;color:var(--t3);font-weight:400;margin-top:.2rem;">${esc(cfg.maintenanceMessage)}</div>`:''}</span>
+        <span style="font-size:.62rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:${maint?'#f0a040':'var(--gold)'};">${maint?'Unavailable':'Selectable'}</span>
+      </div>`);
+      if (m === 'usdc' && !maint) {
+        for (const n of USDC_NETWORKS) {
+          const netCfg = cfg.networks[n];
+          if (netCfg.status === 'disabled') continue;
+          const netMaint = netCfg.status === 'maintenance';
+          rows.push(`<div style="display:flex;justify-content:space-between;align-items:center;padding:.6rem 1rem;margin-left:1.2rem;background:var(--bg3);border:1px solid var(--border);border-radius:6px;margin-bottom:.5rem;${netMaint?'opacity:.55;':''}">
+            <span style="font-size:.78rem;">${USDC_NETWORK_LABELS[n]}</span>
+            <span style="font-size:.6rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:${netMaint?'#f0a040':'var(--gold)'};">${netMaint?'Unavailable':'Selectable'}</span>
+          </div>`);
+        }
+      }
+    }
+    el.innerHTML = rows.length ? rows.join('') : '<div style="color:var(--t3);font-size:.8rem;">No payment methods are currently enabled — customers would see an empty checkout.</div>';
+  } catch(e) {
+    el.innerHTML = '<div style="color:#f87171;font-size:.8rem;">Failed to load preview.</div>';
+  }
+}
+
+/* ════════════════════════════════════════════
+   PAYMENTS REVIEW QUEUE
+════════════════════════════════════════════ */
+let allPayments = [];
+let prFilter = 'needs_review';
+const REVIEW_STATUSES_ADMIN = ['PENDING_VERIFICATION','LATE_PAYMENT_REVIEW','UNDERPAYMENT_REVIEW','OVERPAYMENT_REVIEW','DUPLICATE_PAYMENT_REVIEW'];
+const PAYMENT_STATUS_COLOR = { PAID:'b-green', TEST_PAID:'b-blue', PENDING_PAYMENT:'b-gold', PENDING_VERIFICATION:'b-gold', REJECTED:'b-red', FAILED:'b-red', EXPIRED:'b-silver', CANCELLED:'b-silver', LATE_PAYMENT_REVIEW:'b-purple', UNDERPAYMENT_REVIEW:'b-purple', OVERPAYMENT_REVIEW:'b-purple', DUPLICATE_PAYMENT_REVIEW:'b-purple' };
+
+async function loadPaymentsReview(){
+  try {
+    const r = await fetch('/api/admin/payments?status=needs_review', { headers: adminHeaders() });
+    if (r.status === 401) { adminSignOut(); return; }
+    const needsReview = await r.json();
+    const badge = document.getElementById('sb-review-count');
+    if (badge) { badge.textContent = needsReview.length > 0 ? needsReview.length : ''; badge.style.display = needsReview.length ? '' : 'none'; }
+  } catch(e) {}
+  renderPrList();
+}
+
+function setPrFilter(f, el){
+  prFilter = f;
+  document.querySelectorAll('[id^="pr-filter-"]').forEach(b=>{ b.style.color=''; b.style.borderColor=''; });
+  if (el) { el.style.color='var(--t1)'; el.style.borderColor='var(--border2)'; }
+  renderPrList();
+}
+
+async function renderPrList(){
+  const el = document.getElementById('pr-list');
+  el.innerHTML = '<div style="text-align:center;padding:3rem;color:var(--t3);font-size:.85rem;">Loading…</div>';
+  try {
+    const qs = prFilter === 'all' ? '' : `?status=${encodeURIComponent(prFilter)}`;
+    const r = await fetch(`/api/admin/payments${qs}`, { headers: adminHeaders() });
+    if (r.status === 401) { adminSignOut(); return; }
+    allPayments = await r.json();
+  } catch(e) { el.innerHTML = '<div style="color:#f87171;font-size:.82rem;text-align:center;padding:2rem;">Failed to load payments.</div>'; return; }
+
+  if (!allPayments.length) {
+    el.innerHTML = `<div style="text-align:center;padding:4rem;color:var(--t3);"><div style="font-size:2rem;margin-bottom:.6rem;">🧾</div><div style="font-size:.85rem;">No payments in this view.</div></div>`;
+    return;
+  }
+
+  el.innerHTML = allPayments.map(p => `
+    <div class="tbl-card" style="margin-bottom:1rem;cursor:pointer;" onclick="openPaymentDetail('${p.id}')">
+      <div style="padding:1.1rem 1.3rem;display:flex;justify-content:space-between;align-items:flex-start;gap:1rem;flex-wrap:wrap;">
+        <div>
+          <div style="font-size:.7rem;font-weight:700;color:var(--gold);font-family:'Courier New',monospace;">${esc(p.orderRef)}</div>
+          <div style="font-size:.92rem;font-weight:600;margin-top:.2rem;">${esc(p.orderLabel || p.orderType)}</div>
+          <div style="font-size:.75rem;color:var(--t3);margin-top:.15rem;">${esc(p.customerName||'')} · ${esc(p.customerEmail||'')}</div>
+          <span class="badge ${PAYMENT_STATUS_COLOR[p.status]||'b-gold'}" style="margin-top:.5rem;display:inline-block;">${esc(p.status.replace(/_/g,' '))}</span>
+        </div>
+        <div style="text-align:right;">
+          <div style="font-size:1rem;font-weight:700;color:var(--gold);">${fmtUsd(p.expectedAmount)}</div>
+          <div style="font-size:.7rem;color:var(--t3);margin-top:.2rem;">${METHOD_LABELS_ADMIN[p.method]||p.method}${p.network?' · '+p.network:''}</div>
+          <div style="font-size:.68rem;color:var(--t3);">${new Date(p.createdAt).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})}</div>
+        </div>
+      </div>
+    </div>`).join('');
+}
+
+async function openPaymentDetail(id){
+  const el = document.getElementById('pd-content');
+  el.innerHTML = '<div style="padding:2rem;text-align:center;color:var(--t3);">Loading…</div>';
+  document.getElementById('paymentDetailOverlay').classList.add('open');
+  document.body.style.overflow = 'hidden';
+  try {
+    const r = await fetch(`/api/admin/payments/${id}`, { headers: adminHeaders() });
+    if (r.status === 401) { adminSignOut(); return; }
+    const p = await r.json();
+    renderPaymentDetail(p);
+  } catch(e) { el.innerHTML = '<div style="color:#f87171;">Failed to load payment detail.</div>'; }
+}
+
+function closePaymentDetail(){
+  document.getElementById('paymentDetailOverlay').classList.remove('open');
+  document.body.style.overflow = '';
+}
+
+function detailRow(lbl, val){
+  return `<div style="display:flex;justify-content:space-between;gap:1rem;padding:.55rem 0;border-bottom:1px solid var(--border);font-size:.8rem;">
+    <span style="color:var(--t3);flex-shrink:0;">${esc(lbl)}</span>
+    <span style="color:var(--t1);font-weight:600;text-align:right;word-break:break-all;">${esc(val)}</span>
+  </div>`;
+}
+
+function renderPaymentDetail(p){
+  const canReview = REVIEW_STATUSES_ADMIN.includes(p.status);
+  const rows = [
+    ['Order', p.order?.label || p.orderType],
+    ['Reference', p.orderRef],
+    ['Customer', `${p.order?.name || '—'} (${p.order?.email || '—'})`],
+    ['Method', (METHOD_LABELS_ADMIN[p.method] || p.method) + (p.network ? ' · ' + p.network : '')],
+    ['Expected Amount', fmtUsd(p.expectedAmount) + ' ' + (p.expectedCurrency || '')],
+  ];
+  if (p.expectedCryptoAmount) rows.push(['Expected Crypto Amount', p.expectedCryptoAmount + ' ' + p.asset]);
+  rows.push(['Status', p.status.replace(/_/g,' ')]);
+  if (p.txid) rows.push(['TXID', p.txid]);
+  if (p.senderName) rows.push(['Sender Name', p.senderName]);
+  if (p.bankReference) rows.push(['Bank Reference', p.bankReference]);
+  if (p.providerTransactionId) rows.push(['Flutterwave Transaction ID', p.providerTransactionId]);
+  rows.push(['Created', new Date(p.createdAt).toLocaleString()]);
+  if (p.expiresAt) rows.push(['Expires', new Date(p.expiresAt).toLocaleString()]);
+  if (p.failureReason) rows.push(['Failure Reason', p.failureReason]);
+  if (p.rejectionReason) rows.push(['Rejection Reason', p.rejectionReason]);
+
+  const detailHtml = rows.map(([lbl, val]) => detailRow(lbl, val)).join('');
+  const receiptHtml = p.hasReceipt
+    ? `<a href="/api/admin/payments/${p.id}/receipt" target="_blank" class="td-btn gold" style="text-decoration:none;display:inline-block;margin-top:.8rem;">View Receipt</a>` : '';
+  const auditHtml = (p.audit || []).map(a => `<div style="padding:.5rem 0;border-bottom:1px solid var(--border);font-size:.75rem;">
+      <span style="color:var(--gold);font-weight:600;">${esc(a.event)}</span>
+      <span style="color:var(--t3);"> — ${new Date(a.createdAt).toLocaleString()} (${esc(a.actorType)})</span>
+    </div>`).join('') || '<div style="color:var(--t3);font-size:.78rem;">No audit events.</div>';
+  const actions = canReview ? `
+    <div style="display:flex;gap:.6rem;margin-top:1.2rem;">
+      <button class="td-btn gold" onclick="approvePayment('${p.id}')" style="flex:1;padding:.7rem;">✓ Approve</button>
+      <button class="td-btn danger" onclick="rejectPayment('${p.id}')" style="flex:1;padding:.7rem;">✕ Reject</button>
+    </div>` : '';
+
+  document.getElementById('pd-content').innerHTML = `
+    <div class="m-title">Payment Detail</div>
+    <div style="background:var(--bg3);border:1px solid var(--border);border-radius:6px;padding:1rem 1.2rem;margin:1rem 0;">${detailHtml}</div>
+    ${receiptHtml}
+    ${actions}
+    <div style="margin-top:1.6rem;">
+      <div style="font-size:.65rem;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--t3);margin-bottom:.8rem;">Audit History</div>
+      ${auditHtml}
+    </div>`;
+}
+
+async function approvePayment(id){
+  if (!confirm('Approve this payment? This will activate the membership/booking and cannot be undone.')) return;
+  try {
+    const r = await fetch(`/api/admin/payments/${id}/approve`, { method:'POST', headers: adminHeaders({'Content-Type':'application/json'}), body: JSON.stringify({}) });
+    if (r.status === 401) { adminSignOut(); return; }
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.error || 'Failed to approve.');
+    showToast('✦ Payment approved.');
+    closePaymentDetail();
+    loadPaymentsReview();
+  } catch(e) { showToast('⚠ ' + e.message, 'error'); }
+}
+
+async function rejectPayment(id){
+  const reason = prompt('Reason for rejecting this payment (shown in the audit log):');
+  if (!reason || !reason.trim()) return;
+  try {
+    const r = await fetch(`/api/admin/payments/${id}/reject`, { method:'POST', headers: adminHeaders({'Content-Type':'application/json'}), body: JSON.stringify({ reason: reason.trim() }) });
+    if (r.status === 401) { adminSignOut(); return; }
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.error || 'Failed to reject.');
+    showToast('✦ Payment rejected.');
+    closePaymentDetail();
+    loadPaymentsReview();
+  } catch(e) { showToast('⚠ ' + e.message, 'error'); }
 }
 
 /* ════════════════════════════════════════════
@@ -1511,7 +1989,7 @@ async function sendNewsletter() {
 
 /* ── Escape key ── */
 document.addEventListener('keydown', e=>{
-  if(e.key==='Escape'){ closeAddFanCeleb(); closeAddTestimonial(); }
+  if(e.key==='Escape'){ closeAddFanCeleb(); closeAddTestimonial(); closePaymentDetail(); }
 });
 
 /* ── Init ── */

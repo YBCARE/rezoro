@@ -244,6 +244,44 @@ async function sendBookingAccepted({ to, name, celebName, ref, tier, price, days
   });
 }
 
+/* ── 3b. Booking Payment Confirmed ───────────────────────── */
+async function sendBookingPaymentConfirmed({ to, name, celebName, ref, tier }) {
+  name      = esc(name);
+  celebName = esc(celebName);
+  tier      = esc(tier);
+  const body = `
+<tr><td align="center" style="padding-bottom:10px;">
+  <div style="display:inline-block;background:rgba(62,207,142,.12);border:1px solid rgba(62,207,142,.3);border-radius:8px;padding:6px 18px;font-size:11px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:#3ecf8e;margin-bottom:16px;">Payment Confirmed</div>
+  <h1 style="margin:0;font-size:26px;font-weight:700;color:#F0ECE4;">You're All Set!</h1>
+</td></tr>
+<tr><td align="center" style="padding-bottom:28px;">
+  <p style="margin:0;font-size:15px;color:#9A9490;line-height:1.7;">
+    Payment received <strong style="color:#F0ECE4;">${name}</strong> — your booking for
+    <strong style="color:#C9A84C;">${celebName}</strong> is confirmed. Our team will be in touch
+    shortly to finalise the details.
+  </p>
+</td></tr>
+<tr><td style="background:#0E0E13;border:1px solid rgba(255,255,255,.07);border-radius:14px;padding:24px 28px;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+    <tr><td style="padding:6px 0;font-size:13px;color:#5C5852;width:130px;">Reference</td>
+        <td style="padding:6px 0;font-size:13px;color:#C9A84C;font-weight:700;font-family:'Courier New',monospace;">${ref}</td></tr>
+    <tr><td style="padding:6px 0;font-size:13px;color:#5C5852;">Celebrity</td>
+        <td style="padding:6px 0;font-size:13px;color:#F0ECE4;font-weight:600;">${celebName}</td></tr>
+    <tr><td style="padding:6px 0;font-size:13px;color:#5C5852;">Tier</td>
+        <td style="padding:6px 0;font-size:13px;color:#F0ECE4;font-weight:600;">${tier}</td></tr>
+  </table>
+</td></tr>`;
+
+  await transporter.sendMail({
+    from: FROM, to, replyTo: REPLY,
+    subject: `✅ Payment Confirmed — ${celebName} · ${ref}`,
+    messageId: `<${randomUUID()}@rezoro.pro>`,
+    headers: baseHeaders(),
+    text: `Hi ${name},\n\nPayment received for your ${celebName} booking!\nRef: ${ref}\n\nOur team will be in touch shortly.\n\n— Rezoro`,
+    html: emailWrap(`Payment confirmed for your ${celebName} booking`, body)
+  });
+}
+
 /* ── 4. Booking Rejected ─────────────────────────────────── */
 async function sendBookingRejected({ to, name, celebName, ref }) {
   name      = esc(name);
@@ -353,6 +391,7 @@ module.exports = {
   sendFanCardEmail,
   sendBookingConfirmation,
   sendBookingAccepted,
+  sendBookingPaymentConfirmed,
   sendBookingRejected,
   sendNewsletterWelcome,
   sendNewsletter,

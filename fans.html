@@ -437,9 +437,10 @@ async function purchaseCard(){
 
     if(!res.ok) throw new Error(data.error || 'Server error');
 
-    // Hand off to Flutterwave to collect payment. On success, Flutterwave
-    // redirects back to payment-success.html, which verifies and delivers.
-    window.location.href = data.paymentLink;
+    // The order exists now, unpaid. order.html lets the buyer choose from
+    // whichever payment methods are currently enabled (Flutterwave, Bank
+    // Transfer, Bitcoin, USDC) and only marks it paid once that's verified.
+    window.location.href = `order.html?type=fancard&ref=${encodeURIComponent(data.ref)}`;
 
   } catch(err) {
     showFanToast('Something went wrong: ' + err.message, 'error');
