@@ -516,6 +516,30 @@
     }
     .step-desc { font-size: .8rem; color: var(--t2); line-height: 1.75; }
 
+    /* ─── TESTIMONIALS ────────────────────────────────── */
+    #testimonials { background: var(--bg); }
+    .tm-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 1.2rem; }
+    .tm-card {
+      background: var(--bg2); border: 1px solid var(--border);
+      border-radius: var(--r-lg); padding: 2rem 1.8rem;
+      display: flex; flex-direction: column;
+    }
+    .tm-quote-mark { font-family: var(--font-d); font-size: 2.6rem; font-weight: 700; color: var(--gold-bg); line-height: 1; margin-bottom: .4rem; }
+    .tm-text { font-size: .88rem; color: var(--t2); line-height: 1.75; flex: 1; margin-bottom: 1.4rem; }
+    .tm-person { display: flex; align-items: center; gap: .8rem; }
+    .tm-avatar {
+      width: 42px; height: 42px; border-radius: 50%; flex-shrink: 0;
+      background: var(--gold-bg); border: 1px solid var(--gold-border);
+      display: flex; align-items: center; justify-content: center;
+      font-family: var(--font-d); font-weight: 600; font-size: .85rem; color: var(--gold);
+      overflow: hidden;
+    }
+    .tm-avatar img { width: 100%; height: 100%; object-fit: cover; object-position: center top; }
+    .tm-name { font-size: .85rem; font-weight: 600; color: var(--t1); }
+    .tm-role { font-size: .72rem; color: var(--t3); margin-top: .1rem; }
+    @media (max-width: 900px) { .tm-grid { grid-template-columns: 1fr 1fr; } }
+    @media (max-width: 640px) { .tm-grid { grid-template-columns: 1fr; } }
+
     /* ─── FOOTER ──────────────────────────────────────── */
     footer { background: var(--bg); border-top: 1px solid var(--border); padding: 4.5rem 6% 2.5rem; }
     .footer-top { display: flex; justify-content: space-between; gap: 3rem; margin-bottom: 3rem; flex-wrap: wrap; }
@@ -1065,6 +1089,17 @@
   </div>
 </section>
 
+<!-- ══ TESTIMONIALS ═════════════════════════════════════ -->
+<section class="section" id="testimonials" style="display:none;">
+  <div class="sec-head">
+    <div>
+      <div class="sec-eyebrow">What People Say</div>
+      <h2 class="sec-title">Real Rezoro Experiences</h2>
+    </div>
+  </div>
+  <div class="tm-grid" id="tmGrid"></div>
+</section>
+
 <!-- ══ NEWSLETTER ════════════════════════════════════════ -->
 <section style="background:#07070A;border-top:1px solid rgba(255,255,255,.06);padding:80px 24px;">
   <div style="max-width:560px;margin:0 auto;text-align:center;">
@@ -1548,6 +1583,31 @@ function prefillBook(name) {
       }
       await delay(40);
     }
+  } catch (e) {}
+})();
+
+(async function loadTestimonials() {
+  const esc = s => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  const initialsOf = name => String(name || '').trim().split(/\s+/).map(w => w[0]).slice(0, 2).join('').toUpperCase();
+  try {
+    const res = await fetch('/api/testimonials');
+    if (!res.ok) return;
+    const list = await res.json();
+    if (!list.length) return;
+    const grid = document.getElementById('tmGrid');
+    grid.innerHTML = list.map(t => `
+      <div class="tm-card">
+        <div class="tm-quote-mark">"</div>
+        <p class="tm-text">${esc(t.quote)}</p>
+        <div class="tm-person">
+          <div class="tm-avatar">${t.hasPhoto ? `<img src="/api/testimonials/${t.id}/photo" alt="${esc(t.name)}">` : initialsOf(t.name)}</div>
+          <div>
+            <div class="tm-name">${esc(t.name)}</div>
+            ${t.role ? `<div class="tm-role">${esc(t.role)}</div>` : ''}
+          </div>
+        </div>
+      </div>`).join('');
+    document.getElementById('testimonials').style.display = '';
   } catch (e) {}
 })();
 </script>

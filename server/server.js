@@ -574,6 +574,69 @@ app.delete('/api/admin/celebrities/:id', adminAuthMiddleware, async (req, res) =
 });
 
 /* ══════════════════════════════════════════════════════════
+   TESTIMONIALS  (real customer quotes, transcribed by admin — shown on index.html)
+═══════════════════════════════════════════════════════════ */
+
+// Public — only visible testimonials, no photo bytes (use /photo route)
+app.get('/api/testimonials', async (_req, res) => {
+  res.json(await store.testimonials.all({ onlyVisible: true }));
+});
+
+// Public — serves the actual photo bytes for a testimonial
+app.get('/api/testimonials/:id/photo', async (req, res) => {
+  const photo = await store.testimonials.getPhoto(req.params.id);
+  if (!photo) return res.status(404).end();
+  res.set('Content-Type', photo.mime || 'image/jpeg');
+  res.set('Cache-Control', 'public, max-age=86400');
+  res.send(photo.buffer);
+});
+
+// Admin — full list including hidden entries
+app.get('/api/admin/testimonials', adminAuthMiddleware, async (_req, res) => {
+  res.json(await store.testimonials.all());
+});
+
+app.post('/api/admin/testimonials', adminAuthMiddleware, upload.single('photo'), async (req, res) => {
+  try {
+    const { quote, name, role } = req.body;
+    if (!quote || !name) return res.status(400).json({ error: 'quote and name are required.' });
+    const visible = req.body.visible !== 'false';
+    const photo = req.file ? { buffer: req.file.buffer, mime: req.file.mimetype } : null;
+    const row = await store.testimonials.create({
+      quote: quote.trim(), name: name.trim(), role: (role || '').trim(), visible, photo
+    });
+    res.json({ success: true, testimonial: row });
+  } catch (err) {
+    console.error('[testimonials create]', err.message);
+    res.status(500).json({ error: 'Failed to add testimonial.' });
+  }
+});
+
+app.put('/api/admin/testimonials/:id', adminAuthMiddleware, upload.single('photo'), async (req, res) => {
+  try {
+    const existing = await store.testimonials.getById(req.params.id);
+    if (!existing) return res.status(404).json({ error: 'Testimonial not found.' });
+    const patch = {};
+    if (req.body.quote !== undefined)   patch.quote = req.body.quote.trim();
+    if (req.body.name !== undefined)    patch.name = req.body.name.trim();
+    if (req.body.role !== undefined)    patch.role = req.body.role.trim();
+    if (req.body.visible !== undefined) patch.visible = req.body.visible !== 'false';
+    if (req.file)                       patch.photo = { buffer: req.file.buffer, mime: req.file.mimetype };
+    const row = await store.testimonials.update(req.params.id, patch);
+    res.json({ success: true, testimonial: row });
+  } catch (err) {
+    console.error('[testimonials update]', err.message);
+    res.status(500).json({ error: 'Failed to update testimonial.' });
+  }
+});
+
+app.delete('/api/admin/testimonials/:id', adminAuthMiddleware, async (req, res) => {
+  const ok = await store.testimonials.remove(req.params.id);
+  if (!ok) return res.status(404).json({ error: 'Testimonial not found.' });
+  res.json({ success: true });
+});
+
+/* ══════════════════════════════════════════════════════════
    FAN CARD PRICING  (editable tier prices, shown on fans.html)
 ═══════════════════════════════════════════════════════════ */
 const DEFAULT_FANCARD_PRICING = { gold: 5000, silver: 4100, bronze: 2500 };

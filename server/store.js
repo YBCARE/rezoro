@@ -29,6 +29,7 @@ function memoryStore() {
   const subscribers = new Map(); // email → subscriber
   const editions = new Map();    // key → running count
   const celebrities = new Map(); // id → { id, name, tier, knownFor, trailerUrl, visible, wiki, photo:{buffer,mime}|null, createdAt }
+  const testimonials = new Map(); // id → { id, quote, name, role, visible, photo:{buffer,mime}|null, createdAt }
   const settings = new Map();    // key → value
   const fancardOrders = new Map(); // ref → order
 
@@ -57,6 +58,27 @@ function memoryStore() {
         return stripPhoto(row);
       },
       async remove(id) { return celebrities.delete(id); },
+    },
+    testimonials: {
+      async all({ onlyVisible = false } = {}) {
+        let list = [...testimonials.values()];
+        if (onlyVisible) list = list.filter(t => t.visible !== false);
+        return list.sort(byCreatedDesc).map(stripPhoto);
+      },
+      async getById(id) { return testimonials.get(id) || null; },
+      async getPhoto(id) { return testimonials.get(id)?.photo || null; },
+      async create(t) {
+        const row = { id: randomUUID(), createdAt: new Date().toISOString(), ...t };
+        testimonials.set(row.id, row);
+        return stripPhoto(row);
+      },
+      async update(id, patch) {
+        const row = testimonials.get(id);
+        if (!row) return null;
+        Object.assign(row, patch);
+        return stripPhoto(row);
+      },
+      async remove(id) { return testimonials.delete(id); },
     },
     fancardOrders: {
       async create(o) {
@@ -162,6 +184,13 @@ async function postgresStore() {
       n INTEGER NOT NULL DEFAULT 0
     );
     CREATE TABLE IF NOT EXISTS celebrities (
+      id         TEXT PRIMARY KEY,
+      created_at TIMESTAMPTZ DEFAULT now(),
+      data       JSONB NOT NULL,
+      photo      BYTEA,
+      photo_mime TEXT
+    );
+    CREATE TABLE IF NOT EXISTS testimonials (
       id         TEXT PRIMARY KEY,
       created_at TIMESTAMPTZ DEFAULT now(),
       data       JSONB NOT NULL,
@@ -305,6 +334,50 @@ async function postgresStore() {
       },
       async remove(id) {
         const r = await q('DELETE FROM celebrities WHERE id = $1', [id]);
+        return r.rowCount > 0;
+      },
+    },
+    testimonials: {
+      async all({ onlyVisible = false } = {}) {
+        const r = await q(
+          `SELECT id, data, (photo IS NOT NULL) AS has_photo FROM testimonials
+           ${onlyVisible ? "WHERE (data->>'visible') IS DISTINCT FROM 'false'" : ''}
+           ORDER BY created_at DESC`
+        );
+        return r.rows.map(row => ({ id: row.id, ...row.data, hasPhoto: row.has_photo }));
+      },
+      async getById(id) {
+        const r = await q('SELECT id, data, (photo IS NOT NULL) AS has_photo FROM testimonials WHERE id = $1', [id]);
+        if (!r.rows[0]) return null;
+        return { id: r.rows[0].id, ...r.rows[0].data, hasPhoto: r.rows[0].has_photo };
+      },
+      async getPhoto(id) {
+        const r = await q('SELECT photo, photo_mime FROM testimonials WHERE id = $1', [id]);
+        if (!r.rows[0]?.photo) return null;
+        return { buffer: r.rows[0].photo, mime: r.rows[0].photo_mime || 'image/jpeg' };
+      },
+      async create(t) {
+        const id = randomUUID();
+        const createdAt = new Date().toISOString();
+        const { photo, ...data } = t;
+        await q(
+          'INSERT INTO testimonials(id, data, photo, photo_mime) VALUES($1, $2, $3, $4)',
+          [id, { ...data, createdAt }, photo?.buffer || null, photo?.mime || null]
+        );
+        return { id, ...data, createdAt, hasPhoto: !!photo };
+      },
+      async update(id, patch) {
+        const { photo, ...rest } = patch;
+        if (photo !== undefined) {
+          await q('UPDATE testimonials SET photo = $2, photo_mime = $3 WHERE id = $1', [id, photo?.buffer || null, photo?.mime || null]);
+        }
+        if (Object.keys(rest).length) {
+          await q('UPDATE testimonials SET data = data || $2::jsonb WHERE id = $1', [id, JSON.stringify(rest)]);
+        }
+        return this.getById(id);
+      },
+      async remove(id) {
+        const r = await q('DELETE FROM testimonials WHERE id = $1', [id]);
         return r.rowCount > 0;
       },
     },

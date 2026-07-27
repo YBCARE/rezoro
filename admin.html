@@ -415,6 +415,10 @@ async function gateUnlock(){
       <a class="sb-item" onclick="nav('fancards',this)"><span class="sb-icon">⭐</span> Celebrities</a>
     </div>
     <div class="sb-group">
+      <span class="sb-group-label">Content</span>
+      <a class="sb-item" onclick="nav('testimonials',this)"><span class="sb-icon">💬</span> Testimonials</a>
+    </div>
+    <div class="sb-group">
       <span class="sb-group-label">Management</span>
       <a class="sb-item" onclick="nav('settings',this)"><span class="sb-icon">⚙</span> Settings</a>
     </div>
@@ -635,6 +639,30 @@ async function gateUnlock(){
     </div>
   </div>
 
+  <!-- ════ PAGE: TESTIMONIALS ═════════════════════════════ -->
+  <div class="page" id="pg-testimonials">
+    <div class="pg-header">
+      <div><div class="pg-title">Testimonials</div><div class="pg-sub">Real quotes from real customers, transcribed by you — never write one that wasn't actually said.</div></div>
+      <div class="pg-actions"><button class="btn-sm btn-gold" onclick="openAddTestimonial()">+ Add Testimonial</button></div>
+    </div>
+    <div class="tbl-card">
+      <div class="tbl-header">
+        <div class="tbl-title">All Testimonials</div>
+        <div class="tbl-meta">Visible ones appear on the homepage immediately.</div>
+      </div>
+      <div style="overflow-x:auto;">
+        <table>
+          <thead><tr><th>Quote</th><th>Name</th><th>Role / Tier</th><th>Visibility</th><th></th></tr></thead>
+          <tbody id="testimonialTable"></tbody>
+        </table>
+      </div>
+      <div id="tm-empty" style="text-align:center;padding:3rem;color:var(--t3);">
+        <div style="font-size:2rem;margin-bottom:.6rem;">💬</div>
+        <div style="font-size:.82rem;">No testimonials yet. Click <strong style="color:var(--gold);">+ Add Testimonial</strong> to add a real one.</div>
+      </div>
+    </div>
+  </div>
+
   <!-- ════ PAGE: SETTINGS ═════════════════════════════════ -->
   <div class="page" id="pg-settings">
     <div class="pg-header">
@@ -717,6 +745,34 @@ async function gateUnlock(){
   </div>
 </div>
 
+<div class="overlay" id="addTestimonialOverlay" onclick="closeAddTestimonialOutside(event)">
+  <div class="modal" style="max-width:480px;">
+    <button class="m-close" onclick="closeAddTestimonial()">✕</button>
+    <div class="m-title" id="tm-modal-title">Add Testimonial</div>
+    <p class="m-sub" id="tm-modal-sub">Paste in the actual words from an email, DM, or review a customer sent you.</p>
+    <input type="hidden" id="tm-edit-id" value="">
+    <div id="tm-current-photo" style="display:none;margin-bottom:1rem;">
+      <img id="tm-current-photo-img" style="width:64px;height:64px;border-radius:50%;object-fit:cover;object-position:center top;border:1px solid var(--border);">
+      <span style="font-size:.72rem;color:var(--t3);margin-left:.6rem;">Current photo — upload a new one below to replace it.</span>
+    </div>
+    <div class="f-grp"><label class="f-lbl">Quote *</label><textarea class="f-in" id="tm-quote" rows="4" style="resize:vertical;font-family:inherit;" placeholder="Paste the customer's actual words here…"></textarea></div>
+    <div class="f-row">
+      <div class="f-grp"><label class="f-lbl">Customer Name *</label><input class="f-in" type="text" id="tm-name" placeholder="e.g. Sarah M."></div>
+      <div class="f-grp"><label class="f-lbl">Role / Tier <span style="color:var(--t3);font-weight:400;">(optional)</span></label><input class="f-in" type="text" id="tm-role" placeholder="e.g. Gold Tier Buyer"></div>
+    </div>
+    <div class="f-grp"><label class="f-lbl">Photo <span style="color:var(--t3);font-weight:400;">(optional — only if the customer is OK with it)</span></label>
+      <input class="f-in" type="file" id="tm-photo" accept="image/*" style="padding:.5rem .8rem;cursor:pointer;">
+    </div>
+    <div class="f-grp"><label class="f-lbl">Visibility</label>
+      <select class="f-sel" id="tm-visible">
+        <option value="1">● Visible</option>
+        <option value="0">○ Hidden</option>
+      </select>
+    </div>
+    <button class="f-sub" id="tm-submit-btn" onclick="submitAddTestimonial()">✦ Add Testimonial</button>
+  </div>
+</div>
+
 
 <script>
 /* ════════════════════════════════════════════
@@ -724,11 +780,11 @@ async function gateUnlock(){
 ════════════════════════════════════════════ */
 const PAGE_MAP = {
   incoming:'incoming', newsletter:'newsletter',
-  fancards:'fancards', settings:'settings', orders:'orders'
+  fancards:'fancards', settings:'settings', orders:'orders', testimonials:'testimonials'
 };
 const LABELS = {
   incoming:'Incoming Bookings', newsletter:'Newsletter',
-  fancards:'Celebrities', settings:'Settings', orders:'Fan Card Orders'
+  fancards:'Celebrities', settings:'Settings', orders:'Fan Card Orders', testimonials:'Testimonials'
 };
 
 function nav(name, el){
@@ -746,6 +802,7 @@ function nav(name, el){
   if(name==='incoming') loadIncoming();
   if(name==='newsletter') loadSubscribers();
   if(name==='orders') loadOrders();
+  if(name==='testimonials') renderTestimonialTable();
   if(window.innerWidth <= 768) toggleSB(false);
 }
 
@@ -994,6 +1051,137 @@ function renderOrders(){
       </div>
     </div>`;
   }).join('');
+}
+
+/* ════════════════════════════════════════════
+   TESTIMONIALS
+════════════════════════════════════════════ */
+let testimonials = [];
+
+async function loadTestimonials(){
+  try {
+    const r = await fetch('/api/admin/testimonials', { headers: adminHeaders() });
+    if (r.status === 401) { adminSignOut(); return; }
+    testimonials = await r.json();
+  } catch(e){ testimonials = []; }
+}
+
+function renderTestimonialRows(){
+  const tbody = document.getElementById('testimonialTable');
+  const empty = document.getElementById('tm-empty');
+  if (!tbody) return;
+  if (!testimonials.length) {
+    tbody.innerHTML = '';
+    if (empty) empty.style.display = 'block';
+    return;
+  }
+  if (empty) empty.style.display = 'none';
+  tbody.innerHTML = testimonials.map(t => `
+    <tr>
+      <td style="max-width:320px;color:var(--t2);font-size:.8rem;font-style:italic;">"${esc((t.quote||'').slice(0,110))}${(t.quote||'').length>110?'…':''}"</td>
+      <td><div class="td-row"><div class="td-av" style="overflow:hidden;font-family:var(--font-d, serif);">${t.hasPhoto?`<img src="/api/testimonials/${t.id}/photo" alt="${esc(t.name)}" style="width:100%;height:100%;object-fit:cover;object-position:center top;">`:initialsOfAdmin(t.name)}</div><div class="td-p">${esc(t.name)}</div></div></td>
+      <td style="color:var(--t2);font-size:.78rem;">${esc(t.role||'—')}</td>
+      <td><button class="td-btn ${t.visible!==false?'gold':''}" onclick="toggleTestimonialVis('${t.id}')">${t.visible!==false?'● Visible':'○ Hidden'}</button></td>
+      <td><div class="td-acts"><button class="td-btn" onclick="openEditTestimonial('${t.id}')">Edit</button><button class="td-btn danger" onclick="removeTestimonial('${t.id}')">Remove</button></div></td>
+    </tr>`).join('');
+}
+
+async function renderTestimonialTable(){
+  await loadTestimonials();
+  renderTestimonialRows();
+}
+
+async function toggleTestimonialVis(id){
+  const t = testimonials.find(x=>x.id===id);
+  if (!t) return;
+  const nextVisible = t.visible===false;
+  const fd = new FormData(); fd.append('visible', nextVisible ? 'true' : 'false');
+  const r = await fetch(`/api/admin/testimonials/${id}`, { method:'PUT', headers: adminHeaders(), body: fd });
+  if (r.status === 401) { adminSignOut(); return; }
+  await renderTestimonialTable();
+  showToast(`${t.name}'s testimonial is now ${nextVisible?'visible':'hidden'}.`);
+}
+
+async function removeTestimonial(id){
+  const t = testimonials.find(x=>x.id===id);
+  const name = t?.name || 'This testimonial';
+  if (!confirm(`Remove ${name}'s testimonial?`)) return;
+  const r = await fetch(`/api/admin/testimonials/${id}`, { method:'DELETE', headers: adminHeaders() });
+  if (r.status === 401) { adminSignOut(); return; }
+  await renderTestimonialTable();
+  showToast(`Testimonial removed.`);
+}
+
+function resetTestimonialForm(){
+  ['tm-quote','tm-name','tm-role'].forEach(id=>{ const el=document.getElementById(id); if(el) el.value=''; });
+  document.getElementById('tm-photo').value='';
+  document.getElementById('tm-visible').selectedIndex=0;
+  document.getElementById('tm-edit-id').value='';
+  document.getElementById('tm-current-photo').style.display='none';
+}
+
+function openAddTestimonial(){
+  resetTestimonialForm();
+  document.getElementById('tm-modal-title').textContent='Add Testimonial';
+  document.getElementById('tm-modal-sub').textContent="Paste in the actual words from an email, DM, or review a customer sent you.";
+  document.getElementById('tm-submit-btn').textContent='✦ Add Testimonial';
+  document.getElementById('addTestimonialOverlay').classList.add('open'); document.body.style.overflow='hidden';
+}
+
+function openEditTestimonial(id){
+  const t = testimonials.find(x=>x.id===id);
+  if (!t) return;
+  resetTestimonialForm();
+  document.getElementById('tm-edit-id').value = id;
+  document.getElementById('tm-quote').value = t.quote || '';
+  document.getElementById('tm-name').value = t.name || '';
+  document.getElementById('tm-role').value = t.role || '';
+  document.getElementById('tm-visible').value = t.visible !== false ? '1' : '0';
+  document.getElementById('tm-modal-title').textContent = 'Edit Testimonial';
+  document.getElementById('tm-modal-sub').textContent = 'Changes apply immediately on the homepage.';
+  document.getElementById('tm-submit-btn').textContent = '✦ Save Changes';
+  if (t.hasPhoto) {
+    document.getElementById('tm-current-photo-img').src = `/api/testimonials/${t.id}/photo`;
+    document.getElementById('tm-current-photo').style.display = 'flex';
+    document.getElementById('tm-current-photo').style.alignItems = 'center';
+  }
+  document.getElementById('addTestimonialOverlay').classList.add('open'); document.body.style.overflow='hidden';
+}
+
+function closeAddTestimonial(){ document.getElementById('addTestimonialOverlay').classList.remove('open'); document.body.style.overflow=''; }
+function closeAddTestimonialOutside(e){ if(e.target===document.getElementById('addTestimonialOverlay')) closeAddTestimonial(); }
+
+async function submitAddTestimonial(){
+  const editId = document.getElementById('tm-edit-id').value;
+  const quote  = document.getElementById('tm-quote').value.trim();
+  const name   = document.getElementById('tm-name').value.trim();
+  const role   = document.getElementById('tm-role').value.trim();
+  const visible = document.getElementById('tm-visible').value==='1';
+  const photoFile = document.getElementById('tm-photo').files[0];
+  if (!quote) { showToast('⚠ Please paste in the actual quote.', 'error'); return; }
+  if (!name)  { showToast('⚠ Please enter the customer\'s name.', 'error'); return; }
+
+  const btn = document.getElementById('tm-submit-btn');
+  btn.disabled = true; btn.textContent = editId ? 'Saving…' : 'Adding…';
+
+  const fd = new FormData();
+  fd.append('quote', quote); fd.append('name', name); fd.append('role', role);
+  fd.append('visible', visible ? 'true' : 'false');
+  if (photoFile) fd.append('photo', photoFile);
+
+  try {
+    const url = editId ? `/api/admin/testimonials/${editId}` : '/api/admin/testimonials';
+    const r = await fetch(url, { method: editId?'PUT':'POST', headers: adminHeaders(), body: fd });
+    if (r.status === 401) { adminSignOut(); return; }
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.error || 'Failed to save testimonial.');
+    await renderTestimonialTable(); closeAddTestimonial();
+    showToast(editId ? '✦ Testimonial updated!' : '✦ Testimonial added!');
+  } catch(e) {
+    showToast('⚠ ' + e.message, 'error');
+  } finally {
+    btn.disabled = false; btn.textContent = editId ? '✦ Save Changes' : '✦ Add Testimonial';
+  }
 }
 
 /* ════════════════════════════════════════════
@@ -1323,7 +1511,7 @@ async function sendNewsletter() {
 
 /* ── Escape key ── */
 document.addEventListener('keydown', e=>{
-  if(e.key==='Escape'){ closeAddFanCeleb(); }
+  if(e.key==='Escape'){ closeAddFanCeleb(); closeAddTestimonial(); }
 });
 
 /* ── Init ── */
