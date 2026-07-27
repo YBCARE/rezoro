@@ -72,6 +72,7 @@ function memoryStore() {
         Object.assign(row, { status: 'paid', paidAt: new Date().toISOString() }, patch);
         return stripPhoto(row);
       },
+      async all() { return [...fancardOrders.values()].sort(byCreatedDesc).map(stripPhoto); },
     },
     users: {
       async findByEmail(email) { return users.get(email) || null; },
@@ -329,6 +330,10 @@ async function postgresStore() {
           [ref, JSON.stringify(patch)]
         );
         return this.getByRef(ref);
+      },
+      async all() {
+        const r = await q('SELECT ref, status, data, paid_at, (photo IS NOT NULL) AS has_photo FROM fancard_orders ORDER BY created_at DESC');
+        return r.rows.map(row => ({ ...row.data, ref: row.ref, status: row.status, paidAt: row.paid_at, hasPhoto: row.has_photo }));
       },
     },
     settings: {

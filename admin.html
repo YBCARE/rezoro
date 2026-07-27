@@ -407,6 +407,10 @@ async function gateUnlock(){
       <a class="sb-item" onclick="nav('newsletter',this)"><span class="sb-icon">📨</span> Newsletter</a>
     </div>
     <div class="sb-group">
+      <span class="sb-group-label">Sales</span>
+      <a class="sb-item" onclick="nav('orders',this)"><span class="sb-icon">💳</span> Fan Card Orders</a>
+    </div>
+    <div class="sb-group">
       <span class="sb-group-label">Talent</span>
       <a class="sb-item" onclick="nav('fancards',this)"><span class="sb-icon">⭐</span> Celebrities</a>
     </div>
@@ -589,6 +593,48 @@ async function gateUnlock(){
     </div>
   </div>
 
+  <!-- ════ PAGE: FAN CARD ORDERS ══════════════════════════ -->
+  <div class="page" id="pg-orders">
+    <div class="pg-header">
+      <div><div class="pg-title">Fan Card Orders</div><div class="pg-sub">Every fan card checkout — who paid, how much, and whether it was delivered.</div></div>
+    </div>
+    <div class="kpi-grid">
+      <div class="kpi" style="--kpi-color:var(--gold);--kpi-bg:var(--gold-d);">
+        <div class="kpi-lbl">Total Revenue <div class="kpi-ico">💰</div></div>
+        <div class="kpi-val" id="ord-kpi-revenue">$0</div>
+        <div class="kpi-d" style="color:var(--t3);">fan cards + bookings, paid only</div>
+      </div>
+      <div class="kpi" style="--kpi-color:#3ecf8e;--kpi-bg:rgba(62,207,142,.1);">
+        <div class="kpi-lbl">Fan Cards Paid <div class="kpi-ico">🎴</div></div>
+        <div class="kpi-val" id="ord-kpi-paid">0</div>
+        <div class="kpi-d" style="color:var(--t3);">delivered to buyer's email</div>
+      </div>
+      <div class="kpi" style="--kpi-color:#C9A84C;--kpi-bg:rgba(201,168,76,.1);">
+        <div class="kpi-lbl">Pending / Abandoned <div class="kpi-ico">⏳</div></div>
+        <div class="kpi-val" id="ord-kpi-pending">0</div>
+        <div class="kpi-d" style="color:var(--t3);">checkout started, never paid</div>
+      </div>
+      <div class="kpi" style="--kpi-color:#A8B8C4;--kpi-bg:rgba(168,184,196,.1);">
+        <div class="kpi-lbl">Total Orders <div class="kpi-ico">🧾</div></div>
+        <div class="kpi-val" id="ord-kpi-total">0</div>
+        <div class="kpi-d" style="color:var(--t3);">all-time checkouts started</div>
+      </div>
+    </div>
+    <div class="tbl-card">
+      <div class="tbl-header">
+        <div class="tbl-title">Orders</div>
+        <div class="tbl-meta">Click a reference to search for it if a buyer emails you about a payment.</div>
+      </div>
+      <div style="padding:1rem 1.4rem 0;display:flex;gap:.6rem;flex-wrap:wrap;align-items:center;">
+        <input class="f-in" type="text" id="ord-search" placeholder="Search by name, email, celebrity, or reference…" oninput="renderOrders()" style="max-width:360px;">
+        <button class="td-btn" id="ord-filter-all" onclick="setOrdFilter('all', this)" style="color:var(--t1);border-color:var(--border2);">All</button>
+        <button class="td-btn" id="ord-filter-paid" onclick="setOrdFilter('paid', this)">Paid</button>
+        <button class="td-btn" id="ord-filter-pending" onclick="setOrdFilter('pending', this)">Pending</button>
+      </div>
+      <div id="orders-list" style="padding:1.2rem 1.4rem;"></div>
+    </div>
+  </div>
+
   <!-- ════ PAGE: SETTINGS ═════════════════════════════════ -->
   <div class="page" id="pg-settings">
     <div class="pg-header">
@@ -678,11 +724,11 @@ async function gateUnlock(){
 ════════════════════════════════════════════ */
 const PAGE_MAP = {
   incoming:'incoming', newsletter:'newsletter',
-  fancards:'fancards', settings:'settings'
+  fancards:'fancards', settings:'settings', orders:'orders'
 };
 const LABELS = {
   incoming:'Incoming Bookings', newsletter:'Newsletter',
-  fancards:'Celebrities', settings:'Settings'
+  fancards:'Celebrities', settings:'Settings', orders:'Fan Card Orders'
 };
 
 function nav(name, el){
@@ -699,6 +745,7 @@ function nav(name, el){
   if(name==='settings') loadBookingPricing();
   if(name==='incoming') loadIncoming();
   if(name==='newsletter') loadSubscribers();
+  if(name==='orders') loadOrders();
   if(window.innerWidth <= 768) toggleSB(false);
 }
 
@@ -864,6 +911,89 @@ async function saveFanCardBenefits(){
   } finally {
     btn.disabled = false; btn.textContent = '✦ Save Benefits';
   }
+}
+
+/* ════════════════════════════════════════════
+   FAN CARD ORDERS
+════════════════════════════════════════════ */
+let allOrders = [];
+let ordFilter = 'all';
+
+async function loadOrders(){
+  const el = document.getElementById('orders-list');
+  el.innerHTML = '<div style="text-align:center;padding:3rem;color:var(--t3);font-size:.85rem;">Loading…</div>';
+  try {
+    const [ordRes, bkRes] = await Promise.all([
+      fetch('/api/admin/fancard-orders', { headers: adminHeaders() }),
+      fetch('/api/admin/bookings', { headers: adminHeaders() })
+    ]);
+    if (ordRes.status === 401 || bkRes.status === 401) { adminSignOut(); return; }
+    allOrders = await ordRes.json();
+    const bookings = await bkRes.json();
+
+    const paidOrders = allOrders.filter(o => o.status === 'paid');
+    const confirmedBookings = bookings.filter(b => b.status === 'confirmed');
+    const revenue = paidOrders.reduce((s,o)=>s+Number(o.price||0),0) + confirmedBookings.reduce((s,b)=>s+Number(b.price||0),0);
+
+    document.getElementById('ord-kpi-revenue').textContent = fmtUsd(revenue);
+    document.getElementById('ord-kpi-paid').textContent = paidOrders.length;
+    document.getElementById('ord-kpi-pending').textContent = allOrders.length - paidOrders.length;
+    document.getElementById('ord-kpi-total').textContent = allOrders.length;
+
+    renderOrders();
+  } catch(e) {
+    el.innerHTML = '<div style="text-align:center;padding:3rem;color:#f87171;font-size:.85rem;">Failed to load orders. Is the server running?</div>';
+  }
+}
+
+function setOrdFilter(f, el){
+  ordFilter = f;
+  document.querySelectorAll('[id^="ord-filter-"]').forEach(b=>{ b.style.color=''; b.style.borderColor=''; });
+  if (el) { el.style.color='var(--t1)'; el.style.borderColor='var(--border2)'; }
+  renderOrders();
+}
+
+function renderOrders(){
+  const el = document.getElementById('orders-list');
+  const q = (document.getElementById('ord-search')?.value || '').toLowerCase().trim();
+  let list = ordFilter === 'all' ? allOrders : allOrders.filter(o => ordFilter === 'paid' ? o.status === 'paid' : o.status !== 'paid');
+  if (q) {
+    list = list.filter(o =>
+      (o.fanName||'').toLowerCase().includes(q) ||
+      (o.email||'').toLowerCase().includes(q) ||
+      (o.celebName||'').toLowerCase().includes(q) ||
+      (o.ref||'').toLowerCase().includes(q)
+    );
+  }
+  if (!list.length) {
+    el.innerHTML = `<div style="text-align:center;padding:4rem;color:var(--t3);"><div style="font-size:2rem;margin-bottom:.6rem;">🧾</div><div style="font-size:.85rem;">No orders found.</div></div>`;
+    return;
+  }
+  el.innerHTML = list.map(o => {
+    const paid = o.status === 'paid';
+    const date = new Date(o.createdAt).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
+    return `<div class="tbl-card" style="margin-bottom:1rem;">
+      <div style="padding:1.2rem 1.4rem;">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:1rem;flex-wrap:wrap;">
+          <div>
+            <div style="font-size:.72rem;font-weight:700;letter-spacing:.1em;color:var(--gold);font-family:'Courier New',monospace;margin-bottom:.3rem;">${esc(o.ref)}</div>
+            <div style="font-size:1rem;font-weight:600;color:var(--t1);">${esc(o.celebName)}</div>
+            <div style="font-size:.78rem;color:var(--t3);margin-top:.2rem;">${o.tier ? o.tier.charAt(0).toUpperCase()+o.tier.slice(1) : ''} tier</div>
+            <span class="badge ${paid ? 'b-green' : 'b-gold'}" style="margin-top:.5rem;display:inline-block;">${paid ? 'Paid & Delivered' : 'Pending'}</span>
+          </div>
+          <div style="text-align:right;">
+            <div style="font-size:1.1rem;font-weight:700;color:var(--gold);">$${Number(o.price||0).toLocaleString()}</div>
+            <div style="font-size:.72rem;color:var(--t3);margin-top:.2rem;">${date}</div>
+          </div>
+        </div>
+        <div style="margin-top:1rem;padding-top:1rem;border-top:1px solid var(--border);display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:.5rem;">
+          <div><div style="font-size:.6rem;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--t3);">Buyer</div><div style="font-size:.82rem;color:var(--t1);">${esc(o.fanName)}</div></div>
+          <div><div style="font-size:.6rem;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--t3);">Email</div><div style="font-size:.82rem;color:var(--t1);">${esc(o.email)}</div></div>
+          ${o.country ? `<div><div style="font-size:.6rem;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--t3);">Country</div><div style="font-size:.82rem;color:var(--t1);">${esc(o.country)}</div></div>` : ''}
+        </div>
+      </div>
+    </div>`;
+  }).join('');
 }
 
 /* ════════════════════════════════════════════

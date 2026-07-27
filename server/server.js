@@ -576,6 +576,13 @@ app.put('/api/admin/settings/fancard-benefits', adminAuthMiddleware, async (req,
 });
 
 /* ══════════════════════════════════════════════════════════
+   FAN CARD ORDERS  (admin visibility into who paid, and how much)
+═══════════════════════════════════════════════════════════ */
+app.get('/api/admin/fancard-orders', adminAuthMiddleware, async (_req, res) => {
+  res.json(await store.fancardOrders.all());
+});
+
+/* ══════════════════════════════════════════════════════════
    FAN CARD  (existing + link to user account)
 ═══════════════════════════════════════════════════════════ */
 
