@@ -4,9 +4,16 @@
 const TRANSFER_TOPIC = '0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef';
 const USDC_DECIMALS = 6;
 
+// Etherscan migrated to a unified "V2" API (api.etherscan.io/v2/api?chainid=...)
+// where a single Etherscan API key works across every chain they support,
+// Base included — a separate Basescan key is no longer required. We still
+// honor BASESCAN_API_KEY first if someone has one from before the merge, so
+// nothing breaks for an existing separate-key setup, but ETHERSCAN_API_KEY
+// alone is enough to cover both chains going forward.
+const V2_API_BASE = 'https://api.etherscan.io/v2/api';
 const CHAINS = {
-  ethereum: { apiBase: 'https://api.etherscan.io/api', keyEnv: 'ETHERSCAN_API_KEY' },
-  base: { apiBase: 'https://api.basescan.org/api', keyEnv: 'BASESCAN_API_KEY' },
+  ethereum: { chainId: 1, keyEnvs: ['ETHERSCAN_API_KEY'] },
+  base: { chainId: 8453, keyEnvs: ['BASESCAN_API_KEY', 'ETHERSCAN_API_KEY'] },
 };
 
 function topicToAddress(topic) {
@@ -17,8 +24,8 @@ function addressToTopicSuffix(address) {
   return address.toLowerCase().replace(/^0x/, '').padStart(64, '0');
 }
 
-async function rpcCall(apiBase, apiKey, params) {
-  const url = `${apiBase}?module=proxy&${params}&apikey=${apiKey}`;
+async function rpcCall(chainId, apiKey, params) {
+  const url = `${V2_API_BASE}?chainid=${chainId}&module=proxy&${params}&apikey=${apiKey}`;
   const res = await fetch(url, { signal: AbortSignal.timeout(15000) });
   if (!res.ok) throw new Error(`Provider returned HTTP ${res.status}`);
   const data = await res.json();
@@ -37,13 +44,13 @@ async function rpcCall(apiBase, apiKey, params) {
 async function verifyEvmUsdcPayment({ chain, txid, expectedContract, expectedToAddress, expectedAmount, requiredConfirmations }) {
   const chainCfg = CHAINS[chain];
   if (!chainCfg) return { available: false, failureReason: `Unsupported EVM chain: ${chain}` };
-  const apiKey = process.env[chainCfg.keyEnv] || '';
+  const apiKey = chainCfg.keyEnvs.map(k => process.env[k]).find(Boolean) || '';
   if (!apiKey) return { available: false };
 
   let receipt, blockNumberHex;
   try {
-    receipt = await rpcCall(chainCfg.apiBase, apiKey, `action=eth_getTransactionReceipt&txhash=${txid}`);
-    blockNumberHex = await rpcCall(chainCfg.apiBase, apiKey, 'action=eth_blockNumber');
+    receipt = await rpcCall(chainCfg.chainId, apiKey, `action=eth_getTransactionReceipt&txhash=${txid}`);
+    blockNumberHex = await rpcCall(chainCfg.chainId, apiKey, 'action=eth_blockNumber');
   } catch (e) {
     return { available: true, verified: false, failureReason: `Provider request failed: ${e.message}` };
   }
