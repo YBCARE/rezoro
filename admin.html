@@ -1342,6 +1342,7 @@ async function renderPrList(){
           <div style="font-size:.92rem;font-weight:600;margin-top:.2rem;">${esc(p.orderLabel || p.orderType)}</div>
           <div style="font-size:.75rem;color:var(--t3);margin-top:.15rem;">${esc(p.customerName||'')} · ${esc(p.customerEmail||'')}</div>
           <span class="badge ${PAYMENT_STATUS_COLOR[p.status]||'b-gold'}" style="margin-top:.5rem;display:inline-block;">${esc(p.status.replace(/_/g,' '))}</span>
+          ${p.verificationResult?.verified ? `<span class="badge b-green" style="margin-top:.5rem;margin-left:.4rem;display:inline-block;">✓ On-chain verified</span>` : ''}
         </div>
         <div style="text-align:right;">
           <div style="font-size:1rem;font-weight:700;color:var(--gold);">${fmtUsd(p.expectedAmount)}</div>
@@ -1398,6 +1399,29 @@ function renderPaymentDetail(p){
   if (p.rejectionReason) rows.push(['Rejection Reason', p.rejectionReason]);
 
   const detailHtml = rows.map(([lbl, val]) => detailRow(lbl, val)).join('');
+
+  // For crypto, tell the admin whether the on-chain check passed, and remind
+  // them to confirm the payment actually belongs to THIS order before
+  // approving — the shared receiving wallet means a green check alone isn't
+  // proof the right customer sent it.
+  const vr = p.verificationResult;
+  const isCrypto = p.method === 'bitcoin' || p.method === 'usdc';
+  let verifyBanner = '';
+  if (vr && vr.verified) {
+    verifyBanner = `<div style="background:rgba(62,207,142,.1);border:1px solid rgba(62,207,142,.3);border-radius:6px;padding:.9rem 1.1rem;margin:1rem 0;font-size:.8rem;color:#3ecf8e;">
+      ✓ On-chain verified — ${esc(String(vr.amount ?? ''))} ${esc(vr.asset||'')} to your wallet${vr.confirmations!=null?`, ${esc(String(vr.confirmations))} confirmation(s)`:''}.
+      <div style="color:var(--t2);margin-top:.4rem;">Before approving, open the TXID in a block explorer and confirm this payment was made for <strong style="color:var(--t1);">this order</strong> — all orders share one wallet, so a matching amount alone isn't proof.</div>
+    </div>`;
+  } else if (isCrypto && p.txid && vr && vr.available !== false && !vr.verified) {
+    verifyBanner = `<div style="background:rgba(248,113,113,.08);border:1px solid rgba(248,113,113,.3);border-radius:6px;padding:.9rem 1.1rem;margin:1rem 0;font-size:.8rem;color:#f87171;">
+      ⚠ Automatic check did not confirm this payment${vr.failureReason?`: ${esc(vr.failureReason)}`:''}. Do not approve unless you have independently confirmed the funds.
+    </div>`;
+  } else if (isCrypto && p.txid) {
+    verifyBanner = `<div style="background:rgba(201,168,76,.08);border:1px solid var(--gold-border);border-radius:6px;padding:.9rem 1.1rem;margin:1rem 0;font-size:.8rem;color:var(--gold);">
+      Automatic verification isn't configured for this network — check the TXID on a block explorer yourself before approving.
+    </div>`;
+  }
+
   const receiptHtml = p.hasReceipt
     ? `<a href="/api/admin/payments/${p.id}/receipt" target="_blank" class="td-btn gold" style="text-decoration:none;display:inline-block;margin-top:.8rem;">View Receipt</a>` : '';
   const auditHtml = (p.audit || []).map(a => `<div style="padding:.5rem 0;border-bottom:1px solid var(--border);font-size:.75rem;">
@@ -1412,6 +1436,7 @@ function renderPaymentDetail(p){
 
   document.getElementById('pd-content').innerHTML = `
     <div class="m-title">Payment Detail</div>
+    ${verifyBanner}
     <div style="background:var(--bg3);border:1px solid var(--border);border-radius:6px;padding:1rem 1.2rem;margin:1rem 0;">${detailHtml}</div>
     ${receiptHtml}
     ${actions}

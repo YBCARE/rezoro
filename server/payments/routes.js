@@ -273,8 +273,20 @@ function mountPaymentRoutes(app, deps) {
       return;
     }
 
-    await activateMembershipAfterVerifiedPayment(store, {
-      paymentAttemptId: attempt.id, fromStatuses: ['PENDING_VERIFICATION'], verificationResult: result,
+    // On-chain verification passed — but we deliberately do NOT auto-activate.
+    // All customers pay one shared receiving wallet with no per-order tag on
+    // the payment, so an attacker could submit another customer's (public)
+    // transaction hash against their own equal-amount order. Instead we record
+    // the successful verification and leave the attempt in the admin review
+    // queue, flagged as on-chain-verified, for a one-tap human approval that
+    // confirms the payment really belongs to this order before the card or
+    // booking is released. (Flutterwave, which has no shared-address problem,
+    // still activates automatically via its own path.)
+    await store.paymentAttempts.update(attempt.id, { verificationResult: result });
+    await logEvent(store, {
+      event: 'PAYMENT_VERIFIED', orderType: attempt.orderType, orderRef: attempt.orderRef,
+      paymentAttemptId: attempt.id, actorType: 'system',
+      metadata: { autoVerified: true, awaitingAdminApproval: true, amount: result.amount, confirmations: result.confirmations },
     });
   }
 
