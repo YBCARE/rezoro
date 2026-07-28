@@ -381,6 +381,75 @@ async function handleFlutterwaveResolution(attempt, providerTransactionId) {
   return { verified: true, environment: 'live', activated: result.activated };
 }
 
+/*
+ * Backward-compatibility path for Flutterwave payment links created BEFORE
+ * the payment-attempt system existed, where tx_ref was the order's own
+ * human-readable ref ("RZ-...") rather than a payment_attempts UUID.
+ *
+ * This must verify against Flutterwave exactly as rigorously as the modern
+ * path does. An earlier version of this function trusted the webhook payload's
+ * own `status: "successful"` and fulfilled immediately — meaning anyone able to
+ * POST a forged body with a valid verif-hash could mint a free fan card or
+ * confirm an unpaid booking. It now re-verifies server-side (real transaction,
+ * matching ref, sufficient amount, matching currency) before anything is
+ * fulfilled, and bookings get the amount/currency check they previously
+ * skipped entirely.
+ */
+async function resolveLegacyFlutterwaveRef(txRef, providerTransactionId) {
+  const booking = await store.bookings.getByRef(txRef);
+  const order = booking ? null : await store.fancardOrders.getByRef(txRef);
+  const target = booking || order;
+  if (!target) return { error: 'unknown_ref' };
+
+  // Already resolved — nothing to do (idempotent under webhook retries).
+  if (booking ? booking.status === 'confirmed' : order.status === 'paid') {
+    return { alreadyResolved: true };
+  }
+
+  const keys = paymentSettings.resolveFlutterwaveKeys('live');
+  if (!keys || !providerTransactionId) {
+    console.error(`[flutterwave-legacy] cannot verify ${txRef} — missing live keys or transaction id`);
+    return { error: 'not_verifiable' };
+  }
+
+  let tx;
+  try {
+    const vRes = await fetch(`https://api.flutterwave.com/v3/transactions/${providerTransactionId}/verify`, {
+      headers: { Authorization: `Bearer ${keys.secretKey}` },
+      signal: AbortSignal.timeout(15000),
+    });
+    tx = (await vRes.json())?.data;
+  } catch (e) {
+    console.error('[flutterwave-legacy] verify request failed:', e.message);
+    return { error: 'verify_request_failed' };
+  }
+
+  const expectedAmount = Number(target.price);
+  const ok = tx?.status === 'successful' && tx?.tx_ref === txRef
+    && Number.isFinite(expectedAmount) && Number(tx?.amount) >= expectedAmount
+    && tx?.currency === 'USD';
+
+  if (!ok) {
+    await paymentAudit.logEvent(store, {
+      event: 'PAYMENT_VERIFICATION_FAILED', orderType: booking ? 'booking' : 'fancard',
+      orderRef: txRef, actorType: 'webhook',
+      metadata: { legacy: true, providerTransactionId },
+    }).catch(() => {});
+    return { verified: false };
+  }
+
+  if (booking) {
+    await store.bookings.updateByRef(txRef, { status: 'confirmed' });
+  } else {
+    await fulfillFancardOrder(store, order);
+  }
+  await paymentAudit.logEvent(store, {
+    event: 'MEMBERSHIP_ACTIVATED', orderType: booking ? 'booking' : 'fancard',
+    orderRef: txRef, actorType: 'webhook', metadata: { legacy: true },
+  }).catch(() => {});
+  return { verified: true, activated: true };
+}
+
 // Lets order.html trigger verification as soon as Flutterwave redirects the
 // customer back — the webhook remains the authoritative path if the
 // customer never lands back on the page, but this makes the common case instant.
@@ -422,16 +491,7 @@ app.post('/api/payment/webhook', async (req, res) => {
       if (attempt) {
         await handleFlutterwaveResolution(attempt, data.id);
       } else {
-        const booking = await store.bookings.getByRef(data.tx_ref);
-        if (booking) {
-          await store.bookings.updateByRef(data.tx_ref, { status: 'confirmed' });
-        } else {
-          const order = await store.fancardOrders.getByRef(data.tx_ref);
-          if (order && order.status !== 'paid') {
-            try { await fulfillFancardOrder(store, order); }
-            catch (e) { console.error('[webhook] fulfill failed:', e.message); }
-          }
-        }
+        await resolveLegacyFlutterwaveRef(data.tx_ref, data.id);
       }
     }
   } catch (err) {
@@ -834,43 +894,30 @@ app.get('/api/payment/verify', rateLimit('verify', 30, 60 * 60 * 1000), async (r
     const { type, ref, transaction_id } = req.query;
     if (!type || !ref) return res.status(400).json({ error: 'type and ref are required.' });
 
-    if (type === 'fancard') {
-      const order = await store.fancardOrders.getByRef(ref);
-      if (!order) return res.status(404).json({ error: 'Order not found.' });
-      if (order.status === 'paid') {
-        return res.json({ success: true, alreadyProcessed: true, celebName: order.celebName, tier: order.tier, email: order.email, ref });
-      }
-      if (!FW_SECRET || !transaction_id) return res.status(400).json({ error: 'Cannot verify this payment.' });
-
-      const vRes = await fetch(`https://api.flutterwave.com/v3/transactions/${transaction_id}/verify`, {
-        headers: { 'Authorization': `Bearer ${FW_SECRET}` }
-      });
-      const vData = await vRes.json();
-      const tx = vData?.data;
-      const ok = vData.status === 'success' && tx?.status === 'successful' && tx?.tx_ref === ref
-        && Number(tx?.amount) >= Number(order.price) && tx?.currency === 'USD';
-      if (!ok) return res.status(402).json({ error: 'Payment could not be verified.' });
-
-      await fulfillFancardOrder(store, order);
-      return res.json({ success: true, celebName: order.celebName, tier: order.tier, email: order.email, ref });
+    if (type !== 'fancard' && type !== 'booking') {
+      return res.status(400).json({ error: 'Unknown payment type.' });
     }
 
-    if (type === 'booking') {
-      const booking = [...await store.bookings.all()].find(b => b.ref === ref);
-      if (!booking) return res.status(404).json({ error: 'Booking not found.' });
-      if (booking.status !== 'confirmed' && FW_SECRET && transaction_id) {
-        const vRes = await fetch(`https://api.flutterwave.com/v3/transactions/${transaction_id}/verify`, {
-          headers: { 'Authorization': `Bearer ${FW_SECRET}` }
-        });
-        const vData = await vRes.json();
-        const tx = vData?.data;
-        const ok = vData.status === 'success' && tx?.status === 'successful' && tx?.tx_ref === ref;
-        if (ok) await store.bookings.updateByRef(ref, { status: 'confirmed' });
-      }
-      return res.json({ success: true, celebName: booking.celebName, tier: booking.tier, email: booking.email, ref });
+    const target = type === 'booking'
+      ? await store.bookings.getByRef(ref)
+      : await store.fancardOrders.getByRef(ref);
+    if (!target) return res.status(404).json({ error: 'Order not found.' });
+
+    const alreadyDone = type === 'booking' ? target.status === 'confirmed' : target.status === 'paid';
+    if (alreadyDone) {
+      return res.json({ success: true, alreadyProcessed: true, celebName: target.celebName, tier: target.tier, ref });
     }
 
-    res.status(400).json({ error: 'Unknown payment type.' });
+    // Same hardened verification the webhook uses — real Flutterwave lookup,
+    // matching ref, sufficient amount, matching currency. Bookings previously
+    // skipped the amount/currency check here entirely.
+    const result = await resolveLegacyFlutterwaveRef(ref, transaction_id);
+    if (!result.verified) return res.status(402).json({ error: 'Payment could not be verified.' });
+
+    // Deliberately no customer email in the response — this endpoint takes only
+    // a guessable order ref and no authentication, so echoing the buyer's email
+    // back made it an unauthenticated PII lookup.
+    return res.json({ success: true, celebName: target.celebName, tier: target.tier, ref });
   } catch (err) {
     console.error('[payment/verify]', err.message);
     res.status(500).json({ error: 'Verification failed.' });

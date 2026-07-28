@@ -380,7 +380,13 @@ function mountPaymentRoutes(app, deps) {
     const store = getStore();
     const receipt = await store.paymentAttempts.getReceipt(req.params.id);
     if (!receipt) return res.status(404).end();
+    // This is an attacker-supplied file being served back to the admin. The
+    // mime comes from our own magic-byte sniff (never the client's declared
+    // type), and nosniff stops the browser second-guessing it back into
+    // something executable.
     res.set('Content-Type', receipt.mime || 'application/octet-stream');
+    res.set('X-Content-Type-Options', 'nosniff');
+    res.set('Content-Security-Policy', "default-src 'none'; img-src 'self'");
     res.send(receipt.buffer);
   }));
 
