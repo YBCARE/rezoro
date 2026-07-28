@@ -59,6 +59,13 @@ async function createPaymentAttempt(store, { orderType, orderRef, method, networ
   const order = await getOrderInfo(store, orderType, orderRef);
   if (!order) return { error: 'Order not found.', code: 404 };
   if (order.alreadyFulfilled) return { error: 'This order has already been paid.', code: 409 };
+  // A non-positive price should never be payable. Legitimate tiers always have
+  // a real price; a $0/negative amount means a malformed order (e.g. a booking
+  // submitted with a non-existent tier, which prices to 0) and must never be
+  // able to produce a "verified" crypto payment for effectively nothing.
+  if (!Number.isFinite(order.price) || order.price <= 0) {
+    return { error: 'This order has no valid price and cannot be paid. Please contact support.', code: 409 };
+  }
 
   const now = new Date();
   let attemptData;

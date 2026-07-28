@@ -13,6 +13,21 @@ const qr = require('./qrcode');
 const ORDER_TYPES = ['fancard', 'booking'];
 const CRYPTO_METHODS = ['bitcoin', 'usdc'];
 
+// EVM transaction hashes and Bitcoin txids are hex and case-insensitive on
+// chain — "0xABC…" and "0xabc…" are the SAME transaction. The DB uniqueness
+// constraint is a byte-exact string match, so without normalizing first, an
+// attacker could submit one real payment's hash in two different letter-cases
+// against two different orders and have both slip past the duplicate check,
+// then both verify against that single on-chain payment. Solana and TRON ids
+// are base58, where case is significant, so those are left untouched.
+function normalizeTxid(method, network, txid) {
+  const t = String(txid || '').trim();
+  const net = String(network || '').toLowerCase();
+  if (method === 'bitcoin') return t.toLowerCase();
+  if (method === 'usdc' && (net === 'ethereum' || net === 'base')) return t.toLowerCase();
+  return t;
+}
+
 // Every route below is async — without this, a rejected promise (a DB error,
 // a failed email send inside the membership gate, a network timeout) would
 // become an unhandled rejection that leaves the client hanging with no
@@ -172,7 +187,7 @@ function mountPaymentRoutes(app, deps) {
       const patch = {};
 
       if (CRYPTO_METHODS.includes(attempt.method)) {
-        const txid = String(req.body?.txid || '').trim();
+        const txid = normalizeTxid(attempt.method, attempt.network, req.body?.txid);
         if (!txid) return res.status(400).json({ error: 'A transaction ID is required.' });
         const existing = await store.paymentAttempts.getByTxid(txid);
         if (existing && existing.id !== attempt.id) {
@@ -226,6 +241,19 @@ function mountPaymentRoutes(app, deps) {
     });
     const result = await verifyCryptoPayment(attempt);
     if (!result.available) return; // no provider configured — stays PENDING_VERIFICATION for manual review
+
+    // A payment that verifies on-chain but arrived after the attempt's window
+    // closed must NOT auto-activate — the spec requires a human to review late
+    // payments. This covers the gap between an attempt passing expiresAt and
+    // the periodic sweeper marking it EXPIRED.
+    if (result.verified && attempt.expiresAt && new Date(attempt.expiresAt) < new Date()) {
+      await transitionPaymentStatus(store, attempt.id, ['PENDING_VERIFICATION'], 'LATE_PAYMENT_REVIEW', { verificationResult: result });
+      await logEvent(store, {
+        event: 'LATE_PAYMENT_DETECTED', orderType: attempt.orderType, orderRef: attempt.orderRef,
+        paymentAttemptId: attempt.id, actorType: 'system',
+      });
+      return;
+    }
 
     if (!result.verified) {
       const nextStatus = result.underpayment ? 'UNDERPAYMENT_REVIEW' : result.overpayment ? 'OVERPAYMENT_REVIEW' : null;
