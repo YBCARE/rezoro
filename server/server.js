@@ -10,6 +10,7 @@ const { randomUUID } = require('crypto');
 const { generatePrintCard, generatePrintCardBack } = require('./fancard-print');
 const { generateCertificate }      = require('./certificate');
 const { fulfillFancardOrder }      = require('./fancard-fulfillment');
+const { stripImageMetadata }       = require('./image-clean');
 const { createStore }              = require('./store');
 const { seedBuiltInCelebrities }   = require('./seed-celebrities');
 const {
@@ -686,7 +687,11 @@ app.post('/api/admin/celebrities', adminAuthMiddleware, upload.single('photo'), 
     if (!name) return res.status(400).json({ error: 'name is required.' });
     const tierClean = ['gold', 'silver', 'bronze'].includes(tier) ? tier : 'gold';
     const visible = req.body.visible !== 'false';
-    const photo = req.file ? { buffer: req.file.buffer, mime: req.file.mimetype } : null;
+    let photo = null;
+    if (req.file) {
+      photo = await stripImageMetadata(req.file.buffer);
+      if (!photo) return res.status(400).json({ error: 'That photo could not be processed. Please upload a valid JPG or PNG image.' });
+    }
     const row = await store.celebrities.create({
       name, tier: tierClean, knownFor: knownFor || '', trailerUrl: trailerUrl || '', wiki: wiki || '', visible, photo
     });
@@ -708,7 +713,11 @@ app.put('/api/admin/celebrities/:id', adminAuthMiddleware, upload.single('photo'
     if (req.body.trailerUrl !== undefined) patch.trailerUrl = req.body.trailerUrl;
     if (req.body.wiki !== undefined)       patch.wiki = req.body.wiki;
     if (req.body.visible !== undefined)    patch.visible = req.body.visible !== 'false';
-    if (req.file)                          patch.photo = { buffer: req.file.buffer, mime: req.file.mimetype };
+    if (req.file) {
+      const cleaned = await stripImageMetadata(req.file.buffer);
+      if (!cleaned) return res.status(400).json({ error: 'That photo could not be processed. Please upload a valid JPG or PNG image.' });
+      patch.photo = cleaned;
+    }
     const row = await store.celebrities.update(req.params.id, patch);
     res.json({ success: true, celebrity: row });
   } catch (err) {
@@ -751,7 +760,11 @@ app.post('/api/admin/testimonials', adminAuthMiddleware, upload.single('photo'),
     const { quote, name, role } = req.body;
     if (!quote || !name) return res.status(400).json({ error: 'quote and name are required.' });
     const visible = req.body.visible !== 'false';
-    const photo = req.file ? { buffer: req.file.buffer, mime: req.file.mimetype } : null;
+    let photo = null;
+    if (req.file) {
+      photo = await stripImageMetadata(req.file.buffer);
+      if (!photo) return res.status(400).json({ error: 'That photo could not be processed. Please upload a valid JPG or PNG image.' });
+    }
     const row = await store.testimonials.create({
       quote: quote.trim(), name: name.trim(), role: (role || '').trim(), visible, photo
     });
@@ -771,7 +784,11 @@ app.put('/api/admin/testimonials/:id', adminAuthMiddleware, upload.single('photo
     if (req.body.name !== undefined)    patch.name = req.body.name.trim();
     if (req.body.role !== undefined)    patch.role = req.body.role.trim();
     if (req.body.visible !== undefined) patch.visible = req.body.visible !== 'false';
-    if (req.file)                       patch.photo = { buffer: req.file.buffer, mime: req.file.mimetype };
+    if (req.file) {
+      const cleaned = await stripImageMetadata(req.file.buffer);
+      if (!cleaned) return res.status(400).json({ error: 'That photo could not be processed. Please upload a valid JPG or PNG image.' });
+      patch.photo = cleaned;
+    }
     const row = await store.testimonials.update(req.params.id, patch);
     res.json({ success: true, testimonial: row });
   } catch (err) {
@@ -870,7 +887,14 @@ app.post('/api/fancard/checkout', rateLimit('fancard', 8, 60 * 60 * 1000), optio
     const price = pricing[tierClean];
 
     const ref = makeRef();
-    const photo = req.file ? { buffer: req.file.buffer, mime: req.file.mimetype } : null;
+    // Strip EXIF/GPS from the buyer's photo before it's stored and printed onto
+    // the emailed card — a phone selfie carries the exact coordinates it was
+    // taken at, and we never want that travelling with the collectible.
+    let photo = null;
+    if (req.file) {
+      photo = await stripImageMetadata(req.file.buffer);
+      if (!photo) return res.status(400).json({ error: 'That photo could not be processed. Please upload a valid JPG or PNG image.' });
+    }
 
     await store.fancardOrders.create({
       ref, fanName, country: country || '', celebName, celebWiki: celebWiki || '', celebId: celebId || null,
