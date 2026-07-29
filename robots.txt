@@ -1,0 +1,9 @@
+User-agent: *
+Allow: /
+Disallow: /admin.html
+Disallow: /account.html
+Disallow: /order.html
+Disallow: /payment-success.html
+Disallow: /api/
+
+Sitemap: https://rezoro.pro/sitemap.xml
