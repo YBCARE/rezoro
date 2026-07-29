@@ -10,9 +10,7 @@
   <meta property="og:type" content="website">
   <meta property="og:url" content="https://rezoro.pro">
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%2307070A'/%3E%3Ctext x='32' y='44' font-family='Georgia,serif' font-size='38' font-weight='700' fill='%23C9A84C' text-anchor='middle'%3ER%3C/text%3E%3C/svg%3E">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Cormorant:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400;1,600&family=Montserrat:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link href="/fonts/fonts.css" rel="stylesheet">
   <style>
     /* ═══════════════════════════════════════════════════════
        REZORO — DESIGN TOKENS (UI/UX Pro Max · Luxury Dark)
@@ -1388,7 +1386,7 @@ function ytId(url){
 }
 function openTrailer(url){
   const id = ytId(url); if(!id) return;
-  document.getElementById('trailerFrame').src = `https://www.youtube.com/embed/${id}?autoplay=1&rel=0`;
+  document.getElementById('trailerFrame').src = `https://www.youtube-nocookie.com/embed/${id}?autoplay=1&rel=0`;
   document.getElementById('trailerOverlay').classList.add('open');
   document.body.style.overflow='hidden';
 }
@@ -1422,7 +1420,7 @@ document.querySelectorAll('.trailer-btn').forEach(b => {
       iframe.allow = 'autoplay; encrypted-media; picture-in-picture';
       iframe.setAttribute('allowfullscreen','');
       // autoplay=1, mute=1, controls=0, rel=0, loop=1
-      iframe.src = `https://www.youtube.com/embed/${id}?autoplay=1&mute=1&controls=0&rel=0&modestbranding=1&loop=1&playlist=${id}&playsinline=1&iv_load_policy=3`;
+      iframe.src = `https://www.youtube-nocookie.com/embed/${id}?autoplay=1&mute=1&controls=0&rel=0&modestbranding=1&loop=1&playlist=${id}&playsinline=1&iv_load_policy=3`;
 
       card.querySelector('.celeb-visual').appendChild(iframe);
       // Two rAF frames so the browser registers the element before transitioning opacity
@@ -1494,12 +1492,23 @@ document.addEventListener('keydown', e => { if(e.key==='Escape'){ closeBook(); c
 
   async function getSummary(slug) {
     try {
-      const r = await fetch(`https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(slug)}`);
+      const r = await fetch(`/api/wiki-summary/${encodeURIComponent(slug)}`);
       if (!r.ok) return null;
       return await r.json();
     } catch { return null; }
   }
   const getThumb = async slug => (await getSummary(slug))?.thumbnail?.source || null;
+  // Our proxy returns thumbnail.source as "/api/wiki-image?u=<original wikimedia url>" —
+  // unwrap the original URL to swap its resolution, then re-wrap for the proxy.
+  function proxiedAtWidth(proxiedUrl, width) {
+    try {
+      const u = new URL(proxiedUrl, location.origin);
+      const original = u.searchParams.get('u');
+      if (!original) return proxiedUrl;
+      const swapped = original.replace(/\/(\d+)px-/, `/${width}px-`);
+      return `/api/wiki-image?u=${encodeURIComponent(swapped)}`;
+    } catch { return proxiedUrl; }
+  }
 
   // Main grid cards — inject the largest photo Wikimedia will serve, hide monogram.
   // The thumbnailer rejects sizes near/above the original, so walk down until one loads.
@@ -1507,7 +1516,7 @@ document.addEventListener('keydown', e => { if(e.key==='Escape'){ closeBook(); c
     const thumb = await getThumb(card.dataset.wiki);
     if (thumb) {
       const candidates = [600, 500, 400]
-        .map(w => thumb.replace(/\/(\d+)px-/, `/${w}px-`))
+        .map(w => proxiedAtWidth(thumb, w))
         .concat(thumb)
         .filter((v, i, a) => a.indexOf(v) === i);
       const visual = card.querySelector('.celeb-visual');
@@ -1541,7 +1550,7 @@ function prefillBook(name) {
 
   async function getThumb(slug) {
     try {
-      const r = await fetch(`https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(slug)}`);
+      const r = await fetch(`/api/wiki-summary/${encodeURIComponent(slug)}`);
       if (!r.ok) return null;
       const d = await r.json();
       return d.thumbnail?.source || null;

@@ -11,6 +11,7 @@ const { generatePrintCard, generatePrintCardBack } = require('./fancard-print');
 const { generateCertificate }      = require('./certificate');
 const { fulfillFancardOrder }      = require('./fancard-fulfillment');
 const { stripImageMetadata }       = require('./image-clean');
+const wikiProxy                    = require('./wiki-proxy');
 const { createStore }              = require('./store');
 const { seedBuiltInCelebrities }   = require('./seed-celebrities');
 const {
@@ -674,6 +675,27 @@ app.get('/api/celebrities/:id/photo', async (req, res) => {
   res.set('Content-Type', photo.mime || 'image/jpeg');
   res.set('Cache-Control', 'public, max-age=86400');
   res.send(photo.buffer);
+});
+
+/* ══════════════════════════════════════════════════════════
+   WIKIPEDIA PROXY  (fallback photos for celebrities with no admin
+   upload) — routed through our server so a visitor's browser never
+   talks to Wikipedia/Wikimedia directly, and their IP never reaches
+   Wikimedia's servers just from browsing the homepage.
+═══════════════════════════════════════════════════════════ */
+app.get('/api/wiki-summary/:slug', rateLimit('wiki-summary', 120, 60 * 1000), async (req, res) => {
+  const data = await wikiProxy.getWikiSummary(req.params.slug);
+  if (!data) return res.status(404).json({ error: 'Not found' });
+  res.set('Cache-Control', 'public, max-age=3600');
+  res.json(data);
+});
+
+app.get('/api/wiki-image', rateLimit('wiki-image', 120, 60 * 1000), async (req, res) => {
+  const result = await wikiProxy.fetchWikiImage(req.query.u);
+  if (!result) return res.status(404).end();
+  res.set('Content-Type', result.contentType || 'image/jpeg');
+  res.set('Cache-Control', 'public, max-age=86400');
+  res.send(result.buffer);
 });
 
 // Admin — full list including hidden entries
